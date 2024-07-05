@@ -1,0 +1,71 @@
+# Django and Django Rest Framework
+Django==3.2.9
+djangorestframework==3.12.4
+django-filter==21.1
+
+# Database
+psycopg2-binary==2.9.1
+
+# Environment variables
+python-dotenv==0.19.1
+
+# Stripe
+stripe==2.60.0
+
+# Asynchronous task processing
+celery==5.1.2
+redis==3.5.3
+
+# API documentation
+drf-yasg==1.20.0
+
+# CORS handling
+django-cors-headers==3.10.0
+
+# Retries for API calls
+tenacity==8.0.1
+
+# Testing
+factory-boy==3.2.0
+
+# Logging (if not using built-in Python logging)
+# python-json-logger==2.0.2
+
+# Caching
+django-redis==5.0.0
+
+# Throttling
+django-ratelimit==3.0.1
+
+# JWT Authentication (if needed)
+# djangorestframework-simplejwt==5.0.0
+
+# PDF generation (choose one based on your needs)
+# reportlab==3.6.2
+# WeasyPrint==52.5
+
+# Date/Time handling
+pytz==2021.3
+
+# For secure password hashing
+bcrypt==3.2.0
+
+# For more secure random number generation
+cryptography==35.0.0
+
+# Dependency management
+pip-tools==6.4.0
+
+# Linting and code style
+flake8==4.0.1
+black==21.9b0
+
+# Debugging (optional, for development)
+django-debug-toolbar==3.2.2
+
+# Security enhancements
+# django-secure==1.0.1
+
+# 3rd party login
+social-auth-app-django==5.4.1
+gunicorn==22.0.0
