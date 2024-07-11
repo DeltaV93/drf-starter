@@ -6,12 +6,16 @@ from django.utils.encoding import force_bytes, force_str
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .serializers.auth_serializers import UserLoginSerializer, UserRegistrationSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+
+from utils.gdpr_utils import anonymize_user_data
+from .serializers.auth_serializers import UserLoginSerializer, UserRegistrationSerializer, \
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer, AccountDeletionSerializer
 from utils.emails_utils import send_password_reset_email
 from utils.api_utils import api_response, StandardizedResponseMixin
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]

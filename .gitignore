@@ -523,4 +523,12 @@ pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/django,python,venv,pycharm,pycharm+all,jetbrains
 
+# Skip migrations since this is a starter kit
+apps/authentication/migrations/
+apps/subscriptions/migrations/
+apps/users/migrations/
+
+# don't track static files
 app/
+static/
+staticfiles/

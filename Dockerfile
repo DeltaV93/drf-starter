@@ -1,14 +1,13 @@
 FROM python:3.9-slim as builder
 
-ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE template.settings.development
+ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=template.settings.development
 
 WORKDIR /app
 
 # Copy the requirements file into the container
 COPY requirements.txt /app/
-# Install any dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt > pip_install.log
 
 # Copy the current directory contents into the container at /app
 COPY . /app/
@@ -28,6 +27,10 @@ WORKDIR /app
 
 # Copy only the necessary files from the builder stage
 COPY --from=builder /app /app
+
+# Install gunicorn
+RUN pip install gunicorn
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose port 8000 for the application
 EXPOSE 8000
