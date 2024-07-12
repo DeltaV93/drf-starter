@@ -532,3 +532,8 @@ apps/users/migrations/
 app/
 static/
 staticfiles/
+
+
+# Website firles
+website/node_modules
+website/.env
