@@ -69,3 +69,6 @@ django-debug-toolbar==3.2.2
 # 3rd party login
 social-auth-app-django==5.4.1
 gunicorn==22.0.0
+# other
+drf-yasg==1.21.7
+debug_toolbar==4.4.6
