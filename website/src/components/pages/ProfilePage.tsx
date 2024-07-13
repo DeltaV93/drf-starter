@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useAtom } from 'jotai';
 import { authAtom } from '../../store/auth';
 import { apiCall } from '../../utils/api';
-import {routes} from '../../lib/routes';
+import {routes} from '../../libs/routes';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();

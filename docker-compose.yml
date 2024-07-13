@@ -5,7 +5,10 @@ services:
     environment:
       - DJANGO_ENVIRONMENT=development
     build: .
-    command: gunicorn template.wsgi:application --bind 0.0.0.0:8000
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn template.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
@@ -19,7 +22,7 @@ services:
   db:
     image: postgres:13
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/libs/postgresql/data
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}

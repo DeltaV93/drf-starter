@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useAtom } from 'jotai';
 import { authAtom } from '../../store/auth';
 import { apiCall } from '../../utils/api';
-import {routes} from '../../lib/routes.ts';
+import {routes} from '../../libs/routes.ts';
 
 interface LoginForm {
   email: string;

@@ -4,7 +4,7 @@ import {TextField, Button, Container, Box, Typography} from '@mui/material';
 import {useNavigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {apiCall} from '../../utils/api';
-import {routes} from '../../lib/routes';
+import {routes} from '../../libs/routes';
 
 interface PasswordResetForm {
     email: string;
