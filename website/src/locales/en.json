@@ -15,6 +15,7 @@
   "goToProfile": "Go to Profile",
   "emailRequired": "Email is required",
   "passwordRequired": "Password is required",
+  "usernameRequired": "Username is required",
   "nameRequired": "Name is required",
   "confirmPasswordRequired": "Please confirm your password",
   "invalidEmail": "Invalid email address",
