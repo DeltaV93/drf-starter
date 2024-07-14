@@ -17,7 +17,7 @@ celery==5.1.2
 redis==3.5.3
 
 # API documentation
-drf-yasg==1.20.0
+drf-yasg==1.21.7
 
 # CORS handling
 django-cors-headers==3.10.0
@@ -69,6 +69,3 @@ django-debug-toolbar==3.2.2
 # 3rd party login
 social-auth-app-django==5.4.1
 gunicorn==22.0.0
-# other
-drf-yasg==1.21.7
-debug_toolbar==4.4.6
