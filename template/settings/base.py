@@ -96,9 +96,8 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-STATIC_URL = '/app/static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-print(STATIC_ROOT)
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -154,8 +153,9 @@ CACHES = {
 
 # Social Authentication
 AUTHENTICATION_BACKENDS = (
-    'social_core.backends.google.GoogleOAuth2',
-    'social_core.backends.linkedin.LinkedinOAuth2',
+    # TODO: remove this for testing, will add this back
+    # 'social_core.backends.google.GoogleOAuth2',
+    # 'social_core.backends.linkedin.LinkedinOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
 
@@ -222,3 +222,6 @@ SWAGGER_SETTINGS = {
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+# Staticfile Storge
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
