@@ -22,9 +22,10 @@ services:
       - .:/app/static
     ports:
       - "8000:8000"
-    depends_on:
+      - "5678:5678"
+#    depends_on: .
 #      - db
-      - redis
+#      - redis
     env_file:
       - .env
     extra_hosts:
@@ -42,19 +43,19 @@ services:
 #      - LINKEDIN_OAUTH2_KEY=${LINKEDIN_OAUTH2_KEY}
 #      - LINKEDIN_OAUTH2_SECRET=${LINKEDIN_OAUTH2_SECRET}
 
-  redis:
-    image: redis:6
-
-  celery:
-    build: .
-    command: celery -A template worker -l info
-    volumes:
-      - .:/app
-    depends_on:
-#      - db
-      - redis
-    env_file:
-      - .env
+#  redis:
+#    image: redis:6
+#
+#  celery:
+#    build: .
+#    command: celery -A template worker -l info
+#    volumes:
+#      - .:/app
+#    depends_on:
+##      - db
+#      - redis
+#    env_file:
+#      - .env
 
 volumes:
   postgres_data:

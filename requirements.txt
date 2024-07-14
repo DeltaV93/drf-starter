@@ -62,7 +62,8 @@ black==21.9b0
 
 # Debugging (optional, for development)
 django-debug-toolbar==3.2.2
-
+ptvsd==4.3.2
+pydevd_pycharm==241.17890.14
 # Security enhancements
 # django-secure==1.0.1
 

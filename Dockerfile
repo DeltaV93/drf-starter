@@ -49,13 +49,17 @@ COPY --from=builder /app /app
 # Install gunicorn
 RUN pip install gunicorn
 RUN pip install --no-cache-dir -r requirements.txt
+# Install ptvsd
+RUN pip install pydevd_pycharm~=241.17890.14
 # RUN python manage.py migrate
 # Create superuser if it doesn't exist
 RUN python manage.py create_superuser_if_not_exists
 RUN echo "======== CREATED SUPER USER ==========="
 
-# Expose port 8000 for the application
-EXPOSE 8000
+
+
+# Expose port 8000 for the application and debug port 5678
+EXPOSE 8000 5678
 
 # Define the command to run the application
 CMD ["gunicorn", "template.wsgi:application", "--bind", "0.0.0.0:8000"]
