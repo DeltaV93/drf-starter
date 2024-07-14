@@ -537,3 +537,7 @@ staticfiles/
 # Website firles
 website/node_modules
 website/.env
+/admin/
+/debug_toolbar/
+/drf-yasg/
+/rest_framework/
