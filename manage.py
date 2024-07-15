@@ -19,8 +19,6 @@ def main():
 
 if __name__ == '__main__':
     if 'runserver' in sys.argv:
-        print("-------------_++++++++++++++++++++_-----------------------")
         import pydevd_pycharm
         pydevd_pycharm.settrace('host.docker.internal', port=5678, stdoutToServer=True, stderrToServer=True)
-        print("Debugger attached")
     main()

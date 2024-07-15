@@ -17,7 +17,10 @@ const PasswordResetPage: React.FC = () => {
 
     const onSubmit = async (data: PasswordResetForm) => {
         try {
-            await apiCall(routes.passwordReset, 'POST', data);
+            await apiCall({
+                "url": routes.api.auth.passwordReset(),
+                "method":'POST',
+                "data":data});
             // Show success message
             navigate('/login');
         } catch (error) {

@@ -1,4 +1,6 @@
 import logging
+import os
+
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -15,6 +17,8 @@ from utils.api_utils import api_response, StandardizedResponseMixin
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+FRONTEND_URL = os.environ.get('REACT_APP_YOUR_API_ENDPOINT')
 
 
 class LoginView(APIView):
@@ -78,8 +82,13 @@ class PasswordResetRequestView(StandardizedResponseMixin, APIView):
                 user = User.objects.get(email=email)
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                reset_url = f"{request.scheme}://{request.get_host()}/reset-password/{uid}/{token}/"
-                send_password_reset_email(user, reset_url)
+                reset_url = f"{FRONTEND_URL}/reset-password/{uid}/{token}/"
+                is_email_sent = send_password_reset_email(user, reset_url)
+                if is_email_sent:
+                    return self.standardized_response(
+                        message="If the email exists, a password reset link has been sent.",
+                        status_code=status.HTTP_200_OK
+                    )
             except User.DoesNotExist:
                 logger.warning(f"Password reset attempted for non-existent email: {email}")
                 return self.standardized_response(
