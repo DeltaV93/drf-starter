@@ -3,7 +3,7 @@ import { Typography, Button, Container, Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAtom } from 'jotai';
-import {authAtom, isAuthenticatedAtom} from '../../store/auth.tsx';
+import {isAuthenticatedAtom} from '../../store/auth.tsx';
 
 const HomePage: React.FC = () => {
   const { t } = useTranslation();

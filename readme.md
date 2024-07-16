@@ -1,6 +1,6 @@
 # Subscription and Payment Management System
 
-This Django application provides a robust system for managing subscriptions and payments using Stripe. It's designed to handle user subscriptions, add-ons, invoicing, and payment processing.
+This Django Rest Framwork + React application provides a robust system for managing subscriptions and payments using Stripe. It's designed to handle user subscriptions, add-ons, invoicing, and payment processing.
 
 ## Features
 
@@ -13,6 +13,8 @@ This Django application provides a robust system for managing subscriptions and 
 - Comprehensive logging system
 - Rate limiting and throttling
 - GDPR-compliant user data management
+- SES email workflow
+- Docker build
 
 ## Prerequisites
 
@@ -20,6 +22,8 @@ This Django application provides a robust system for managing subscriptions and 
 - PostgreSQL
 - Redis (for Celery)
 - Stripe account
+- SES account with AWS
+- Docker
 
 ## Installation
 

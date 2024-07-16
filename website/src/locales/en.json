@@ -17,6 +17,7 @@
   "passwordRequired": "Password is required",
   "usernameRequired": "Username is required",
   "nameRequired": "Name is required",
+  "newPassword": "New password",
   "confirmPasswordRequired": "Please confirm your password",
   "invalidEmail": "Invalid email address",
   "passwordTooShort": "Password must be at least 8 characters long",

@@ -3,17 +3,17 @@ import os
 
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework import status
-from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
 
+from utils.api_utils import api_response, StandardizedResponseMixin
+from utils.emails_utils import send_password_reset_email
 from utils.gdpr_utils import anonymize_user_data
 from .serializers.auth_serializers import UserLoginSerializer, UserRegistrationSerializer, \
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer, AccountDeletionSerializer
-from utils.emails_utils import send_password_reset_email
-from utils.api_utils import api_response, StandardizedResponseMixin
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -73,6 +73,32 @@ class RegisterView(APIView):
 class PasswordResetRequestView(StandardizedResponseMixin, APIView):
     permission_classes = [AllowAny]
     serializer_class = PasswordResetRequestSerializer
+
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            logger.warning(f"Invalid password reset token check attempt: {uidb64}")
+            return self.standardized_response(
+                data={"is_valid": False},
+                message="Invalid reset link",
+                status_code=status.HTTP_200_OK
+            )
+
+        if default_token_generator.check_token(user, token):
+            logger.info(f"Valid token for password reset: {user.email}")
+            return self.standardized_response(
+                data={"is_valid": True},
+                message="Token is valid",
+                status_code=status.HTTP_200_OK
+            )
+        else:
+            logger.warning(f"Invalid token for password reset: {token}")
+            return self.standardized_response(
+                data={"is_valid": False},
+                message="Invalid or expired token",
+                status_code=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)

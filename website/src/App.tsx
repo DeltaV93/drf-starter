@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import('./components/pages/LoginPage.tsx'));
 const SignUpPage = lazy(() => import('./components/pages/SignUpPage.tsx'));
 const PasswordResetPage = lazy(() => import('./components/pages/PasswordResetPage.tsx'));
 const ProfilePage = lazy(() => import('./components/pages/ProfilePage.tsx'));
+const ConfirmNewPasswordPage = lazy(() => import('./components/pages/ConfirmNewPasswordPage.tsx'));
 
 const App: React.FC = () => {
   return (
@@ -23,6 +24,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/reset-password" element={<PasswordResetPage />} />
+          <Route path="/confirm-password/:userId/:token" element={<ConfirmNewPasswordPage />} />
           <Route
             path="/profile"
             element={
