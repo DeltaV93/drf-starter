@@ -10,17 +10,17 @@ import {routes} from "../../libs/routes.ts";
 
 interface ConfirmPasswordForm {
   password: string;
-  confirmPassword: string;
+  password_confirm: string;
 }
 
 const ConfirmNewPasswordPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { userId, token } = useParams<{ userId: string; token: string }>();
+  const { uid, token } = useParams<{ uid: string; token: string }>();
   const [isValidToken, setIsValidToken] = useState(false);
   const { control, handleSubmit, watch } = useForm<ConfirmPasswordForm>();
   const password = watch('password', '');
-  const confirmPassword = watch('confirmPassword', '');
+  const confirmPassword = watch('password_confirm', '');
   const { isValid, errors } = usePasswordValidation(password, confirmPassword);
   const toast = getToast();
 
@@ -29,7 +29,7 @@ const ConfirmNewPasswordPage: React.FC = () => {
       try {
         const response = await apiCall({
           method: 'GET',
-          url: routes.api.auth.confirmPasswordToken(userId, token),
+          url: routes.api.auth.confirmPasswordToken(uid, token),
         });
         if(response.data.status == "success"){
           setIsValidToken(response.data.data.is_valid);
@@ -41,10 +41,10 @@ const ConfirmNewPasswordPage: React.FC = () => {
     };
 
     verifyToken();
-  }, [userId, token, navigate, t, toast]);
+  }, []);
 
   const onSubmit = async (data: ConfirmPasswordForm) => {
-    if (data.password !== data.confirmPassword) {
+    if (data.password !== data.password_confirm) {
       toast.error(t('passwordsDontMatch'));
       return;
     }
@@ -58,7 +58,7 @@ const ConfirmNewPasswordPage: React.FC = () => {
       await apiCall({
         method: 'POST',
         url: routes.api.auth.passwordReset(),
-        data: { userId, token, newPassword: data.password },
+        data: { uid, token, password: data.password, password_confirm: data.password_confirm },
       });
       toast.success(t('passwordResetSuccess'));
       navigate('/login');
@@ -95,7 +95,7 @@ const ConfirmNewPasswordPage: React.FC = () => {
                   )}
                 />
                 <Controller
-                  name="confirmPassword"
+                  name="password_confirm"
                   control={control}
                   defaultValue=""
                   rules={{ required: t('confirmPasswordRequired') }}

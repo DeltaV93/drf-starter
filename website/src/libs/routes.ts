@@ -8,6 +8,7 @@ export const routes = {
         auth: {
              login: () => apiJoin(routes.api.base_url, 'login/'),
              passwordReset: () => apiJoin(routes.api.base_url, 'password-reset-confirm/'),
+             passwordResetRequest: () => apiJoin(routes.api.base_url, 'password-reset-request/'),
              confirmPasswordToken: (id: string | undefined, token: string | undefined) => apiJoin(routes.api.base_url, `password-reset/${id}/${token}/`),
         },
         user: {

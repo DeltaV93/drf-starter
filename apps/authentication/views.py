@@ -74,32 +74,6 @@ class PasswordResetRequestView(StandardizedResponseMixin, APIView):
     permission_classes = [AllowAny]
     serializer_class = PasswordResetRequestSerializer
 
-    def get(self, request, uidb64, token):
-        try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            logger.warning(f"Invalid password reset token check attempt: {uidb64}")
-            return self.standardized_response(
-                data={"is_valid": False},
-                message="Invalid reset link",
-                status_code=status.HTTP_200_OK
-            )
-
-        if default_token_generator.check_token(user, token):
-            logger.info(f"Valid token for password reset: {user.email}")
-            return self.standardized_response(
-                data={"is_valid": True},
-                message="Token is valid",
-                status_code=status.HTTP_200_OK
-            )
-        else:
-            logger.warning(f"Invalid token for password reset: {token}")
-            return self.standardized_response(
-                data={"is_valid": False},
-                message="Invalid or expired token",
-                status_code=status.HTTP_200_OK)
-
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -132,6 +106,33 @@ class PasswordResetConfirmView(StandardizedResponseMixin, APIView):
     permission_classes = [AllowAny]
     serializer_class = PasswordResetConfirmSerializer
 
+    def get(self, request, uidb64, token):
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            logger.warning(f"Invalid password reset token check attempt: {uidb64}")
+            return self.standardized_response(
+                data={"is_valid": False},
+                message="Invalid reset link",
+                status_code=status.HTTP_200_OK
+            )
+
+        if default_token_generator.check_token(user, token):
+            logger.info(f"Valid token for password reset: {user.email}")
+            return self.standardized_response(
+                data={"is_valid": True},
+                message="Token is valid",
+                status_code=status.HTTP_200_OK
+            )
+        else:
+            logger.warning(f"Invalid token for password reset: {token}")
+            return self.standardized_response(
+                data={"is_valid": False},
+                message="Invalid or expired token",
+                status_code=status.HTTP_200_OK)
+
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -139,7 +140,7 @@ class PasswordResetConfirmView(StandardizedResponseMixin, APIView):
             password = serializer.validated_data['password']
 
             try:
-                uid, token = token.split('-')
+                uid = serializer.validated_data['uid']
                 uid = force_str(urlsafe_base64_decode(uid))
                 user = User.objects.get(pk=uid)
             except (TypeError, ValueError, OverflowError, User.DoesNotExist):

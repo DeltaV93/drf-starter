@@ -20,6 +20,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
+    uid = serializers.CharField()
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
 

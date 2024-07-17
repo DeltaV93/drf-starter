@@ -24,7 +24,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/reset-password" element={<PasswordResetPage />} />
-          <Route path="/confirm-password/:userId/:token" element={<ConfirmNewPasswordPage />} />
+          <Route path="/confirm-password/:uid/:token" element={<ConfirmNewPasswordPage />} />
           <Route
             path="/profile"
             element={
