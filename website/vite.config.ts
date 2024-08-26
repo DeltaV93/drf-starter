@@ -9,7 +9,7 @@ export default defineConfig({
       babel: {
         plugins: ['@emotion/babel-plugin'],
       },
-    }),
+    } ),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -42,4 +42,10 @@ export default defineConfig({
       },
     },
   },
+  server: {
+    https: {
+      key: '../localhost.key',
+      cert: '../localhost.crt',
+    },
+  }
 });

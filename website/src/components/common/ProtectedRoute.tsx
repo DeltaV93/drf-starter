@@ -8,10 +8,11 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const [auth] = useAtom(authAtom);
+  const { isAuthenticated } = authAtom();
+  const [isAuthenticatedValue] = useAtom(isAuthenticated);
   const location = useLocation();
 
-  if (!auth.isAuthenticated) {
+  if (!isAuthenticatedValue) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

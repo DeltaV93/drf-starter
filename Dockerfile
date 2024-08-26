@@ -1,4 +1,7 @@
 FROM python:3.9-slim as builder
+FROM postgres:13
+
+RUN chmod 1777 /tmp
 
 # Define build arguments
 ARG DB_USER
@@ -50,11 +53,12 @@ COPY --from=builder /app /app
 RUN pip install gunicorn
 RUN pip install --no-cache-dir -r requirements.txt
 # Install ptvsd
-RUN pip install pydevd_pycharm~=241.17890.14
-# RUN python manage.py migrate
+RUN pip install pydevd_pycharm==241.17890.14
+RUN pip install --upgrade psycopg2-binary
+RUN python manage.py migrate
 # Create superuser if it doesn't exist
 RUN python manage.py create_superuser_if_not_exists
-RUN echo "======== CREATED SUPER USER ==========="
+# RUN echo "======== CREATED SUPER USER ==========="
 
 
 

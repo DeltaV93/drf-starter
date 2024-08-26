@@ -1,5 +1,4 @@
-# myproject/settings/base.py
-
+# base.py
 import os
 from pathlib import Path
 from django.utils.translation import gettext_lazy as _
@@ -45,7 +44,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -108,8 +107,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.CustomUser'
 
 REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',  # to disable DRF navigation and that fancy display.
+    ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -166,13 +169,6 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_OAUTH2_SECRET')
 SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY = os.environ.get('LINKEDIN_OAUTH2_KEY')
 SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET = os.environ.get('LINKEDIN_OAUTH2_SECRET')
 
-# CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://yourdomain.com",
-]
-
 # Logging Configuration
 LOGGING = {
     'version': 1,
@@ -226,3 +222,30 @@ STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 # Staticfile Storge
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+# # Session
+# CORS_ALLOW_CREDENTIALS = True  # set this to true if you're using session over token based auth
+# # SESSION_COOKIE_SECURE = False  # Set to True in production
+# SESSION_COOKIE_HTTPONLY = True
+# # CSRF_COOKIE_SECURE = False  # Set to True in production
+# CSRF_COOKIE_HTTPONLY = True  # True in prod
+# CSRF_COOKIE_SAMESITE = 'Lax'
+#
+# # CSRF_USE_SESSIONS = False   # Store CSRF token in a cookie instead of the session
+# SESSION_COOKIE_SAMESITE = 'Lax'  # Use 'None' if your frontend is on a different domain
+# CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+
+CORS_ALLOW_CREDENTIALS = True
+SESSION_COOKIE_SECURE = True  # Use only in production
+CSRF_COOKIE_SECURE = True  # Use only in production
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_TRUSTED_ORIGINS = ['https://website.com']
+CORS_ALLOWED_ORIGINS = ['https://website.com']
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+
+# In development, you might want to use:
+# SESSION_COOKIE_SECURE = False
+# CSRF_COOKIE_SECURE = False
+# CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
+# CORS_ALLOWED_ORIGINS = ['http://localhost:3000']

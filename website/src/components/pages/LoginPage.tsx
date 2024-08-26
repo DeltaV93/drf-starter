@@ -24,7 +24,9 @@ const LoginPage: React.FC = () => {
             const response = await apiCall({
                 url: routes.api.auth.login(),
                 method: 'POST',
-                data: data
+                data: data,
+                useCsrfToken: true,
+                withCredentials: true,
             });
             dispatch({
                 type: 'LOGIN',

@@ -2,10 +2,16 @@ import logging
 import os
 
 from django.contrib.auth import get_user_model, login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.utils.decorators import method_decorator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
+from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
@@ -21,18 +27,29 @@ logger = logging.getLogger(__name__)
 FRONTEND_URL = os.environ.get('REACT_APP_YOUR_API_ENDPOINT')
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    @csrf_exempt
     def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
+        print(serializer.is_valid())
         if serializer.is_valid():
             user = serializer.validated_data['user']
             login(request, user)
-            return api_response(
-                message="Successfully logged in.",
-                status_code=status.HTTP_200_OK
+            csrf_token = get_token(request)
+            response = JsonResponse({"message": "Login successful"})
+            response.set_cookie(
+                'csrftoken',
+                csrf_token,
+                secure=False,  # Set to True in production
+                httponly=False,
+                samesite='None',
+                domain='localhost',
             )
+            print(response.cookies, 'csrftoken')
+            return response
         return api_response(
             errors=serializer.errors,
             message="Login failed.",
@@ -223,3 +240,18 @@ class AccountDeletionView(APIView):
                 message="Invalid data provided.",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
+
+
+def get_csrf_token(request):
+    csrf_token = get_token(request)
+    return JsonResponse({'csrfToken': csrf_token})
+
+
+class ProfileView(APIView):
+    @permission_classes([IsAuthenticated])
+    def get(self, request):
+        logger.info(f"User authenticated: {request.user.is_authenticated}")
+        logger.info(f"User: {request.user}")
+        logger.info(f"Session: {request.session.session_key}")
+
+        return JsonResponse({"message": "You're logged in!"})

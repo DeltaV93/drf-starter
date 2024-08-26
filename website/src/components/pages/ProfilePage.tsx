@@ -18,7 +18,10 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await apiCall(routes.api.user.profile(), 'GET');
+        const response = await apiCall({
+          url: routes.api.user.profile(),
+          method: "GET",
+        } );
         setProfileData(response);
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -28,6 +31,7 @@ const ProfilePage: React.FC = () => {
 
     if (isAuthenticated) {
       fetchProfile();
+      console.log('here')
     }
   }, [isAuthenticated]);
 

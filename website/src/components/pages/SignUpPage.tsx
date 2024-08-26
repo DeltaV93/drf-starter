@@ -6,12 +6,15 @@ import { useTranslation } from 'react-i18next';
 import { useAtom } from 'jotai';
 import { authAtom } from '../../store/auth';
 import { apiCall } from '../../utils/api';
+import {routes} from "../../libs/routes.ts";
 
 interface SignUpForm {
-  name: string;
+  first_name: string;
+  last_name: string;
+  username: string;
   email: string;
   password: string;
-  confirmPassword: string;
+  password2: string;
 }
 
 const SignUpPage: React.FC = () => {
@@ -24,12 +27,8 @@ const SignUpPage: React.FC = () => {
     try {
       const response = await apiCall({
         method: 'POST',
-        url: 'https://your-api-url.com/signup', // Replace with your actual signup endpoint
-        data: {
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        },
+        url: routes.api.auth.createAccount(),
+        data: data,
         successMessage: t('signupSuccess'),
         errorMessage: t('signupError'),
       });
@@ -43,7 +42,7 @@ const SignUpPage: React.FC = () => {
         }
       });
 
-      navigate('/profile');
+      navigate('/subscription');
     } catch (error) {
       console.error('Signup error:', error);
       // Error is already handled by apiCall, so we don't need to show another toast here
@@ -58,20 +57,60 @@ const SignUpPage: React.FC = () => {
         </Typography>
         <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ mt: 1 }}>
           <Controller
-            name="name"
+            name="first_name"
             control={control}
             defaultValue=""
-            rules={{ required: t('nameRequired') }}
+            rules={{ required: t('firstNameRequired') }}
             render={({ field, fieldState: { error } }) => (
               <TextField
                 {...field}
                 margin="normal"
                 required
                 fullWidth
-                id="name"
-                label={t('name')}
-                autoComplete="name"
+                id="first_name"
+                label={t('firstName')}
+                autoComplete="first_name"
                 autoFocus
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ mt: 1 }}>
+          <Controller
+            name="last_name"
+            control={control}
+            defaultValue=""
+            rules={{ required: t('lastNameRequired') }}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                margin="normal"
+                required
+                fullWidth
+                id="last_name"
+                label={t('lastName')}
+                autoComplete="last_name"
+                autoFocus
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
+        </Box>
+          <Controller
+            name="username"
+            control={control}
+            defaultValue=""
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                margin="normal"
+                required
+                fullWidth
+                id="username"
+                label={t('username')}
+                autoComplete="username"
                 error={!!error}
                 helperText={error?.message}
               />
@@ -130,11 +169,11 @@ const SignUpPage: React.FC = () => {
             )}
           />
           <Controller
-            name="confirmPassword"
+            name="password2"
             control={control}
             defaultValue=""
             rules={{
-              required: t('confirmPasswordRequired'),
+              required: t('password2Required'),
               validate: (value) => value === watch('password') || t('passwordsDontMatch')
             }}
             render={({ field, fieldState: { error } }) => (
@@ -143,10 +182,10 @@ const SignUpPage: React.FC = () => {
                 margin="normal"
                 required
                 fullWidth
-                name="confirmPassword"
+                name="password2"
                 label={t('confirmPassword')}
                 type="password"
-                id="confirmPassword"
+                id="password2"
                 error={!!error}
                 helperText={error?.message}
               />

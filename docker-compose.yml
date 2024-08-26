@@ -20,42 +20,45 @@ services:
     volumes:
       - .:/app
       - .:/app/static
+      - ./localhost.crt:/app/localhost.crt
+      - ./localhost.key:/app/localhost.key-
     ports:
       - "8000:8000"
       - "5678:5678"
-#    depends_on: .
-#      - db
+    depends_on:
+      - db
 #      - redis
     env_file:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
-#  db:
-#    image: postgres:13
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#    environment:
-#      - POSTGRES_DB=${DB_NAME}
-#      - POSTGRES_USER=${DB_USER}
-#      - POSTGRES_PASSWORD=${DB_PASSWORD}
-#      - GOOGLE_OAUTH2_KEY=${GOOGLE_OAUTH2_KEY}
-#      - GOOGLE_OAUTH2_SECRET=${GOOGLE_OAUTH2_SECRET}
-#      - LINKEDIN_OAUTH2_KEY=${LINKEDIN_OAUTH2_KEY}
-#      - LINKEDIN_OAUTH2_SECRET=${LINKEDIN_OAUTH2_SECRET}
+  db:
+    image: postgres:13
+    user: "postgres"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - GOOGLE_OAUTH2_KEY=${GOOGLE_OAUTH2_KEY}
+      - GOOGLE_OAUTH2_SECRET=${GOOGLE_OAUTH2_SECRET}
+      - LINKEDIN_OAUTH2_KEY=${LINKEDIN_OAUTH2_KEY}
+      - LINKEDIN_OAUTH2_SECRET=${LINKEDIN_OAUTH2_SECRET}
 
-#  redis:
-#    image: redis:6
-#
-#  celery:
-#    build: .
-#    command: celery -A template worker -l info
-#    volumes:
-#      - .:/app
+  redis:
+    image: redis:6
+
+  celery:
+    build: .
+    command: celery -A template worker -l info
+    volumes:
+      - .:/app
 #    depends_on:
-##      - db
+#      - db
 #      - redis
-#    env_file:
-#      - .env
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
