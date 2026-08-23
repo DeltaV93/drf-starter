@@ -377,6 +377,10 @@ REST_FRAMEWORK = {
         # legitimately noisier than a person, and a runaway script must not
         # exhaust the interactive user's allowance.
         'api_key': os.environ.get('THROTTLE_API_KEY', '10000/day'),
+        # Building an export walks every table the user touches, and sends
+        # mail to an address. Unthrottled it is both a load amplifier and a
+        # way to make the application send someone repeated email.
+        'data_export': os.environ.get('THROTTLE_DATA_EXPORT', '3/day'),
     },
 }
 
@@ -501,6 +505,11 @@ TWO_FACTOR_PENDING_TIMEOUT = env_int('TWO_FACTOR_PENDING_TIMEOUT', 300)
 # rotation warning in apps/authentication/two_factor.py before relying on
 # that fallback.
 TWO_FACTOR_SECRET_KEY = os.environ.get('TWO_FACTOR_SECRET_KEY', '')
+
+# How long a data-export download link stays usable. Signed and
+# time-limited rather than a stored row: nothing to clean up, and an aged
+# link stops working without anyone expiring it.
+GDPR_EXPORT_LINK_TIMEOUT = env_int('GDPR_EXPORT_LINK_TIMEOUT', 24 * 3600)
 
 # How long an organization invitation stays redeemable.
 INVITATION_EXPIRY_DAYS = env_int('INVITATION_EXPIRY_DAYS', 7)

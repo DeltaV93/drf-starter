@@ -84,6 +84,7 @@ REST_FRAMEWORK = {
         'login': '100000/day',
         'password_reset': '100000/day',
         'api_key': '100000/day',
+        'data_export': '100000/day',
     },
 }
 

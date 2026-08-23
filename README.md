@@ -159,6 +159,32 @@ Nothing is gated on verification by default — add
 `apps.authentication.permissions.IsEmailVerified` to the views that should
 require it.
 
+### Data export
+
+`POST /api/v1/account/export/` assembles the user's data and emails them a
+link; `GET /api/v1/account/export/<token>/` serves it as a JSON download. No
+feature flag — portability is the other half of the erasure below, and a
+template should not ship half a regulation.
+
+**The link goes to the account's own address**, not back in the response, so
+holding a session is not the same as receiving the data. It is a signed,
+time-limited token rather than a stored row: nothing to clean up, and an aged
+link stops working without anyone expiring it. The salt namespaces it, so a
+signature minted elsewhere in the project is not accepted here.
+
+**Credentials are stripped at any depth** — `password`, `hashed_secret`,
+`token_hash` and friends — on top of each collector choosing its own fields.
+That is deliberate belt and braces: a collector that later grows a field cannot
+leak one by accident. An export is a file the user may forward, store or lose.
+
+**Sections come from registered collectors**, wired up in `apps.core`'s
+`ready()` according to which flags are on, so an optional app contributes its
+data only when it is installed and this module imports nothing that might not
+be there. Add your own with `register_collector(name, callable)`.
+
+A collector that raises does not lose the rest of the export — a partial export
+the user can act on beats a 500 they cannot.
+
 ### Account deletion
 
 Deletion anonymizes rather than dropping the row: personal fields are
