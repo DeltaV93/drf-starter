@@ -36,6 +36,14 @@ export const routes = {
       verifyEmail: () => join(BASE_URL, 'auth/verify-email/'),
       resendVerification: () => join(BASE_URL, 'auth/verify-email/resend/'),
       deleteAccount: () => join(BASE_URL, 'auth/delete-account/'),
+      twoFactor: {
+        status: () => join(BASE_URL, 'auth/2fa/'),
+        enrol: () => join(BASE_URL, 'auth/2fa/enrol/'),
+        confirm: () => join(BASE_URL, 'auth/2fa/confirm/'),
+        disable: () => join(BASE_URL, 'auth/2fa/disable/'),
+        recoveryCodes: () => join(BASE_URL, 'auth/2fa/recovery-codes/'),
+        verify: () => join(BASE_URL, 'auth/2fa/verify/'),
+      },
     },
     social: {
       connections: () => join(BASE_URL, 'auth/social/connections/'),
@@ -46,6 +54,19 @@ export const routes = {
     },
     users: {
       me: () => join(BASE_URL, 'users/me/'),
+    },
+    account: {
+      requestExport: () => join(BASE_URL, 'account/export/'),
+      activity: () => join(BASE_URL, 'account/activity/'),
+    },
+    apiKeys: {
+      list: () => join(BASE_URL, 'api-keys/'),
+      revoke: (id: number) => join(BASE_URL, `api-keys/${id}/`),
+    },
+    files: {
+      list: () => join(BASE_URL, 'files/'),
+      detail: (id: number) => join(BASE_URL, `files/${id}/`),
+      download: (id: number) => join(BASE_URL, `files/${id}/download/`),
     },
     organizations: {
       list: () => join(BASE_URL, 'organizations/'),
@@ -74,6 +95,8 @@ export const routes = {
     profile: '/profile',
     subscription: '/subscription',
     organization: '/organization',
+    security: '/security',
+    files: '/files',
     acceptInvitation: (token = ':token') => `/invitations/${token}`,
     passwordReset: '/reset-password',
     confirmPassword: (uid = ':uid', token = ':token') => `/confirm-password/${uid}/${token}`,

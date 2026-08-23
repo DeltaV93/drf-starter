@@ -7,6 +7,10 @@ interface ImportMetaEnv {
   readonly VITE_STRIPE_ENABLED?: string;
   readonly VITE_ORGANIZATIONS_ENABLED?: string;
   readonly VITE_SOCIAL_AUTH_ENABLED?: string;
+  readonly VITE_TWO_FACTOR_ENABLED?: string;
+  readonly VITE_API_KEYS_ENABLED?: string;
+  readonly VITE_UPLOADS_ENABLED?: string;
+  readonly VITE_AUDIT_LOG_ENABLED?: string;
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string;
 }
 

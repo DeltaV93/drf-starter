@@ -2,8 +2,13 @@ import { AppBar, Box, Button, Toolbar, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
+
 import { useAuth } from '../../store/auth';
 import { useToast } from '../../store/toast';
+
+// Keep in step with UPLOADS_ENABLED on the backend, or the link leads to
+// a page whose calls 404.
+const UPLOADS_ENABLED = import.meta.env.VITE_UPLOADS_ENABLED === 'true';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -37,6 +42,14 @@ export default function Header() {
               <>
                 <Button color="inherit" onClick={() => navigate('/profile')}>
                   {t('profile')}
+                </Button>
+                {UPLOADS_ENABLED && (
+                  <Button color="inherit" onClick={() => navigate('/files')}>
+                    {t('files')}
+                  </Button>
+                )}
+                <Button color="inherit" onClick={() => navigate('/security')}>
+                  {t('security')}
                 </Button>
                 <Button color="inherit" onClick={handleLogout}>
                   {t('logout')}

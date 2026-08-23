@@ -107,6 +107,32 @@ signature.
 
 **`ALLOWED_HOSTS` is required in production**, comma-separated.
 
+### Feature flags come in pairs
+
+Every optional feature is gated twice: once on the backend, where the flag
+decides `INSTALLED_APPS`, URLs and middleware, and once at the SPA's build
+time, where the matching `VITE_` variable decides whether the UI is rendered
+at all.
+
+| Backend | Frontend |
+|---|---|
+| `STRIPE_ENABLED` | `VITE_STRIPE_ENABLED` |
+| `SOCIAL_AUTH_ENABLED` | `VITE_SOCIAL_AUTH_ENABLED` |
+| `ORGANIZATIONS_ENABLED` | `VITE_ORGANIZATIONS_ENABLED` |
+| `API_KEYS_ENABLED` | `VITE_API_KEYS_ENABLED` |
+| `AUDIT_LOG_ENABLED` | `VITE_AUDIT_LOG_ENABLED` |
+| `TWO_FACTOR_ENABLED` | `VITE_TWO_FACTOR_ENABLED` |
+| `UPLOADS_ENABLED` | `VITE_UPLOADS_ENABLED` |
+
+They have to agree. Frontend on and backend off renders a page whose every
+call 404s; the reverse leaves a working API with no way to reach it. Vite
+inlines these at build time, so in Docker they are `--build-arg`s, not runtime
+environment variables — changing one on a deployed container does nothing until
+the image is rebuilt.
+
+The one exception is the data export, which has no flag: portability is the
+other half of the erasure the template already implements, so it is always on.
+
 ---
 
 ## Authentication
@@ -298,7 +324,8 @@ outside the app holds a foreign key into it, so nothing else needs touching.
 
 ## API keys
 
-Off by default; `API_KEYS_ENABLED=true` turns them on. Session cookies serve a
+Off by default; `API_KEYS_ENABLED=true` plus `VITE_API_KEYS_ENABLED=true` on
+the frontend turns them on. Session cookies serve a
 browser and nothing else — this is the credential for a CLI, a CI job or a
 server-to-server integration.
 
@@ -336,13 +363,15 @@ git rm -r apps/api_keys
 ```
 
 Then drop the `API_KEYS_ENABLED` branches from `template/settings/base.py` and
-`template/urls.py`. Nothing else references it.
+`template/urls.py`, and the `ApiKeysSection` from
+`website/src/components/pages/SecurityPage.tsx`. Nothing else references it.
 
 ---
 
 ## Audit log
 
-Off by default; `AUDIT_LOG_ENABLED=true` turns it on. Usually the first thing a
+Off by default; `AUDIT_LOG_ENABLED=true` plus `VITE_AUDIT_LOG_ENABLED=true` on
+the frontend turns it on. Usually the first thing a
 B2B security review asks for.
 
 **Append-only.** `save()` on an existing row raises, `delete()` raises, and the
@@ -384,14 +413,17 @@ git rm -r apps/audit
 ```
 
 Then drop the `AUDIT_LOG_ENABLED` branches from `template/settings/base.py` and
-`template/urls.py`. The `audit()` calls scattered through the other apps can
+`template/urls.py`, and the `ActivitySection` from
+`website/src/components/pages/SecurityPage.tsx`. The `audit()` calls scattered
+through the other apps can
 stay: they import from `apps/core/audit.py`, which no-ops when the flag is off.
 
 ---
 
 ## Two-factor authentication
 
-Off by default; `TWO_FACTOR_ENABLED=true` turns it on. TOTP, so any
+Off by default; `TWO_FACTOR_ENABLED=true` plus `VITE_TWO_FACTOR_ENABLED=true`
+on the frontend turns it on. TOTP, so any
 authenticator app works. Per-user and opt-in — it does not force enrolment.
 
 | | |
@@ -444,12 +476,16 @@ Delete `apps/authentication/two_factor.py`, `two_factor_services.py`,
 `apps/authentication/models.py` (with a migration), drop `pyotp` from
 `requirements/base.txt`, and remove the `TWO_FACTOR_ENABLED` branches from
 `template/settings/base.py`, `apps/authentication/urls.py` and `LoginView`.
+On the frontend, drop the `TwoFactorSection` from
+`website/src/components/pages/SecurityPage.tsx` and the code step from
+`LoginPage.tsx` and `store/auth.ts`.
 
 ---
 
 ## File uploads
 
-Off by default; `UPLOADS_ENABLED=true` turns them on.
+Off by default; `UPLOADS_ENABLED=true` plus `VITE_UPLOADS_ENABLED=true` on the
+frontend turns them on.
 
 > **The local filesystem backend is a development convenience only.** Container
 > filesystems are ephemeral — on Railway, Render, Fly or any rebuild, every
@@ -488,9 +524,10 @@ everything.
 git rm -r apps/uploads
 ```
 
-Then drop `django-storages` from `requirements/base.txt` and the
+Then drop `django-storages` from `requirements/base.txt`, the
 `UPLOADS_ENABLED` branches from `template/settings/base.py` and
-`template/urls.py`.
+`template/urls.py`, and
+`website/src/components/pages/FilesPage.tsx` with its route in `App.tsx`.
 
 ---
 

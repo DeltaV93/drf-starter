@@ -18,6 +18,8 @@ const ProfilePage = lazy(() => import('./components/pages/ProfilePage'));
 const SubscriptionPage = lazy(() => import('./components/pages/SubscriptionPage'));
 const OrganizationPage = lazy(() => import('./components/pages/OrganizationPage'));
 const AcceptInvitationPage = lazy(() => import('./components/pages/AcceptInvitationPage'));
+const SecurityPage = lazy(() => import('./components/pages/SecurityPage'));
+const FilesPage = lazy(() => import('./components/pages/FilesPage'));
 
 // Billing is optional on the backend too (STRIPE_ENABLED). Keep the two in
 // step, or the plans page will 404 against the API.
@@ -26,6 +28,7 @@ const BILLING_ENABLED = import.meta.env.VITE_STRIPE_ENABLED === 'true';
 // Same contract for teams: the routes only exist when the backend's
 // ORGANIZATIONS_ENABLED matches, or they 404 against the API.
 const ORGANIZATIONS_ENABLED = import.meta.env.VITE_ORGANIZATIONS_ENABLED === 'true';
+const UPLOADS_ENABLED = import.meta.env.VITE_UPLOADS_ENABLED === 'true';
 
 function PageFallback() {
   return (
@@ -85,6 +88,26 @@ export default function App() {
                     token in the URL survives the round trip. */}
                 <Route path="/invitations/:token" element={<AcceptInvitationPage />} />
               </>
+            )}
+            {/* Always mounted: data export has no flag, and the page hides
+                the sections whose features are off. */}
+            <Route
+              path="/security"
+              element={
+                <ProtectedRoute>
+                  <SecurityPage />
+                </ProtectedRoute>
+              }
+            />
+            {UPLOADS_ENABLED && (
+              <Route
+                path="/files"
+                element={
+                  <ProtectedRoute>
+                    <FilesPage />
+                  </ProtectedRoute>
+                }
+              />
             )}
             <Route path="*" element={<HomePage />} />
           </Routes>

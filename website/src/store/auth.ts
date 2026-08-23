@@ -21,6 +21,18 @@ export const authStatusAtom = atom<AuthStatus>('loading');
 export const isAuthenticatedAtom = atom((get) => get(authStatusAtom) === 'authenticated');
 export const isAuthLoadingAtom = atom((get) => get(authStatusAtom) === 'loading');
 
+/**
+ * What a login attempt produced.
+ *
+ * With two-factor enrolled the password step does NOT establish a session --
+ * the backend answers `twoFactorRequired` and waits. Reading `data.user`
+ * unconditionally (as this did) set the user to undefined while marking the
+ * store authenticated, which is worse than failing.
+ */
+export type LoginResult =
+  | { status: 'authenticated'; user: User }
+  | { status: 'two-factor-required' };
+
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -55,12 +67,36 @@ export function useAuth() {
   }, [setUser, setStatus]);
 
   const login = useCallback(
-    async (credentials: LoginCredentials): Promise<User> => {
-      const envelope = await apiCall<AuthPayload>({
+    async (credentials: LoginCredentials): Promise<LoginResult> => {
+      const envelope = await apiCall<AuthPayload & { twoFactorRequired?: boolean }>({
         url: routes.api.auth.login(),
         method: 'POST',
         data: credentials,
         errorMessage: 'Could not sign you in.',
+      });
+
+      if (envelope.data?.twoFactorRequired) {
+        // No session yet, and no user in the payload. The pending state lives
+        // in the session cookie; the caller collects a code and verifies.
+        return { status: 'two-factor-required' };
+      }
+
+      const nextUser = envelope.data!.user;
+      setUser(nextUser);
+      setStatus('authenticated');
+      return { status: 'authenticated', user: nextUser };
+    },
+    [setUser, setStatus],
+  );
+
+  /** Finish a login that stopped for the second factor. */
+  const verifyTwoFactor = useCallback(
+    async (code: string): Promise<User> => {
+      const envelope = await apiCall<AuthPayload>({
+        url: routes.api.auth.twoFactor.verify(),
+        method: 'POST',
+        data: { code },
+        errorMessage: 'That code was not accepted.',
       });
 
       const nextUser = envelope.data!.user;
@@ -104,6 +140,7 @@ export function useAuth() {
     isAuthenticated: status === 'authenticated',
     isLoading: status === 'loading',
     login,
+    verifyTwoFactor,
     logout,
     register,
     refresh,
