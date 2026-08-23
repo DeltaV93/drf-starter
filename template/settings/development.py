@@ -1,78 +1,61 @@
-# dev.py
+"""Local development settings."""
+
+import os
+
 from .base import *
+from .base import FRONTEND_URL, INSTALLED_APPS, MIDDLEWARE, REST_FRAMEWORK, env_bool, env_list
 
 DEBUG = True
 
-# Add any development-specific settings here
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'host.docker.internal']
+ALLOWED_HOSTS = env_list(
+    'ALLOWED_HOSTS',
+    default=['localhost', '127.0.0.1', '0.0.0.0', 'host.docker.internal', 'web'],
+)
 
-# You might want to use a local database for development
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+# Emails print to the console instead of hitting SES. Set EMAIL_BACKEND in
+# .env to django_ses.SESBackend if you want to test real delivery.
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend'
+)
 
-# Disable caching in development
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
-    }
+# Cookies cannot be Secure over plain http, and SameSite=None requires Secure,
+# so local development uses Lax + insecure. The SPA and API are same-site via
+# localhost, which Lax handles fine.
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', default=False)
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', default=False)
+SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+CSRF_COOKIE_SAMESITE = os.environ.get('CSRF_COOKIE_SAMESITE', 'Lax')
+
+CORS_ALLOWED_ORIGINS = env_list(
+    'CORS_ALLOWED_ORIGINS',
+    default=[
+        FRONTEND_URL,
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://localhost:3000',
+        'https://127.0.0.1:3000',
+    ],
+)
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', default=CORS_ALLOWED_ORIGINS)
+
+# The browsable API is genuinely useful locally and off everywhere else.
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
 }
 
-# Add Django Debug Toolbar for development
-INSTALLED_APPS += ['debug_toolbar']
-MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
-INTERNAL_IPS = ['127.0.0.1']
-
-# EMAIL
-EMAIL_BACKEND = 'django_ses.SESBackend'
-
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_SES_REGION_NAME = os.getenv("AWS_SES_REGION_NAME")
-AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
-
-# CORS ISSUES
-# CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://localhost:3000",
-    "http://host.docker.internal:3000",
-    "https://host.docker.internal:3000",
-    "http://127.0.0.1:3000",
-    "https://127.0.0.1:3000",
-    # "https://yourdomain.com",
-]
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://127.0.0.1:3000',
-]
-CORS_ALLOW_HEADERS = [
-    'content-type',
-    'authorization',
-    'x-requested-with',
-    'accept',
-    'origin',
-    'x-csrftoken',
-]
-CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-
-# HTTPS settings
-# SECURE_SSL_REDIRECT = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
-# CSRF_USE_SESSIONS = True
-# CSRF_COOKIE_HTTPONLY = False
-
-# SSL certificate paths
-# SSL_CERTIFICATE = os.path.join(BASE_DIR, '../../localhost.crt')
-# SSL_KEY = os.path.join(BASE_DIR, '../../localhost.key')
-
-# CSRF_COOKIE_NAME = 'csrftoken'
-# CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+# Django Debug Toolbar, only when it is actually installed. Keeping it optional
+# means `pip install -r requirements/base.txt` still boots in development.
+if env_bool('ENABLE_DEBUG_TOOLBAR', default=True):
+    try:
+        import debug_toolbar  # noqa: F401
+    except ImportError:
+        pass
+    else:
+        INSTALLED_APPS = [*INSTALLED_APPS, 'debug_toolbar']
+        MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware', *MIDDLEWARE]
+        INTERNAL_IPS = ['127.0.0.1', 'localhost']
+        DEBUG_TOOLBAR_CONFIG = {'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG}

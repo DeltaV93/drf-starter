@@ -523,21 +523,28 @@ pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/django,python,venv,pycharm,pycharm+all,jetbrains
 
-# Skip migrations since this is a starter kit
-apps/authentication/migrations/
-apps/subscriptions/migrations/
-apps/users/migrations/
+# Migrations ARE tracked. A template whose migrations are ignored cannot be
+# cloned and migrated -- with a custom AUTH_USER_MODEL, `migrate` fails
+# outright on a fresh database. Only the compiled bytecode is ignored.
+apps/*/migrations/__pycache__/
 
-# don't track static files
-app/
-static/
+# Collected static output (the sources under static/ are tracked)
 staticfiles/
 
+# Compiled translations; the .po sources are tracked
+locale/**/*.mo
 
-# Website firles
-website/node_modules
+# Frontend
+website/node_modules/
+website/dist/
 website/.env
-/admin/
-/debug_toolbar/
-/drf-yasg/
-/rest_framework/
+website/.env.*
+!website/.env.example
+
+# Local tooling
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+coverage.xml
+.coverage
+.coverage.*

@@ -1,0 +1,11 @@
+# Production dependencies.
+#
+# Install with:  pip install -r requirements/prod.txt
+
+-r base.txt
+
+# WSGI server
+gunicorn>=23.0
+
+# Static file serving without a separate web server
+whitenoise[brotli]>=6.8

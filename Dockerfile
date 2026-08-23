@@ -1,69 +1,71 @@
-FROM python:3.9-slim as builder
-FROM postgres:13
+# syntax=docker/dockerfile:1
 
-RUN chmod 1777 /tmp
+# ---------------------------------------------------------------------------
+# Builder: compile wheels for every dependency.
+#
+# Kept separate so the runtime image carries no compilers and no build headers.
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS builder
 
-# Define build arguments
-ARG DB_USER
-ARG DB_NAME
-ARG DB_PASSWORD
-ARG DB_HOST
-ARG DB_PORT
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    build-essential
+RUN apt-get update && apt-get install --no-install-recommends -y \
+        build-essential \
+        libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy the requirements file into the container
+# Requirements are copied on their own so the wheel build is cached until a
+# dependency actually changes, not on every source edit.
+COPY requirements/ /app/requirements/
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt > pip_install.log
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+ARG REQUIREMENTS=requirements/prod.txt
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install -r ${REQUIREMENTS}
 
-# Copy the entrypoint script into the container
-COPY entrypoint.sh /app/entrypoint.sh
 
-# Set the entrypoint
-ENTRYPOINT ["/app/entrypoint.sh"]
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS runtime
 
-# Make the entrypoint script executable
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=template.settings
+
+# libpq is needed at runtime; the -dev headers and compilers are not.
+RUN apt-get update && apt-get install --no-install-recommends -y \
+        libpq5 \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Run as an unprivileged user.
+RUN groupadd --system app && useradd --system --gid app --create-home app
+
+COPY --from=builder /opt/venv /opt/venv
+
+WORKDIR /app
+COPY --chown=app:app . /app
+
 RUN chmod +x /app/entrypoint.sh
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+# Static files are collected at build time -- it needs no database, only
+# settings that import cleanly. Migrations are NOT run here: they need a live
+# database, which does not exist during a build. entrypoint.sh runs them.
+RUN SECRET_KEY=build-only-not-used-at-runtime \
+    DJANGO_ENVIRONMENT=production \
+    ALLOWED_HOSTS=localhost \
+    python manage.py collectstatic --noinput
 
-# Use a minimal base image for the final build
-FROM python:3.9-slim
+USER app
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV DJANGO_SETTINGS_MODULE=template.settings.development
+EXPOSE 8000
 
-# Set work directory
-WORKDIR /app
-
-# Copy only the necessary files from the builder stage
-COPY --from=builder /app /app
-
-# Install gunicorn
-RUN pip install gunicorn
-RUN pip install --no-cache-dir -r requirements.txt
-# Install ptvsd
-RUN pip install pydevd_pycharm==241.17890.14
-RUN pip install --upgrade psycopg2-binary
-RUN python manage.py migrate
-# Create superuser if it doesn't exist
-RUN python manage.py create_superuser_if_not_exists
-# RUN echo "======== CREATED SUPER USER ==========="
-
-
-
-# Expose port 8000 for the application and debug port 5678
-EXPOSE 8000 5678
-
-# Define the command to run the application
-CMD ["gunicorn", "template.wsgi:application", "--bind", "0.0.0.0:8000"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["gunicorn", "template.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]

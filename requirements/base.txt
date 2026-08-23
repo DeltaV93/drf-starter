@@ -1,0 +1,42 @@
+# Runtime dependencies shared by every environment.
+#
+# Install with:  pip install -r requirements/base.txt
+# For local development use requirements/dev.txt, which includes this file.
+
+# Django and Django REST Framework
+Django>=5.2,<5.3
+djangorestframework>=3.16,<4.0
+django-filter>=25.1
+
+# Database
+psycopg[binary]>=3.2
+
+# Configuration
+python-dotenv>=1.1
+
+# API schema and documentation
+drf-spectacular>=0.28
+
+# CORS handling
+django-cors-headers>=4.7
+
+# Asynchronous task processing
+celery>=5.5,<6.0
+redis>=5.2
+
+# Caching
+django-redis>=5.4
+
+# Email (AWS SES)
+boto3>=1.35
+django-ses>=4.4
+
+# Third-party login
+social-auth-app-django>=5.4
+
+# Billing (only imported when STRIPE_ENABLED is true; safe to remove along
+# with apps/subscriptions if the project does not need billing)
+stripe>=11.0
+
+# Retries for outbound API calls
+tenacity>=9.0

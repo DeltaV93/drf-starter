@@ -1,64 +1,87 @@
-version: '3'
+name: drf-starter
 
 services:
-  web:
+  db:
+    image: postgres:16-alpine
     environment:
-      - DJANGO_ENVIRONMENT=development
-      - DB_HOST=host.docker.internal
+      POSTGRES_DB: ${DB_NAME:-app}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_EXPOSED_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-app}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
     build:
       context: .
       args:
-        DB_USER: ${DB_USER}
-        DB_NAME: ${DB_NAME}
-        DB_PASSWORD: ${DB_PASSWORD}
-        DB_HOST: ${DB_HOST}
-        DB_PORT: ${DB_PORT}
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             gunicorn template.wsgi:application --bind 0.0.0.0:8000"
+        # Development image: brings in pytest, ruff and debugpy.
+        REQUIREMENTS: requirements/dev.txt
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DJANGO_ENVIRONMENT: ${DJANGO_ENVIRONMENT:-development}
+      DB_HOST: db
+      DB_PORT: 5432
+      REDIS_URL: redis://redis:6379
+    env_file:
+      - path: .env
+        required: false
     volumes:
+      # Source is mounted so the dev server reloads on edit. Remove this in
+      # any deployed environment -- it shadows the image's own code.
       - .:/app
-      - .:/app/static
-      - ./localhost.crt:/app/localhost.crt
-      - ./localhost.key:/app/localhost.key-
     ports:
       - "8000:8000"
-      - "5678:5678"
+      - "5678:5678"   # debugpy, active only when DEBUGPY=1
     depends_on:
-      - db
-#      - redis
-    env_file:
-      - .env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-  db:
-    image: postgres:13
-    user: "postgres"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - GOOGLE_OAUTH2_KEY=${GOOGLE_OAUTH2_KEY}
-      - GOOGLE_OAUTH2_SECRET=${GOOGLE_OAUTH2_SECRET}
-      - LINKEDIN_OAUTH2_KEY=${LINKEDIN_OAUTH2_KEY}
-      - LINKEDIN_OAUTH2_SECRET=${LINKEDIN_OAUTH2_SECRET}
-
-  redis:
-    image: redis:6
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/api/v1/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   celery:
-    build: .
+    build:
+      context: .
+      args:
+        REQUIREMENTS: requirements/dev.txt
     command: celery -A template worker -l info
+    environment:
+      DJANGO_ENVIRONMENT: ${DJANGO_ENVIRONMENT:-development}
+      DB_HOST: db
+      DB_PORT: 5432
+      REDIS_URL: redis://redis:6379
+      # The web service owns migrations; the worker just waits for the schema.
+      RUN_MIGRATIONS: "0"
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - .:/app
-#    depends_on:
-#      - db
-#      - redis
-    env_file:
-      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -1,0 +1,17 @@
+{% extends "emails/base_email.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Your invoice" %}{% endblock %}
+{% block heading %}{% trans "Your invoice is ready" %}{% endblock %}
+
+{% block content %}
+    <p style="margin:0 0 16px;">{% blocktrans with name=user.get_display_name %}Hello {{ name }},{% endblocktrans %}</p>
+    <p style="margin:0 0 24px;">
+        {% blocktrans with amount=invoice.amount %}Your invoice for {{ amount }} is available to download.{% endblocktrans %}
+    </p>
+    <p style="margin:0 0 24px;">
+        <a href="{{ invoice.pdf_url }}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600;">
+            {% trans "Download invoice" %}
+        </a>
+    </p>
+{% endblock %}
