@@ -154,7 +154,7 @@ jobs:
 
       # Builds the production image, which also runs collectstatic -- the step
       # that used to be in the wrong stage.
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: false
