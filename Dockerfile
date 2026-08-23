@@ -7,7 +7,7 @@
 # the API on one origin -- what the session-cookie and CSRF design assumes.
 # VITE_API_BASE_URL is therefore a relative path: the app calls its own origin.
 # ---------------------------------------------------------------------------
-FROM node:22-slim AS frontend
+FROM node:26-slim AS frontend
 
 WORKDIR /app/website
 
