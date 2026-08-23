@@ -251,7 +251,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': os.environ.get('API_TITLE', 'DRF Starter API'),
-    'DESCRIPTION': os.environ.get('API_DESCRIPTION', 'API for the DRF Starter template'),
+    'DESCRIPTION': os.environ.get('API_DESCRIPTION', 'API for DRF Starter'),
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,

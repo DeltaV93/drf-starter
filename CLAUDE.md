@@ -1,0 +1,95 @@
+# Repository conventions
+
+Read this before changing anything. It records decisions that are easy to
+undo by accident.
+
+## Layout
+
+- `apps/` — Django apps. `core` (health, throttles), `users` (the user model),
+  `authentication` (auth views), `subscriptions` (billing, optional).
+- `template/` — the project package: settings, urls, wsgi/asgi, celery.
+  Renamed by `scripts/rename_project.py` when someone adopts the template.
+- `utils/` — helpers not tied to one app: the response envelope, email,
+  logging, GDPR anonymization.
+- `website/` — the React SPA.
+
+## Commands
+
+```bash
+make test     # pytest + vitest
+make lint     # ruff check + ruff format --check + eslint + tsc
+make format   # auto-fix both
+make check    # django checks + production deploy checklist + missing migrations
+```
+
+Use the `.venv/bin/` binaries directly if you are not going through make.
+Backend tests run against SQLite by default: `pytest` needs no services.
+
+## Things not to undo
+
+**Migrations are tracked.** `apps/*/migrations/` must never go back into
+`.gitignore`. With a custom `AUTH_USER_MODEL`, a fresh clone cannot
+`migrate` without them — that was the single biggest reason the template did
+not work. Run `make migrations` after a model change and commit the result.
+
+**CSRF middleware stays enabled.** `django.middleware.csrf.CsrfViewMiddleware`
+was commented out in `MIDDLEWARE`. Session auth without it is not session
+auth. The contract is pinned by `apps/authentication/tests/test_csrf.py`.
+
+**The Stripe webhook is the only csrf_exempt view.** Its signature check is
+what authenticates it. Do not add `csrf_exempt` anywhere else.
+
+**`SECRET_KEY` fails loudly outside development.** Do not add a fallback.
+
+**Logging goes to stdout.** No `FileHandler` in any settings module.
+
+**`manage.py` does not attach a debugger by default.** It used to call
+`pydevd_pycharm.settrace()` unconditionally, which hung every `runserver`.
+Remote debugging is opt-in via `DEBUGPY=1`.
+
+## Settings
+
+Split by environment under `template/settings/`, selected by
+`DJANGO_ENVIRONMENT`. `template/settings/__init__.py` only acts as a loader
+when it *is* the settings module — importing `template.settings.testing`
+directly must not pull in the development environment as a side effect.
+
+Anything that varies between deployments comes from the environment via
+`env_bool` / `env_list` / `env_int` in `base.py`. Add new variables to
+`.env.example` in the same change.
+
+## Optional apps
+
+`STRIPE_ENABLED` and `SOCIAL_AUTH_ENABLED` gate `INSTALLED_APPS`, URLs and
+middleware. Any change must leave the project booting and passing with the
+flag off. `template/settings/testing.py` turns billing on by default (before
+importing `base`, which is when the flag is read); CI runs the suite both
+ways.
+
+## API conventions
+
+Every endpoint returns the `utils.api_utils.api_response` envelope:
+`{status, message, data, errors}` with null keys dropped. Views are DRF
+`APIView` subclasses — never plain Django `View`, which cannot render a DRF
+`Response`.
+
+Routes live under `/api/v1/`. Django URLs end in a slash; the frontend's
+`routes.ts` preserves that, because dropping it turns every POST into an
+`APPEND_SLASH` redirect that loses the body.
+
+Endpoints that take an email address answer identically whether or not the
+account exists, so they cannot be used to enumerate accounts. Keep it that
+way when adding new ones.
+
+## Frontend
+
+The server session is the source of truth. `useAuthBootstrap` asks
+`/users/me/` on load; nothing is trusted from `localStorage`.
+`ProtectedRoute` waits for that answer before redirecting.
+
+`src/lib/api.ts` is the only place that touches CSRF. Do not set
+`X-CSRFToken` by hand at a call site.
+
+ESLint runs with `--max-warnings 0`. The React Compiler rules
+(`set-state-in-effect`, `incompatible-library`) catch real problems — fix the
+code rather than disabling the rule.

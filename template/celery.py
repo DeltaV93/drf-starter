@@ -11,5 +11,8 @@ app.autodiscover_tasks()
 
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):
-    """Smoke test: `celery -A template call template.debug_task`."""
+    """Smoke test that the worker is picking up tasks.
+
+    Call it with `debug_task.delay()` from `manage.py shell`.
+    """
     print(f'Request: {self.request!r}')
