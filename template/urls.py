@@ -19,6 +19,9 @@ api_v1_patterns = [
 if settings.STRIPE_ENABLED:
     api_v1_patterns.append(path('', include('apps.subscriptions.urls')))
 
+if settings.ORGANIZATIONS_ENABLED:
+    api_v1_patterns.append(path('', include('apps.organizations.urls')))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),

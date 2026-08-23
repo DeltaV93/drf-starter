@@ -1,0 +1,28 @@
+{% extends "emails/base_email.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "You have been invited" %}{% endblock %}
+{% block heading %}{% blocktrans with org=organization.name %}Join {{ org }}{% endblocktrans %}{% endblock %}
+
+{% block content %}
+    <p style="margin:0 0 24px;">
+        {% if invited_by %}
+            {% blocktrans with name=invited_by.get_display_name org=organization.name %}{{ name }} has invited you to join {{ org }}.{% endblocktrans %}
+        {% else %}
+            {% blocktrans with org=organization.name %}You have been invited to join {{ org }}.{% endblocktrans %}
+        {% endif %}
+    </p>
+    <p style="margin:0 0 24px;">
+        <a href="{{ accept_url }}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600;">
+            {% trans "Accept invitation" %}
+        </a>
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;color:#52606d;">
+        {% trans "If the button does not work, copy this link into your browser:" %}<br>
+        <a href="{{ accept_url }}" style="color:#2563eb;word-break:break-all;">{{ accept_url }}</a>
+    </p>
+    <p style="margin:0;font-size:14px;color:#52606d;">
+        {% blocktrans count days=expiry_days %}This invitation expires in {{ days }} day.{% plural %}This invitation expires in {{ days }} days.{% endblocktrans %}
+        {% trans "It can be used once, and only by this email address." %}
+    </p>
+{% endblock %}

@@ -12,6 +12,7 @@ import os
 # exercises billing by default; CI additionally runs with STRIPE_ENABLED=false
 # to prove the project still boots and passes without it.
 os.environ.setdefault('STRIPE_ENABLED', 'true')
+os.environ.setdefault('ORGANIZATIONS_ENABLED', 'true')
 
 # Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
 # suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the

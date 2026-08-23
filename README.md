@@ -8,6 +8,7 @@ command, with the auth, billing, tooling and CI already wired up.
 - **Auth** — session cookies with CSRF, registration, email verification,
   password reset, GDPR-compliant account deletion
 - **Billing** — Stripe hosted Checkout, optional and removable
+- **Teams** — organizations, per-org roles, invitations and seat limits, optional
 - **Tooling** — ruff, ESLint, pytest, Vitest, pre-commit with secret scanning,
   GitHub Actions, Docker
 
@@ -68,6 +69,7 @@ apps/
   users/           the user model, profile endpoints, admin
   authentication/  login, registration, password reset, verification
   subscriptions/   Stripe billing (optional)
+  organizations/   teams, membership, invitations (optional)
 template/
   settings/        base + development / production / testing
 utils/             response envelope, email, logging, GDPR helpers
@@ -137,7 +139,9 @@ and no CORS preflight. When you deploy them to different origins, set
 | POST | `/api/v1/auth/delete-account/` | Delete (anonymize) the account |
 | GET/PATCH | `/api/v1/users/me/` | Read or update the current profile |
 
-Billing endpoints live under `/api/v1/billing/` when `STRIPE_ENABLED` is true.
+Billing endpoints live under `/api/v1/billing/` when `STRIPE_ENABLED` is true,
+and organization endpoints under `/api/v1/organizations/` when
+`ORGANIZATIONS_ENABLED` is.
 
 Interactive docs: `/api/docs/` (Swagger), `/api/redoc/`, `/api/schema/`.
 
@@ -205,6 +209,57 @@ Then drop `stripe` from `requirements/base.txt`, the `@stripe/*` packages from
 
 Social login (`SOCIAL_AUTH_ENABLED`) works the same way and comes off the same
 way.
+
+---
+
+## Organizations (teams)
+
+Off by default. `ORGANIZATIONS_ENABLED=true` plus `VITE_ORGANIZATIONS_ENABLED=true`
+on the frontend turns on the B2B shape: users belong to organizations, with
+per-organization roles, invitations and seat limits.
+
+**Roles are per organization**, and deliberately separate from
+`CustomUser.role`, which is product-wide. The same person can own one
+organization and be a plain member of another.
+
+| Role | Can |
+|---|---|
+| `OWNER` | everything, including transferring ownership |
+| `ADMIN` | invite, remove, change roles, rename |
+| `MEMBER` | read the member list |
+
+**The active organization lives in the session**, not in a header or the
+request body — a caller cannot name an organization they do not belong to, and
+views do not each have to re-check. `apps/organizations/context.py` resolves it,
+falling back to the user's only membership so nobody with one organization has
+to choose it.
+
+**The last owner cannot leave, be removed, or be demoted.** An organization
+with no owner cannot be administered, billed or cancelled by anyone, and
+recovering it needs a database shell.
+
+**Invitations are single-use, expiring, and bound to the address they were sent
+to.** The database stores only a SHA-256 digest of the token — the raw value
+exists solely in the email, and no endpoint returns it, so neither a database
+dump nor an admin reading an API response can redeem one. Every failure answers
+identically, so probing tokens reveals nothing.
+
+**Seats.** When billing is on, `SubscriptionPlan.user_limit` is enforced against
+members *plus pending invitations* — otherwise a two-seat plan is walked past by
+sending five invitations. With `STRIPE_ENABLED` off there is no limit, so the
+two flags stay independent.
+
+### Removing it
+
+```bash
+git rm -r apps/organizations website/src/components/pages/OrganizationPage.tsx
+git rm website/src/components/pages/AcceptInvitationPage.tsx website/src/store/organization.ts
+git rm templates/emails/organization_invitation.html
+```
+
+Then drop the `ORGANIZATIONS_ENABLED` branches from `template/settings/base.py`
+and `template/urls.py`, and the routes from `website/src/App.tsx`. Nothing
+outside the app holds a foreign key into it, so nothing else needs touching.
 
 ---
 

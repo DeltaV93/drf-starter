@@ -2,7 +2,6 @@
   "appName": "DRF Starter",
   "welcome": "Bienvenido",
   "footerText": "DRF Starter",
-
   "login": "Iniciar sesión",
   "signup": "Registrarse",
   "logout": "Cerrar sesión",
@@ -15,7 +14,6 @@
   "needAnAccount": "¿No tienes cuenta? Regístrate",
   "alreadyHaveAccount": "¿Ya tienes cuenta? Inicia sesión",
   "goToProfile": "Ir al perfil",
-
   "username": "Nombre de usuario",
   "email": "Correo electrónico",
   "firstName": "Nombre",
@@ -27,7 +25,6 @@
   "saveChanges": "Guardar cambios",
   "profileUpdated": "Perfil actualizado.",
   "profileUpdateError": "No se pudo actualizar tu perfil.",
-
   "usernameRequired": "El nombre de usuario es obligatorio",
   "emailRequired": "El correo electrónico es obligatorio",
   "firstNameRequired": "El nombre es obligatorio",
@@ -38,7 +35,6 @@
   "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
   "passwordAllNumeric": "La contraseña no puede ser solo números",
   "passwordsDontMatch": "Las contraseñas no coinciden",
-
   "forgotPassword": "¿Olvidaste tu contraseña?",
   "resetPassword": "Restablecer contraseña",
   "sendResetLink": "Enviar enlace",
@@ -48,13 +44,11 @@
   "passwordResetSuccess": "Tu contraseña se ha restablecido. Ya puedes iniciar sesión.",
   "passwordResetError": "No se pudo restablecer tu contraseña.",
   "invalidResetLink": "Este enlace no es válido o ha caducado.",
-
   "emailVerified": "Tu correo electrónico está confirmado.",
   "emailNotVerified": "Tu correo electrónico aún no está confirmado.",
   "invalidVerificationLink": "Este enlace de verificación no es válido o ha caducado.",
   "verificationResent": "Correo de verificación enviado.",
   "resend": "Reenviar",
-
   "selectSubscription": "Elige un plan",
   "selectPlan": "Seleccionar plan",
   "redirecting": "Redirigiendo...",
@@ -65,6 +59,18 @@
   "subscriptionSuccess": "Suscripción iniciada.",
   "subscriptionError": "No se pudo iniciar tu suscripción.",
   "stripeNotConfigured": "La facturación no está configurada. Define VITE_STRIPE_PUBLISHABLE_KEY para activarla.",
-
-  "genericError": "Algo salió mal. Inténtalo de nuevo."
+  "genericError": "Algo salió mal. Inténtalo de nuevo.",
+  "orgNone": "Todavia no perteneces a ninguna organizacion.",
+  "orgMembers": "Miembros",
+  "orgRole": "Rol",
+  "orgRemove": "Eliminar",
+  "orgInvitations": "Invitaciones pendientes",
+  "orgInvite": "Enviar invitacion",
+  "orgInvitationSent": "Invitacion enviada.",
+  "orgNoInvitations": "No hay invitaciones pendientes.",
+  "orgExpired": "Caducada",
+  "orgRevoke": "Revocar",
+  "orgLastOwner": "El unico propietario no puede ser eliminado ni degradado.",
+  "orgBackHome": "Volver al inicio",
+  "organization": "Organizacion"
 }

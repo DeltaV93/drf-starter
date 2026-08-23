@@ -107,6 +107,10 @@ ALLOWED_HOSTS = env_list('ALLOWED_HOSTS')
 # them entirely rather than just switching them off.
 STRIPE_ENABLED = env_bool('STRIPE_ENABLED', default=False)
 SOCIAL_AUTH_ENABLED = env_bool('SOCIAL_AUTH_ENABLED', default=False)
+# Teams. Off by default because the single-user shape is the simpler one
+# and costs nothing; turn it on for B2B. Nothing outside apps/organizations
+# holds a foreign key into it, so it comes out cleanly.
+ORGANIZATIONS_ENABLED = env_bool('ORGANIZATIONS_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -133,6 +137,9 @@ if STRIPE_ENABLED:
 
 if SOCIAL_AUTH_ENABLED:
     INSTALLED_APPS.append('social_django')
+
+if ORGANIZATIONS_ENABLED:
+    INSTALLED_APPS.append('apps.organizations')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -402,6 +409,9 @@ AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
 # Templates are still rendered inline either way -- only delivery moves -- so
 # a broken template fails the request rather than a task nobody is watching.
 EMAIL_ASYNC = env_bool('EMAIL_ASYNC', default=False)
+
+# How long an organization invitation stays redeemable.
+INVITATION_EXPIRY_DAYS = env_int('INVITATION_EXPIRY_DAYS', 7)
 
 # How long password reset and email verification links stay valid.
 PASSWORD_RESET_TIMEOUT = env_int('PASSWORD_RESET_TIMEOUT', 60 * 60 * 24 * 3)

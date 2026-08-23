@@ -40,6 +40,18 @@ export const routes = {
     users: {
       me: () => join(BASE_URL, 'users/me/'),
     },
+    organizations: {
+      list: () => join(BASE_URL, 'organizations/'),
+      active: () => join(BASE_URL, 'organizations/active/'),
+      switch: (slug: string) => join(BASE_URL, `organizations/active/switch/${slug}/`),
+      current: () => join(BASE_URL, 'organizations/current/'),
+      members: () => join(BASE_URL, 'organizations/current/members/'),
+      member: (id: number) => join(BASE_URL, `organizations/current/members/${id}/`),
+      leave: () => join(BASE_URL, 'organizations/current/leave/'),
+      invitations: () => join(BASE_URL, 'organizations/current/invitations/'),
+      invitation: (id: number) => join(BASE_URL, `organizations/current/invitations/${id}/`),
+      acceptInvitation: () => join(BASE_URL, 'organizations/invitations/accept/'),
+    },
     billing: {
       plans: () => join(BASE_URL, 'billing/plans/'),
       subscription: () => join(BASE_URL, 'billing/subscription/'),
@@ -54,6 +66,8 @@ export const routes = {
     signup: '/signup',
     profile: '/profile',
     subscription: '/subscription',
+    organization: '/organization',
+    acceptInvitation: (token = ':token') => `/invitations/${token}`,
     passwordReset: '/reset-password',
     confirmPassword: (uid = ':uid', token = ':token') => `/confirm-password/${uid}/${token}`,
     verifyEmail: (uid = ':uid', token = ':token') => `/verify-email/${uid}/${token}`,

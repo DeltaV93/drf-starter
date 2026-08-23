@@ -40,3 +40,41 @@ export interface Subscription {
   current_period_end: string;
   is_current: boolean;
 }
+
+export type OrganizationRole = 'OWNER' | 'ADMIN' | 'MEMBER';
+
+export interface Organization {
+  id: number;
+  name: string;
+  slug: string;
+  /** The requesting user's role. Null when the endpoint did not supply it. */
+  role: OrganizationRole | null;
+  member_count: number;
+  created_at: string;
+}
+
+export interface OrganizationList {
+  organizations: Organization[];
+  activeOrganizationId: number | null;
+}
+
+export interface OrganizationMember {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: OrganizationRole;
+  /** Removing or demoting this member would leave the organization ownerless. */
+  is_last_owner: boolean;
+  created_at: string;
+}
+
+export interface OrganizationInvitation {
+  id: number;
+  email: string;
+  role: OrganizationRole;
+  invited_by_email: string | null;
+  expires_at: string;
+  is_expired: boolean;
+  created_at: string;
+}

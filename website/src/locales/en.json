@@ -2,7 +2,6 @@
   "appName": "DRF Starter",
   "welcome": "Welcome",
   "footerText": "DRF Starter",
-
   "login": "Log in",
   "signup": "Sign up",
   "logout": "Log out",
@@ -15,7 +14,6 @@
   "needAnAccount": "Need an account? Sign up",
   "alreadyHaveAccount": "Already have an account? Log in",
   "goToProfile": "Go to profile",
-
   "username": "Username",
   "email": "Email",
   "firstName": "First name",
@@ -27,7 +25,6 @@
   "saveChanges": "Save changes",
   "profileUpdated": "Profile updated.",
   "profileUpdateError": "Could not update your profile.",
-
   "usernameRequired": "Username is required",
   "emailRequired": "Email is required",
   "firstNameRequired": "First name is required",
@@ -38,7 +35,6 @@
   "passwordTooShort": "Password must be at least 8 characters",
   "passwordAllNumeric": "Password cannot be entirely numeric",
   "passwordsDontMatch": "Passwords do not match",
-
   "forgotPassword": "Forgot your password?",
   "resetPassword": "Reset password",
   "sendResetLink": "Send reset link",
@@ -48,13 +44,11 @@
   "passwordResetSuccess": "Your password has been reset. You can sign in now.",
   "passwordResetError": "Could not reset your password.",
   "invalidResetLink": "This reset link is invalid or has expired.",
-
   "emailVerified": "Your email address is confirmed.",
   "emailNotVerified": "Your email address is not confirmed yet.",
   "invalidVerificationLink": "This verification link is invalid or has expired.",
   "verificationResent": "Verification email sent.",
   "resend": "Resend",
-
   "selectSubscription": "Choose a plan",
   "selectPlan": "Select plan",
   "redirecting": "Redirecting...",
@@ -65,6 +59,18 @@
   "subscriptionSuccess": "Subscription started.",
   "subscriptionError": "Could not start your subscription.",
   "stripeNotConfigured": "Billing is not configured. Set VITE_STRIPE_PUBLISHABLE_KEY to enable it.",
-
-  "genericError": "Something went wrong. Please try again."
+  "genericError": "Something went wrong. Please try again.",
+  "orgNone": "You do not belong to an organization yet.",
+  "orgMembers": "Members",
+  "orgRole": "Role",
+  "orgRemove": "Remove",
+  "orgInvitations": "Pending invitations",
+  "orgInvite": "Send invitation",
+  "orgInvitationSent": "Invitation sent.",
+  "orgNoInvitations": "No pending invitations.",
+  "orgExpired": "Expired",
+  "orgRevoke": "Revoke",
+  "orgLastOwner": "The only owner cannot be removed or demoted.",
+  "orgBackHome": "Back to home",
+  "organization": "Organization"
 }
