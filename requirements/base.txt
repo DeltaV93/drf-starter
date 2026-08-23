@@ -38,7 +38,7 @@ social-auth-app-django>=5.4
 
 # Billing (only imported when STRIPE_ENABLED is true; safe to remove along
 # with apps/subscriptions if the project does not need billing)
-stripe>=11.0
+stripe>=15.5.1
 
 # Retries for outbound API calls
 tenacity>=9.0
