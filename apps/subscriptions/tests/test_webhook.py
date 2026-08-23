@@ -5,10 +5,15 @@ its signature check is the only thing standing between Stripe's callbacks and
 anyone on the internet. These tests pin that down.
 """
 
+import hashlib
+import hmac
+import json
+import time
 from unittest.mock import patch
 
 import pytest
 import stripe
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -222,3 +227,58 @@ def test_a_well_formed_event_is_not_treated_as_a_failure(webhook_client, active_
         response = _post(webhook_client)
 
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# The signature check, against the real library.
+#
+# Every test above patches construct_event, so none of them would notice if a
+# stripe-python upgrade changed how a signature is verified -- the mock would
+# keep answering. These two do the HMAC themselves and let the installed
+# library judge it, which is what makes a major version bump meaningful.
+# ---------------------------------------------------------------------------
+
+TEST_WEBHOOK_SECRET = 'whsec_test_secret_not_used_outside_the_suite'
+
+
+def _sign(payload: bytes, secret: str = TEST_WEBHOOK_SECRET, timestamp: int | None = None):
+    """Build a Stripe-Signature header the way Stripe does."""
+    timestamp = timestamp or int(time.time())
+    signed = f'{timestamp}.'.encode() + payload
+    digest = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+    return f't={timestamp},v1={digest}'
+
+
+@override_settings(STRIPE_WEBHOOK_SECRET=TEST_WEBHOOK_SECRET)
+def test_a_genuinely_signed_payload_is_accepted(webhook_client):
+    payload = json.dumps(
+        {'type': 'customer.created', 'data': {'object': {'id': 'cus_1'}}}
+    ).encode()
+
+    response = _post(webhook_client, payload=payload, signature=_sign(payload))
+
+    assert response.status_code == 200
+
+
+@override_settings(STRIPE_WEBHOOK_SECRET=TEST_WEBHOOK_SECRET)
+def test_a_payload_edited_after_signing_is_rejected(webhook_client):
+    """Guards the test above: the same header must not carry a changed body."""
+    payload = json.dumps(
+        {'type': 'customer.created', 'data': {'object': {'id': 'cus_1'}}}
+    ).encode()
+    header = _sign(payload)
+
+    response = _post(
+        webhook_client, payload=payload.replace(b'cus_1', b'cus_2'), signature=header
+    )
+
+    assert response.status_code == 400
+
+
+@override_settings(STRIPE_WEBHOOK_SECRET=TEST_WEBHOOK_SECRET)
+def test_a_signature_from_a_different_secret_is_rejected(webhook_client):
+    payload = json.dumps({'type': 'customer.created', 'data': {'object': {}}}).encode()
+
+    response = _post(webhook_client, payload=payload, signature=_sign(payload, 'whsec_wrong'))
+
+    assert response.status_code == 400

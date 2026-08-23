@@ -22,6 +22,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
+from apps.core.audit import AuditAction, audit
 from apps.core.throttles import LoginRateThrottle, PasswordResetRateThrottle
 from apps.users.serializers import UserSerializer
 from utils.api_utils import api_response
@@ -29,8 +30,10 @@ from utils.emails_utils import send_password_reset_email, send_verification_emai
 from utils.gdpr_utils import anonymize_user_data
 from utils.logging_utils import get_logger
 
+from . import two_factor_services
 from .serializers import (
     AccountDeletionSerializer,
+    AuthenticatedSerializer,
     EmailVerificationSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -42,6 +45,11 @@ from .tokens import email_verification_token_generator
 
 User = get_user_model()
 logger = get_logger(__name__)
+
+# Named explicitly wherever a user is signed in without having been through
+# authenticate(). base.py always keeps this last in AUTHENTICATION_BACKENDS;
+# SOCIAL_AUTH_ENABLED only prepends to that list.
+PASSWORD_BACKEND = 'django.contrib.auth.backends.ModelBackend'
 
 # Answering identically whether or not the address exists is what stops these
 # endpoints from being used to enumerate accounts.
@@ -76,7 +84,11 @@ class RegisterView(APIView):
     throttle_classes = [LoginRateThrottle]
     serializer_class = UserRegistrationSerializer
 
-    @extend_schema(summary='Register a new account', request=UserRegistrationSerializer)
+    @extend_schema(
+        summary='Register a new account',
+        request=UserRegistrationSerializer,
+        responses={201: AuthenticatedSerializer},
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
@@ -91,7 +103,15 @@ class RegisterView(APIView):
 
         # The user is signed in immediately but unverified. Protect whatever
         # must wait for confirmation with the IsEmailVerified permission.
-        login(request, user)
+        #
+        # The backend has to be named. login() can normally infer it from the
+        # `backend` attribute authenticate() leaves on the user, but this user
+        # was just created rather than authenticated, so there is nothing to
+        # infer from -- and with more than one entry in AUTHENTICATION_BACKENDS
+        # Django refuses to guess. Registration is by password, so it is always
+        # ModelBackend; turning SOCIAL_AUTH_ENABLED on used to 500 here.
+        login(request, user, backend=PASSWORD_BACKEND)
+        audit(AuditAction.ACCOUNT_CREATED, actor=user, request=request)
 
         return api_response(
             data={'user': UserSerializer(user).data, 'csrfToken': get_token(request)},
@@ -105,10 +125,26 @@ class LoginView(APIView):
     throttle_classes = [LoginRateThrottle]
     serializer_class = UserLoginSerializer
 
-    @extend_schema(summary='Log in', request=UserLoginSerializer)
+    @extend_schema(
+        summary='Log in',
+        request=UserLoginSerializer,
+        # 200 covers both outcomes: signed in, or stopped at the second
+        # factor. AuthenticatedSerializer documents which fields go with which.
+        responses={200: AuthenticatedSerializer},
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         if not serializer.is_valid():
+            # The identifier tried is the target rather than metadata: it
+            # is what makes a run of failures against one account visible.
+            # `username` is what UserLoginSerializer takes -- reading `email`
+            # here would silently record nothing.
+            audit(
+                AuditAction.LOGIN_FAILED,
+                request=request,
+                target=str(request.data.get('username', ''))[:254],
+                reason='invalid_credentials',
+            )
             return api_response(
                 errors=serializer.errors,
                 message='Login failed.',
@@ -116,7 +152,27 @@ class LoginView(APIView):
             )
 
         user = serializer.validated_data['user']
+
+        # A correct password is only half of it when a second factor is
+        # enrolled. login() is deliberately NOT called here: request.user
+        # stays anonymous, so every IsAuthenticated view already refuses, and
+        # the only thing the pending state can do is be verified.
+        if two_factor_services.is_required_for(user):
+            two_factor_services.begin_pending_login(request, user)
+            return api_response(
+                data={
+                    'twoFactorRequired': True,
+                    # The token is needed for the verify POST that follows.
+                    'csrfToken': get_token(request),
+                },
+                message='Enter the code from your authenticator app.',
+                status_code=status.HTTP_200_OK,
+            )
+
+        # No backend argument needed here: the serializer went through
+        # authenticate(), which stamps the winning backend onto the user.
         login(request, user)
+        audit(AuditAction.LOGIN_SUCCEEDED, actor=user, request=request)
 
         return api_response(
             data={
@@ -133,6 +189,7 @@ class LogoutView(APIView):
 
     @extend_schema(summary='Log out', request=None, responses={200: None})
     def post(self, request):
+        audit(AuditAction.LOGOUT, actor=request.user, request=request)
         logout(request)
         return api_response(message='Successfully logged out.')
 
@@ -164,6 +221,7 @@ class PasswordResetRequestView(APIView):
             token = default_token_generator.make_token(user)
             reset_url = f'{settings.FRONTEND_URL}/confirm-password/{uid}/{token}'
             send_password_reset_email(user, reset_url)
+            audit(AuditAction.PASSWORD_RESET_REQUESTED, actor=user, request=request)
 
         # Same answer either way, and never surfaces whether mail delivery
         # itself succeeded.
@@ -214,6 +272,7 @@ class PasswordResetConfirmView(APIView):
 
         user.set_password(serializer.validated_data['password'])
         user.save(update_fields=['password'])
+        audit(AuditAction.PASSWORD_CHANGED, actor=user, request=request)
         logger.info('Password reset completed for user %s', user.pk)
 
         return api_response(message='Your password has been reset.')
@@ -246,6 +305,7 @@ class EmailVerificationView(APIView):
         if not user.email_verified:
             user.email_verified = True
             user.save(update_fields=['email_verified'])
+            audit(AuditAction.EMAIL_VERIFIED, actor=user, request=request)
             logger.info('Email verified for user %s', user.pk)
 
         return api_response(message='Your email address is confirmed.')
@@ -303,6 +363,10 @@ class AccountDeletionView(APIView):
         reason = serializer.validated_data.get('reason') or 'No reason provided'
         logger.info('Account deletion requested for user %s. Reason: %s', user.pk, reason)
 
+        # Recorded before the row is anonymised, while the actor is still
+        # identifiable -- and the event survives it, because actor is SET_NULL
+        # and actor_label is a copy.
+        audit(AuditAction.ACCOUNT_DELETED, actor=user, request=request)
         anonymize_user_data(user)
         logout(request)
 

@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.test import override_settings
 from django.urls import reverse
 
 from apps.users.factories import UserFactory
@@ -87,3 +88,28 @@ def test_register_rejects_a_duplicate_username(api_client):
 
     assert response.status_code == 400
     assert 'username' in response.data['errors']
+
+
+@override_settings(
+    # Two real Django backends rather than a social one, so the failure under
+    # test is precisely "Django will not guess between backends" and not a
+    # social_core configuration error that happens to raise nearby.
+    AUTHENTICATION_BACKENDS=[
+        'django.contrib.auth.backends.ModelBackend',
+        'django.contrib.auth.backends.AllowAllUsersModelBackend',
+    ]
+)
+def test_registration_works_with_more_than_one_authentication_backend(client):
+    """SOCIAL_AUTH_ENABLED used to 500 every signup.
+
+    The new user has not been through authenticate(), so there is no `backend`
+    attribute for login() to infer from, and with more than one entry in
+    AUTHENTICATION_BACKENDS Django refuses to guess. The view names the
+    password backend explicitly.
+    """
+    response = client.post(reverse('v1:register'), _payload(), content_type='application/json')
+
+    assert response.status_code == 201, response.content
+    assert User.objects.filter(email='newuser@example.com').exists()
+    # And the session really was established, not merely not-crashed.
+    assert '_auth_user_id' in client.session

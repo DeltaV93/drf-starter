@@ -36,9 +36,49 @@ export const routes = {
       verifyEmail: () => join(BASE_URL, 'auth/verify-email/'),
       resendVerification: () => join(BASE_URL, 'auth/verify-email/resend/'),
       deleteAccount: () => join(BASE_URL, 'auth/delete-account/'),
+      twoFactor: {
+        status: () => join(BASE_URL, 'auth/2fa/'),
+        enrol: () => join(BASE_URL, 'auth/2fa/enrol/'),
+        confirm: () => join(BASE_URL, 'auth/2fa/confirm/'),
+        disable: () => join(BASE_URL, 'auth/2fa/disable/'),
+        recoveryCodes: () => join(BASE_URL, 'auth/2fa/recovery-codes/'),
+        verify: () => join(BASE_URL, 'auth/2fa/verify/'),
+      },
+    },
+    social: {
+      connections: () => join(BASE_URL, 'auth/social/connections/'),
+      disconnect: (provider: string) =>
+        join(BASE_URL, `auth/social/connections/${provider}/disconnect/`),
+      // A full page navigation, not an XHR: the provider redirects the browser.
+      begin: (provider: string) => join(BASE_URL, `auth/social/login/${provider}/`),
     },
     users: {
       me: () => join(BASE_URL, 'users/me/'),
+    },
+    account: {
+      requestExport: () => join(BASE_URL, 'account/export/'),
+      activity: () => join(BASE_URL, 'account/activity/'),
+    },
+    apiKeys: {
+      list: () => join(BASE_URL, 'api-keys/'),
+      revoke: (id: number) => join(BASE_URL, `api-keys/${id}/`),
+    },
+    files: {
+      list: () => join(BASE_URL, 'files/'),
+      detail: (id: number) => join(BASE_URL, `files/${id}/`),
+      download: (id: number) => join(BASE_URL, `files/${id}/download/`),
+    },
+    organizations: {
+      list: () => join(BASE_URL, 'organizations/'),
+      active: () => join(BASE_URL, 'organizations/active/'),
+      switch: (slug: string) => join(BASE_URL, `organizations/active/switch/${slug}/`),
+      current: () => join(BASE_URL, 'organizations/current/'),
+      members: () => join(BASE_URL, 'organizations/current/members/'),
+      member: (id: number) => join(BASE_URL, `organizations/current/members/${id}/`),
+      leave: () => join(BASE_URL, 'organizations/current/leave/'),
+      invitations: () => join(BASE_URL, 'organizations/current/invitations/'),
+      invitation: (id: number) => join(BASE_URL, `organizations/current/invitations/${id}/`),
+      acceptInvitation: () => join(BASE_URL, 'organizations/invitations/accept/'),
     },
     billing: {
       plans: () => join(BASE_URL, 'billing/plans/'),
@@ -54,6 +94,10 @@ export const routes = {
     signup: '/signup',
     profile: '/profile',
     subscription: '/subscription',
+    organization: '/organization',
+    security: '/security',
+    files: '/files',
+    acceptInvitation: (token = ':token') => `/invitations/${token}`,
     passwordReset: '/reset-password',
     confirmPassword: (uid = ':uid', token = ':token') => `/confirm-password/${uid}/${token}`,
     verifyEmail: (uid = ':uid', token = ':token') => `/verify-email/${uid}/${token}`,

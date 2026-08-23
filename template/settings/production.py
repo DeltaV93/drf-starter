@@ -10,7 +10,6 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .base import *
 from .base import (
-    CSRF_TRUSTED_ORIGINS,
     MIDDLEWARE,
     SERVE_SPA,
     SPA_DIST_DIR,
@@ -79,21 +78,37 @@ if (
         'database the provider actually created.'
     )
 
-# Session auth needs the origin trusted for CSRF as well as the host allowed.
-if _PLATFORM_DOMAIN:
-    _PLATFORM_ORIGIN = f'https://{_PLATFORM_DOMAIN}'
-    if _PLATFORM_ORIGIN not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _PLATFORM_ORIGIN]
-    # Same-origin SPA: the frontend is this domain, so it is also the base for
-    # the links in password reset and verification emails.
-    if not os.environ.get('FRONTEND_URL'):
-        FRONTEND_URL = _PLATFORM_ORIGIN
-        STRIPE_SUCCESS_URL = os.environ.get(
-            'STRIPE_SUCCESS_URL', f'{FRONTEND_URL}/subscription/success'
-        )
-        STRIPE_CANCEL_URL = os.environ.get(
-            'STRIPE_CANCEL_URL', f'{FRONTEND_URL}/subscription/cancel'
-        )
+# --------------------------------------------------------------------------
+# Origins
+#
+# base.py derives CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS from
+# FRONTEND_URL, whose default is http://localhost:3000. Production must not
+# inherit that: CORS_ALLOW_CREDENTIALS is on, so a leftover localhost entry
+# tells browsers that a page served from a developer's own machine may make
+# credentialed cross-origin requests here and read the responses. Recompute
+# both from the origin this deployment actually has.
+# --------------------------------------------------------------------------
+
+_PLATFORM_ORIGIN = f'https://{_PLATFORM_DOMAIN}' if _PLATFORM_DOMAIN else ''
+FRONTEND_URL = os.environ.get('FRONTEND_URL') or _PLATFORM_ORIGIN
+
+if not FRONTEND_URL:
+    raise ImproperlyConfigured(
+        'FRONTEND_URL must be set in production, as the origin the SPA is '
+        'served from, with a scheme -- e.g. FRONTEND_URL=https://example.com. '
+        'It is the base for password reset and verification links, and the '
+        'default for CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS. Platforms '
+        'that expose their own domain (Railway, Render, Fly) supply it '
+        'automatically. Refusing to fall back to localhost.'
+    )
+
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', default=[FRONTEND_URL])
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', default=[FRONTEND_URL])
+
+STRIPE_SUCCESS_URL = os.environ.get(
+    'STRIPE_SUCCESS_URL', f'{FRONTEND_URL}/subscription/success'
+)
+STRIPE_CANCEL_URL = os.environ.get('STRIPE_CANCEL_URL', f'{FRONTEND_URL}/subscription/cancel')
 
 # --------------------------------------------------------------------------
 # HTTPS and security headers

@@ -84,10 +84,16 @@ check: ## Django checks, including the production deploy checklist
 	SECRET_KEY="$$($(BIN)/python -c 'from django.core.management.utils import get_random_secret_key as k; print(k())')" \
 	ALLOWED_HOSTS=example.com \
 	DATABASE_URL=postgres://checks:checks@db.example.com:5432/checks \
+	FRONTEND_URL=https://example.com \
 	STRIPE_ENABLED=true \
 	$(BIN)/python manage.py check --deploy --fail-level WARNING
 	DJANGO_SETTINGS_MODULE=template.settings.testing \
 		$(BIN)/python manage.py makemigrations --check --dry-run
+	@# CI fails the build on a schema warning, so run the same check here --
+	@# a view added without a declared request or response passes every other
+	@# target and only turns red on the pull request.
+	DJANGO_SETTINGS_MODULE=template.settings.testing \
+		$(BIN)/python manage.py spectacular --fail-on-warn --file /dev/null
 
 schema: ## Write the OpenAPI schema to schema.yml
 	$(BIN)/python manage.py spectacular --fail-on-warn --file schema.yml

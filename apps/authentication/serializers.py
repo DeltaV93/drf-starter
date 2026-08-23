@@ -3,6 +3,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from apps.users.serializers import UserSerializer
+
 User = get_user_model()
 
 
@@ -55,6 +57,25 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+
+class AuthenticatedSerializer(serializers.Serializer):
+    """What a successful sign-in hands back.
+
+    `user` and `csrfToken` are absent when `twoFactorRequired` is true: the
+    password was right but the session is not authenticated yet, so there is
+    no user to describe. Clients must branch on that flag rather than reading
+    `user` unconditionally.
+    """
+
+    user = UserSerializer(read_only=True, required=False)
+    csrfToken = serializers.CharField(read_only=True, required=False)
+    twoFactorRequired = serializers.BooleanField(read_only=True, required=False)
+    method = serializers.CharField(
+        read_only=True,
+        required=False,
+        help_text='Which second factor was accepted: "totp" or "recovery_code".',
+    )
 
 
 class UserLoginSerializer(serializers.Serializer):

@@ -7,7 +7,7 @@
 # the API on one origin -- what the session-cookie and CSRF design assumes.
 # VITE_API_BASE_URL is therefore a relative path: the app calls its own origin.
 # ---------------------------------------------------------------------------
-FROM node:22-slim AS frontend
+FROM node:26-slim AS frontend
 
 WORKDIR /app/website
 
@@ -19,9 +19,21 @@ COPY website/ ./
 
 ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_STRIPE_ENABLED=false
+ARG VITE_ORGANIZATIONS_ENABLED=false
+ARG VITE_SOCIAL_AUTH_ENABLED=false
+ARG VITE_TWO_FACTOR_ENABLED=false
+ARG VITE_API_KEYS_ENABLED=false
+ARG VITE_UPLOADS_ENABLED=false
+ARG VITE_AUDIT_LOG_ENABLED=false
 ARG VITE_STRIPE_PUBLISHABLE_KEY=
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_STRIPE_ENABLED=${VITE_STRIPE_ENABLED} \
+    VITE_ORGANIZATIONS_ENABLED=${VITE_ORGANIZATIONS_ENABLED} \
+    VITE_SOCIAL_AUTH_ENABLED=${VITE_SOCIAL_AUTH_ENABLED} \
+    VITE_TWO_FACTOR_ENABLED=${VITE_TWO_FACTOR_ENABLED} \
+    VITE_API_KEYS_ENABLED=${VITE_API_KEYS_ENABLED} \
+    VITE_UPLOADS_ENABLED=${VITE_UPLOADS_ENABLED} \
+    VITE_AUDIT_LOG_ENABLED=${VITE_AUDIT_LOG_ENABLED} \
     VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
 
 RUN npm run build
@@ -32,7 +44,7 @@ RUN npm run build
 #
 # Kept separate so the runtime image carries no compilers and no build headers.
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -59,7 +71,7 @@ RUN python -m venv /opt/venv \
 # ---------------------------------------------------------------------------
 # Runtime
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -95,6 +107,7 @@ RUN SECRET_KEY=build-only-not-used-at-runtime \
     DJANGO_ENVIRONMENT=production \
     ALLOWED_HOSTS=localhost \
     DATABASE_URL=postgres://build:build@db.invalid:5432/build \
+    FRONTEND_URL=https://build.invalid \
     python manage.py collectstatic --noinput
 
 USER app

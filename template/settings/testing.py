@@ -12,6 +12,18 @@ import os
 # exercises billing by default; CI additionally runs with STRIPE_ENABLED=false
 # to prove the project still boots and passes without it.
 os.environ.setdefault('STRIPE_ENABLED', 'true')
+os.environ.setdefault('ORGANIZATIONS_ENABLED', 'true')
+os.environ.setdefault('API_KEYS_ENABLED', 'true')
+os.environ.setdefault('AUDIT_LOG_ENABLED', 'true')
+os.environ.setdefault('TWO_FACTOR_ENABLED', 'true')
+os.environ.setdefault('UPLOADS_ENABLED', 'true')
+
+# Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
+# suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the
+# environment 'development'. Anything keyed off it would then be wrong during
+# a test run, including the guard that keeps Sentry from reporting deliberate
+# test failures into a real project.
+os.environ.setdefault('DJANGO_ENVIRONMENT', 'testing')
 
 from .base import *
 from .base import BASE_DIR
@@ -71,6 +83,8 @@ REST_FRAMEWORK = {
         'user': '100000/day',
         'login': '100000/day',
         'password_reset': '100000/day',
+        'api_key': '100000/day',
+        'data_export': '100000/day',
     },
 }
 

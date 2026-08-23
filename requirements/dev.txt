@@ -8,7 +8,7 @@
 pytest>=8.3
 pytest-django>=4.9
 pytest-cov>=6.0
-factory-boy>=3.3
+factory-boy>=3.3.3
 
 # Linting and formatting (replaces the old flake8 + black pair)
 ruff>=0.9

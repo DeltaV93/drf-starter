@@ -62,6 +62,20 @@ answering with `index.html` and a 200, which nothing else would catch.
 whether `website/dist` exists, which would make the test URLconf depend on
 whether someone had run a frontend build.
 
+**TypeScript stays below 7 until typescript-eslint supports it.** Dependabot
+will keep proposing 7.x. `tsc` itself passes on it, which is what makes the
+bump look safe -- but typescript-eslint refuses to load against the TS 7 API
+and `npm run lint` dies before it checks a single file, so the React Compiler
+rules stop running. 6.0.x is the highest version the whole toolchain agrees
+on. Revisit when typescript-eslint ships TS >=7.1 support.
+
+**A new view needs a declared request and response.** `@extend_schema` with
+only a `summary` leaves drf-spectacular guessing, and it cannot guess for a
+plain `APIView`. CI runs `spectacular --fail-on-warn`, so an undocumented view
+fails the build; `make check` runs the same thing, so it fails locally first.
+`apps/core/tests/test_openapi_schema.py` pins the parts of the schema that
+carry meaning.
+
 **`manage.py` does not attach a debugger by default.** It used to call
 `pydevd_pycharm.settrace()` unconditionally, which hung every `runserver`.
 Remote debugging is opt-in via `DEBUGPY=1`.
