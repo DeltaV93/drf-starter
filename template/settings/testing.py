@@ -15,6 +15,7 @@ os.environ.setdefault('STRIPE_ENABLED', 'true')
 os.environ.setdefault('ORGANIZATIONS_ENABLED', 'true')
 os.environ.setdefault('API_KEYS_ENABLED', 'true')
 os.environ.setdefault('AUDIT_LOG_ENABLED', 'true')
+os.environ.setdefault('TWO_FACTOR_ENABLED', 'true')
 
 # Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
 # suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the

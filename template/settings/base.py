@@ -117,6 +117,10 @@ API_KEYS_ENABLED = env_bool('API_KEYS_ENABLED', default=False)
 # An append-only record of security-relevant actions. Off by default; the
 # first thing a B2B security review asks for.
 AUDIT_LOG_ENABLED = env_bool('AUDIT_LOG_ENABLED', default=False)
+# TOTP second factor. Gates behaviour and URLs rather than INSTALLED_APPS:
+# the models live in apps.authentication, which is always installed, so the
+# migration does not appear and disappear with the flag.
+TWO_FACTOR_ENABLED = env_bool('TWO_FACTOR_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -440,6 +444,15 @@ EMAIL_ASYNC = env_bool('EMAIL_ASYNC', default=False)
 # How long audit entries are kept. prune_audit_log drops older ones; nothing
 # expires on its own, so schedule that command if the table matters.
 AUDIT_LOG_RETENTION_DAYS = env_int('AUDIT_LOG_RETENTION_DAYS', 365)
+
+# How long a half-finished login stays verifiable. Longer than this and a
+# password-verified state sits in a session cookie indefinitely.
+TWO_FACTOR_PENDING_TIMEOUT = env_int('TWO_FACTOR_PENDING_TIMEOUT', 300)
+
+# Encrypts TOTP secrets at rest. Falls back to SECRET_KEY -- see the
+# rotation warning in apps/authentication/two_factor.py before relying on
+# that fallback.
+TWO_FACTOR_SECRET_KEY = os.environ.get('TWO_FACTOR_SECRET_KEY', '')
 
 # How long an organization invitation stays redeemable.
 INVITATION_EXPIRY_DAYS = env_int('INVITATION_EXPIRY_DAYS', 7)

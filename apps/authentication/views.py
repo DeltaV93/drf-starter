@@ -30,6 +30,7 @@ from utils.emails_utils import send_password_reset_email, send_verification_emai
 from utils.gdpr_utils import anonymize_user_data
 from utils.logging_utils import get_logger
 
+from . import two_factor_services
 from .serializers import (
     AccountDeletionSerializer,
     EmailVerificationSerializer,
@@ -139,9 +140,26 @@ class LoginView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        user = serializer.validated_data['user']
+
+        # A correct password is only half of it when a second factor is
+        # enrolled. login() is deliberately NOT called here: request.user
+        # stays anonymous, so every IsAuthenticated view already refuses, and
+        # the only thing the pending state can do is be verified.
+        if two_factor_services.is_required_for(user):
+            two_factor_services.begin_pending_login(request, user)
+            return api_response(
+                data={
+                    'twoFactorRequired': True,
+                    # The token is needed for the verify POST that follows.
+                    'csrfToken': get_token(request),
+                },
+                message='Enter the code from your authenticator app.',
+                status_code=status.HTTP_200_OK,
+            )
+
         # No backend argument needed here: the serializer went through
         # authenticate(), which stamps the winning backend onto the user.
-        user = serializer.validated_data['user']
         login(request, user)
         audit(AuditAction.LOGIN_SUCCEEDED, actor=user, request=request)
 

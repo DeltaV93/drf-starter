@@ -46,3 +46,8 @@ tenacity>=9.0
 # Error tracking. Imported only when SENTRY_DSN is set, but kept in base
 # rather than prod so the code path is importable in the test suite.
 sentry-sdk[django]>=2.20
+
+# TOTP for two-factor authentication (only imported when
+# TWO_FACTOR_ENABLED is true; safe to remove with apps/authentication's
+# two_factor module if the project does not need it)
+pyotp>=2.9

@@ -11,6 +11,7 @@ command, with the auth, billing, tooling and CI already wired up.
 - **Teams** — organizations, per-org roles, invitations and seat limits, optional
 - **API keys** — hashed, scoped, expiring credentials for machine access, optional
 - **Audit log** — append-only, allow-listed metadata, retention command, optional
+- **Two-factor** — TOTP with hashed single-use recovery codes, optional
 - **Tooling** — ruff, ESLint, pytest, Vitest, pre-commit with secret scanning,
   GitHub Actions, Docker
 
@@ -357,6 +358,64 @@ git rm -r apps/audit
 Then drop the `AUDIT_LOG_ENABLED` branches from `template/settings/base.py` and
 `template/urls.py`. The `audit()` calls scattered through the other apps can
 stay: they import from `apps/core/audit.py`, which no-ops when the flag is off.
+
+---
+
+## Two-factor authentication
+
+Off by default; `TWO_FACTOR_ENABLED=true` turns it on. TOTP, so any
+authenticator app works. Per-user and opt-in — it does not force enrolment.
+
+| | |
+|---|---|
+| `POST /api/v1/auth/2fa/enrol/` | begin; returns the provisioning URI (needs the password) |
+| `POST /api/v1/auth/2fa/confirm/` | activate with a code; returns the recovery codes |
+| `POST /api/v1/auth/2fa/verify/` | finish a login that stopped for the second factor |
+| `POST /api/v1/auth/2fa/disable/` | turn it off (needs the password) |
+| `POST /api/v1/auth/2fa/recovery-codes/` | reissue (needs the password) |
+
+**Login becomes two steps.** With a confirmed device, `POST /auth/login/` answers
+`{"twoFactorRequired": true}` and — importantly — does **not** call `login()`.
+`request.user` stays anonymous, so every `IsAuthenticated` view already refuses;
+the pending state lives in the session and can do exactly one thing, be
+verified. It expires after `TWO_FACTOR_PENDING_TIMEOUT` seconds, because a
+password-verified state should not sit in a cookie indefinitely.
+
+**A device is inactive until confirmed.** Storing a secret without proving the
+user can generate codes from it is how people lock themselves out.
+
+**Codes cannot be replayed.** A TOTP code is valid for its whole window, so the
+step of the last accepted code is recorded and anything at or below it is
+refused. One consequence worth knowing: confirming enrolment consumes that
+step, so signing in elsewhere within the same 30 seconds asks for the next
+code. That is the correct answer — it is the same code.
+
+**The secret is encrypted at rest** with a key derived from
+`TWO_FACTOR_SECRET_KEY`, falling back to `SECRET_KEY`. A TOTP secret is a bearer
+credential: whoever holds it can generate valid codes forever, so a database
+dump alone should not be enough.
+
+> **Before rotating `SECRET_KEY`:** set `TWO_FACTOR_SECRET_KEY` first. Otherwise
+> rotation makes every enrolled secret undecryptable and locks those users out
+> of their own accounts — worse than the session invalidation rotation already
+> causes. Decryption failure fails *closed*, so it can never be mistaken for a
+> valid code.
+
+**Recovery codes are hashed and single use**, ten of them, shown once. Reissuing
+invalidates the previous set; disabling deletes them, so a stale one cannot work
+against a later enrolment.
+
+**Enrolling, disabling and reissuing all require the current password.** A
+session left open on a shared machine should not be enough to add a factor the
+real owner cannot produce, or to remove the one protecting them.
+
+### Removing it
+
+Delete `apps/authentication/two_factor.py`, `two_factor_services.py`,
+`views_two_factor.py`, `serializers_two_factor.py` and the two models in
+`apps/authentication/models.py` (with a migration), drop `pyotp` from
+`requirements/base.txt`, and remove the `TWO_FACTOR_ENABLED` branches from
+`template/settings/base.py`, `apps/authentication/urls.py` and `LoginView`.
 
 ---
 
