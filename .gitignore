@@ -512,12 +512,17 @@ pyrightconfig.json
 ### venv ###
 # Virtualenv
 # http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
-[Bb]in
-[Ii]nclude
-[Ll]ib
-[Ll]ib64
-[Ll]ocal
-[Ss]cripts
+#
+# These are scoped to the virtualenv directories on purpose. The unanchored
+# forms from the upstream template match anywhere in the tree, which silently
+# swallowed the project's own scripts/ and lib/ directories.
+[Vv]env/
+.venv/
+env/
+.env.d/
+*/[Bb]in/
+*/[Ii]nclude/
+*/[Ll]ib64/
 pyvenv.cfg
 pip-selfcheck.json
 
@@ -530,6 +535,10 @@ apps/*/migrations/__pycache__/
 
 # Collected static output (the sources under static/ are tracked)
 staticfiles/
+
+# Local databases
+*.sqlite3
+*.sqlite3-journal
 
 # Compiled translations; the .po sources are tracked
 locale/**/*.mo
