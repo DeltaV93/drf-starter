@@ -254,6 +254,15 @@ which is what makes the session cookies work without `SameSite=None` or CORS.
 It switches itself on and off by whether `website/dist` exists, so local
 development still uses the Vite dev server; `SERVE_SPA` overrides either way.
 
+The catch-all deliberately refuses anything with a file extension, and any
+path under `api/`, `admin`, `assets/`, `static/` or `media/`. A client-side
+route has no extension, so a request for `/assets/index-abc123.js` that
+WhiteNoise did not serve is a *missing file* and gets a 404. Answering it with
+`index.html` instead -- which an earlier version did -- hands the browser HTML
+where it asked for JavaScript: the script is silently rejected, the page
+renders blank, and the server log shows a wall of 200s. If you add a
+client-side route containing a dot, widen `SPA_FILE_LIKE_PATH`.
+
 **Health probes bypass the host and scheme checks.** Platforms probe over
 plain HTTP with their own `Host` header (Railway uses
 `healthcheck.railway.app`), which would otherwise be a 301 from
