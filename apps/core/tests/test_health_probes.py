@@ -95,3 +95,44 @@ def test_the_probe_paths_match_the_urlconf():
 
     assert reverse('v1:health') == HEALTH
     assert reverse('v1:readiness') == READY
+
+
+@pytest.mark.parametrize(
+    'settings_module',
+    [
+        'template.settings.base',
+        'template.settings.development',
+        'template.settings.production',
+        'template.settings.testing',
+    ],
+)
+def test_the_probe_middleware_runs_before_the_security_middleware(settings_module):
+    """Ordering is the whole fix, so assert it rather than trusting a comment.
+
+    Development puts debug_toolbar ahead of it, which is fine -- what matters
+    is only that it precedes SecurityMiddleware's SSL redirect and host
+    validation.
+    """
+    import importlib
+    import os
+    import sys
+
+    for key, value in {
+        'SECRET_KEY': 'test-key-long-enough-000000000000000000000000',
+        'ALLOWED_HOSTS': 'example.com',
+        'DATABASE_URL': 'postgres://u:p@db.example.com:5432/app',
+    }.items():
+        os.environ.setdefault(key, value)
+
+    sys.modules.pop(settings_module, None)
+    module = importlib.import_module(settings_module)
+    middleware = module.MIDDLEWARE
+
+    health = next(i for i, m in enumerate(middleware) if 'HealthCheckMiddleware' in m)
+    security = next(
+        (i for i, m in enumerate(middleware) if m.endswith('SecurityMiddleware')), None
+    )
+
+    assert security is None or health < security, (
+        f'{settings_module}: HealthCheckMiddleware must precede SecurityMiddleware'
+    )
