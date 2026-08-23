@@ -12,7 +12,9 @@ See .env.example for the full list.
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
 from django.utils.translation import gettext_lazy as _
@@ -55,6 +57,12 @@ def env_int(name, default):
         return int(value)
     except ValueError as exc:
         raise ImproperlyConfigured(f'{name} must be an integer, got {value!r}') from exc
+
+
+def _is_local_url(url):
+    """True when a database URL points at this machine or a compose service."""
+    host = (urlparse(url).hostname or '').lower()
+    return host in {'localhost', '127.0.0.1', '::1', 'db', ''}
 
 
 # --------------------------------------------------------------------------
@@ -128,6 +136,18 @@ if STRIPE_ENABLED:
 
 ROOT_URLCONF = 'template.urls'
 
+# --------------------------------------------------------------------------
+# Single-page app
+#
+# In the container the built SPA sits in website/dist and Django serves it,
+# which keeps it same-origin with the API -- what the session-cookie and CSRF
+# design assumes. Locally the directory does not exist and `make fe-dev`
+# serves the SPA from Vite instead, so this switches itself off.
+# --------------------------------------------------------------------------
+
+SPA_DIST_DIR = BASE_DIR / 'website' / 'dist'
+SERVE_SPA = env_bool('SERVE_SPA', default=(SPA_DIST_DIR / 'index.html').exists())
+
 _CONTEXT_PROCESSORS = [
     'django.template.context_processors.debug',
     'django.template.context_processors.request',
@@ -144,7 +164,7 @@ if SOCIAL_AUTH_ENABLED:
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR / 'templates', *([SPA_DIST_DIR] if SERVE_SPA else [])],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': _CONTEXT_PROCESSORS,
@@ -155,17 +175,34 @@ TEMPLATES = [
 WSGI_APPLICATION = 'template.wsgi.application'
 ASGI_APPLICATION = 'template.asgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'app'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': env_int('DB_CONN_MAX_AGE', 60),
+# Managed hosts (Railway, Render, Heroku, Fly) hand you a single DATABASE_URL
+# rather than separate parts, so it wins when present. The individual DB_*
+# variables remain the path for local development and docker compose.
+DB_CONN_MAX_AGE = env_int('DB_CONN_MAX_AGE', 60)
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=DB_CONN_MAX_AGE,
+            # Managed Postgres is reached over the network and expects TLS;
+            # a URL pointing at localhost is assumed to be a local instance.
+            ssl_require=env_bool('DB_SSL_REQUIRE', default=not _is_local_url(DATABASE_URL)),
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'app'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'CONN_MAX_AGE': DB_CONN_MAX_AGE,
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

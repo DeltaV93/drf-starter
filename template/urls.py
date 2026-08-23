@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -42,3 +42,15 @@ if settings.DEBUG:
         pass
     else:
         urlpatterns.append(path('__debug__/', include('debug_toolbar.urls')))
+
+# The SPA catch-all must stay LAST and must keep excluding the prefixes below,
+# or it swallows the API and the admin and every endpoint starts returning
+# index.html. apps/core/tests/test_spa.py pins that.
+if settings.SERVE_SPA:
+    from apps.core.views import SPAView
+
+    urlpatterns.append(
+        re_path(
+            r'^(?!api/|admin/|static/|media/|__debug__/).*$', SPAView.as_view(), name='spa'
+        )
+    )

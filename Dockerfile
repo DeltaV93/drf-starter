@@ -1,6 +1,33 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
+# Frontend: build the SPA.
+#
+# The output is served by Django in the runtime image, which keeps the SPA and
+# the API on one origin -- what the session-cookie and CSRF design assumes.
+# VITE_API_BASE_URL is therefore a relative path: the app calls its own origin.
+# ---------------------------------------------------------------------------
+FROM node:22-slim AS frontend
+
+WORKDIR /app/website
+
+# package files first so npm ci is cached until dependencies actually change.
+COPY website/package.json website/package-lock.json ./
+RUN npm ci
+
+COPY website/ ./
+
+ARG VITE_API_BASE_URL=/api/v1
+ARG VITE_STRIPE_ENABLED=false
+ARG VITE_STRIPE_PUBLISHABLE_KEY=
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_STRIPE_ENABLED=${VITE_STRIPE_ENABLED} \
+    VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
+
+RUN npm run build
+
+
+# ---------------------------------------------------------------------------
 # Builder: compile wheels for every dependency.
 #
 # Kept separate so the runtime image carries no compilers and no build headers.
@@ -53,6 +80,9 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 COPY --chown=app:app . /app
 
+# The built SPA. Django serves it from here; see SPA_DIST_DIR in settings.
+COPY --from=frontend --chown=app:app /app/website/dist /app/website/dist
+
 RUN chmod +x /app/entrypoint.sh
 
 # Static files are collected at build time -- it needs no database, only
@@ -68,4 +98,6 @@ USER app
 EXPOSE 8000
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["gunicorn", "template.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]
+
+# Shell form so ${PORT} expands: managed hosts assign the port and route to it.
+CMD ["sh", "-c", "gunicorn template.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-3} --access-logfile - --error-logfile -"]

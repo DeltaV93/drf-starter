@@ -237,10 +237,53 @@ every start unless a debugger happened to be listening.
 
 ## Deploying
 
-The `Dockerfile` builds a two-stage production image: dependencies compile in
-a builder stage, the runtime carries no compilers, and it runs as a non-root
-user. Static files are collected at build time; migrations run in
-`entrypoint.sh`, which waits for the database first.
+The `Dockerfile` builds a three-stage production image: the SPA is built with
+Node, Python dependencies compile in their own stage, and the runtime carries
+neither Node nor a compiler and runs as a non-root user. Static files are
+collected at build time; migrations run in `entrypoint.sh`, which waits for
+the database first.
+
+**Django serves the SPA.** The built frontend lands in `website/dist` and
+WhiteNoise serves it at the root, with a catch-all in `template/urls.py`
+returning `index.html` for client-side routes. One service, one origin --
+which is what makes the session cookies work without `SameSite=None` or CORS.
+It switches itself on and off by whether `website/dist` exists, so local
+development still uses the Vite dev server; `SERVE_SPA` overrides either way.
+
+### Railway
+
+The repo ships a `railway.json`, so Railway builds from the `Dockerfile` and
+health-checks `/api/v1/health/`.
+
+1. **New Project → Deploy from GitHub repo →** this repository.
+2. Add **Postgres** and **Redis** from the project's *+ New* menu.
+3. On the web service, set variables:
+
+   | Variable | Value |
+   |---|---|
+   | `DJANGO_ENVIRONMENT` | `production` |
+   | `SECRET_KEY` | generate one with the command above |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `REDIS_URL` | `${{Redis.REDIS_URL}}` |
+   | `EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` to start |
+   | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | optional, creates an admin on first boot |
+
+4. **Settings → Networking → Generate Domain.**
+
+`PORT` and `RAILWAY_PUBLIC_DOMAIN` are injected by Railway. `ALLOWED_HOSTS`,
+`CSRF_TRUSTED_ORIGINS` and `FRONTEND_URL` are all derived from that domain, so
+you can leave them unset — which is what lets the first deploy boot before you
+know the domain.
+
+Email defaults to SES. Until you have credentials, the console backend above
+prints verification and password-reset links straight into the deploy logs,
+where you can copy them out.
+
+Other hosts work the same way: `DATABASE_URL`, `PORT` and the platform's own
+domain variable are all understood, so Render and Fly need only their own
+service definition.
+
+### Deploying somewhere else
 
 Before shipping, run the deploy checklist:
 

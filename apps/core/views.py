@@ -1,4 +1,5 @@
 from django.db import connection
+from django.views.generic import TemplateView
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -55,3 +56,16 @@ class ReadinessView(APIView):
             logger.exception('Database readiness check failed')
             return False
         return True
+
+
+class SPAView(TemplateView):
+    """Serve the built single-page app.
+
+    Wired to a catch-all so client-side routes such as /login resolve: those
+    paths have no matching file, so WhiteNoise falls through to Django and
+    this hands back index.html for the router to take over.
+
+    Only registered when settings.SERVE_SPA is on -- see template/urls.py.
+    """
+
+    template_name = 'index.html'

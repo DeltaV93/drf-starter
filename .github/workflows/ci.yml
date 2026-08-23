@@ -144,5 +144,21 @@ jobs:
 
       - name: Smoke test the image
         run: |
+          # Django imports, and the SPA build actually landed in the image --
+          # a frontend stage that silently produced nothing would otherwise
+          # ship an API with no UI.
           docker run --rm --entrypoint python drf-starter:ci \
             -c "import django; print('django', django.get_version())"
+          docker run --rm --entrypoint sh drf-starter:ci \
+            -c "test -s /app/website/dist/index.html && ls /app/website/dist/assets | head -5"
+          # The catch-all must be registered when the build is present.
+          docker run --rm --entrypoint python \
+            -e DJANGO_ENVIRONMENT=production \
+            -e SECRET_KEY=ci-only-key-long-enough-to-satisfy-the-deploy-check-000000 \
+            -e ALLOWED_HOSTS=localhost \
+            drf-starter:ci -c "
+          import django; django.setup()
+          from django.conf import settings
+          assert settings.SERVE_SPA, 'SERVE_SPA should be on when the build is present'
+          print('SERVE_SPA on, WHITENOISE_ROOT =', settings.WHITENOISE_ROOT)
+          "

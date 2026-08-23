@@ -10,6 +10,8 @@ django-filter>=25.1
 
 # Database
 psycopg[binary]>=3.2
+# Managed hosts hand you a single DATABASE_URL rather than separate parts.
+dj-database-url>=2.3
 
 # Configuration
 python-dotenv>=1.1

@@ -43,6 +43,15 @@ what authenticates it. Do not add `csrf_exempt` anywhere else.
 
 **Logging goes to stdout.** No `FileHandler` in any settings module.
 
+**The SPA catch-all stays last in `urlpatterns`** and must keep excluding
+`api/`, `admin/`, `static/` and `media/`. Widen it and every endpoint starts
+answering with `index.html` and a 200, which nothing else would catch.
+`apps/core/tests/test_spa.py` pins it.
+
+**`SERVE_SPA` is pinned off in `testing.py`.** It otherwise defaults to
+whether `website/dist` exists, which would make the test URLconf depend on
+whether someone had run a frontend build.
+
 **`manage.py` does not attach a debugger by default.** It used to call
 `pydevd_pycharm.settrace()` unconditionally, which hung every `runserver`.
 Remote debugging is opt-in via `DEBUGPY=1`.
@@ -57,6 +66,12 @@ directly must not pull in the development environment as a side effect.
 Anything that varies between deployments comes from the environment via
 `env_bool` / `env_list` / `env_int` in `base.py`. Add new variables to
 `.env.example` in the same change.
+
+`DATABASE_URL` wins over the individual `DB_*` variables when set, because
+that is what managed hosts inject. `production.py` also derives
+`ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` and `FRONTEND_URL` from the
+platform's domain variable, so a first deploy boots before the domain is
+known.
 
 ## Optional apps
 

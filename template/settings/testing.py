@@ -44,6 +44,13 @@ else:
 
 CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
 
+# Pinned off so the suite behaves the same whether or not someone has run
+# a frontend build -- SERVE_SPA otherwise defaults to whether website/dist
+# exists, which would make the URLconf depend on the working tree.
+# The catch-all itself is covered by apps/core/tests/test_spa.py, which
+# builds its own URLconf.
+SERVE_SPA = False
+
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
 CELERY_TASK_ALWAYS_EAGER = True
