@@ -22,6 +22,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
+from apps.core.audit import AuditAction, audit
 from apps.core.throttles import LoginRateThrottle, PasswordResetRateThrottle
 from apps.users.serializers import UserSerializer
 from utils.api_utils import api_response
@@ -104,6 +105,7 @@ class RegisterView(APIView):
         # Django refuses to guess. Registration is by password, so it is always
         # ModelBackend; turning SOCIAL_AUTH_ENABLED on used to 500 here.
         login(request, user, backend=PASSWORD_BACKEND)
+        audit(AuditAction.ACCOUNT_CREATED, actor=user, request=request)
 
         return api_response(
             data={'user': UserSerializer(user).data, 'csrfToken': get_token(request)},
@@ -121,6 +123,16 @@ class LoginView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         if not serializer.is_valid():
+            # The identifier tried is the target rather than metadata: it
+            # is what makes a run of failures against one account visible.
+            # `username` is what UserLoginSerializer takes -- reading `email`
+            # here would silently record nothing.
+            audit(
+                AuditAction.LOGIN_FAILED,
+                request=request,
+                target=str(request.data.get('username', ''))[:254],
+                reason='invalid_credentials',
+            )
             return api_response(
                 errors=serializer.errors,
                 message='Login failed.',
@@ -131,6 +143,7 @@ class LoginView(APIView):
         # authenticate(), which stamps the winning backend onto the user.
         user = serializer.validated_data['user']
         login(request, user)
+        audit(AuditAction.LOGIN_SUCCEEDED, actor=user, request=request)
 
         return api_response(
             data={
@@ -147,6 +160,7 @@ class LogoutView(APIView):
 
     @extend_schema(summary='Log out', request=None, responses={200: None})
     def post(self, request):
+        audit(AuditAction.LOGOUT, actor=request.user, request=request)
         logout(request)
         return api_response(message='Successfully logged out.')
 
@@ -178,6 +192,7 @@ class PasswordResetRequestView(APIView):
             token = default_token_generator.make_token(user)
             reset_url = f'{settings.FRONTEND_URL}/confirm-password/{uid}/{token}'
             send_password_reset_email(user, reset_url)
+            audit(AuditAction.PASSWORD_RESET_REQUESTED, actor=user, request=request)
 
         # Same answer either way, and never surfaces whether mail delivery
         # itself succeeded.
@@ -228,6 +243,7 @@ class PasswordResetConfirmView(APIView):
 
         user.set_password(serializer.validated_data['password'])
         user.save(update_fields=['password'])
+        audit(AuditAction.PASSWORD_CHANGED, actor=user, request=request)
         logger.info('Password reset completed for user %s', user.pk)
 
         return api_response(message='Your password has been reset.')
@@ -260,6 +276,7 @@ class EmailVerificationView(APIView):
         if not user.email_verified:
             user.email_verified = True
             user.save(update_fields=['email_verified'])
+            audit(AuditAction.EMAIL_VERIFIED, actor=user, request=request)
             logger.info('Email verified for user %s', user.pk)
 
         return api_response(message='Your email address is confirmed.')
@@ -317,6 +334,10 @@ class AccountDeletionView(APIView):
         reason = serializer.validated_data.get('reason') or 'No reason provided'
         logger.info('Account deletion requested for user %s. Reason: %s', user.pk, reason)
 
+        # Recorded before the row is anonymised, while the actor is still
+        # identifiable -- and the event survives it, because actor is SET_NULL
+        # and actor_label is a copy.
+        audit(AuditAction.ACCOUNT_DELETED, actor=user, request=request)
         anonymize_user_data(user)
         logout(request)
 

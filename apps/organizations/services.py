@@ -10,6 +10,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core.audit import AuditAction, audit
 from utils.emails_utils import send_email
 from utils.logging_utils import get_logger
 
@@ -119,6 +120,14 @@ def invite_member(*, organization, email, role, invited_by, accept_url_template)
         recipient_list=[email],
     )
 
+    audit(
+        AuditAction.MEMBER_INVITED,
+        actor=invited_by,
+        target=email,
+        organization=organization.slug,
+        role=role,
+    )
+
     return invitation, raw_token
 
 
@@ -156,6 +165,13 @@ def accept_invitation(*, raw_token, user):
 
     if created:
         logger.info('User joined organization %s', invitation.organization_id)
+        audit(
+            AuditAction.MEMBER_JOINED,
+            actor=user,
+            target=invitation.organization.slug,
+            organization=invitation.organization.slug,
+            role=membership.role,
+        )
 
     return membership
 
@@ -164,8 +180,16 @@ def accept_invitation(*, raw_token, user):
 def change_role(*, membership, new_role):
     if membership.is_last_owner and new_role != Membership.Role.OWNER:
         raise OrganizationError('This is the only owner. Promote someone else to owner first.')
+    previous_role = membership.role
     membership.role = new_role
     membership.save(update_fields=['role', 'updated_at'])
+    audit(
+        AuditAction.MEMBER_ROLE_CHANGED,
+        target=str(membership.user),
+        organization=membership.organization.slug,
+        from_role=previous_role,
+        to_role=new_role,
+    )
     return membership
 
 
@@ -181,4 +205,9 @@ def remove_member(*, membership):
         raise OrganizationError(
             'This is the only owner. Transfer ownership before removing them.'
         )
+    audit(
+        AuditAction.MEMBER_REMOVED,
+        target=str(membership.user),
+        organization=membership.organization.slug,
+    )
     membership.delete()

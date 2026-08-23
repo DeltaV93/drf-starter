@@ -25,6 +25,9 @@ if settings.ORGANIZATIONS_ENABLED:
 if settings.API_KEYS_ENABLED:
     api_v1_patterns.append(path('', include('apps.api_keys.urls')))
 
+if settings.AUDIT_LOG_ENABLED:
+    api_v1_patterns.append(path('', include('apps.audit.urls')))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),

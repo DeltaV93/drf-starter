@@ -114,6 +114,9 @@ ORGANIZATIONS_ENABLED = env_bool('ORGANIZATIONS_ENABLED', default=False)
 # Programmatic access. Session cookies serve a browser and nothing else --
 # no CLI, no CI job, no server-to-server integration.
 API_KEYS_ENABLED = env_bool('API_KEYS_ENABLED', default=False)
+# An append-only record of security-relevant actions. Off by default; the
+# first thing a B2B security review asks for.
+AUDIT_LOG_ENABLED = env_bool('AUDIT_LOG_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -146,6 +149,9 @@ if ORGANIZATIONS_ENABLED:
 
 if API_KEYS_ENABLED:
     INSTALLED_APPS.append('apps.api_keys')
+
+if AUDIT_LOG_ENABLED:
+    INSTALLED_APPS.append('apps.audit')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -430,6 +436,10 @@ AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
 # Templates are still rendered inline either way -- only delivery moves -- so
 # a broken template fails the request rather than a task nobody is watching.
 EMAIL_ASYNC = env_bool('EMAIL_ASYNC', default=False)
+
+# How long audit entries are kept. prune_audit_log drops older ones; nothing
+# expires on its own, so schedule that command if the table matters.
+AUDIT_LOG_RETENTION_DAYS = env_int('AUDIT_LOG_RETENTION_DAYS', 365)
 
 # How long an organization invitation stays redeemable.
 INVITATION_EXPIRY_DAYS = env_int('INVITATION_EXPIRY_DAYS', 7)

@@ -10,6 +10,7 @@ command, with the auth, billing, tooling and CI already wired up.
 - **Billing** — Stripe hosted Checkout, optional and removable
 - **Teams** — organizations, per-org roles, invitations and seat limits, optional
 - **API keys** — hashed, scoped, expiring credentials for machine access, optional
+- **Audit log** — append-only, allow-listed metadata, retention command, optional
 - **Tooling** — ruff, ESLint, pytest, Vitest, pre-commit with secret scanning,
   GitHub Actions, Docker
 
@@ -72,6 +73,7 @@ apps/
   subscriptions/   Stripe billing (optional)
   organizations/   teams, membership, invitations (optional)
   api_keys/        programmatic access credentials (optional)
+  audit/           append-only record of security-relevant actions (optional)
 template/
   settings/        base + development / production / testing
 utils/             response envelope, email, logging, GDPR helpers
@@ -306,6 +308,55 @@ git rm -r apps/api_keys
 
 Then drop the `API_KEYS_ENABLED` branches from `template/settings/base.py` and
 `template/urls.py`. Nothing else references it.
+
+---
+
+## Audit log
+
+Off by default; `AUDIT_LOG_ENABLED=true` turns it on. Usually the first thing a
+B2B security review asks for.
+
+**Append-only.** `save()` on an existing row raises, `delete()` raises, and the
+admin allows neither adding, editing nor deleting. A log an administrator can
+rewrite answers none of the questions it is kept for. Retention is the one way
+rows leave, and it is `manage.py prune_audit_log`, which drops whole rows by age
+and cannot alter one.
+
+**Written from explicit call sites**, not from a blanket `post_save` signal. A
+signal records mostly noise, and — worse — records whatever happens to be on the
+model, which is how a password hash ends up in a table nobody thought was
+sensitive.
+
+**Metadata is allow-listed per action.** Anything not on the list for that action
+is dropped and logged; a set of never-stored keys (`password`, `token`,
+`secret`, `card_number`, …) is refused whatever the allow-list says. An action
+with no allow-list entry stores no metadata at all, so adding one without
+deciding what it may carry is safe by default.
+
+**Recording never raises.** A login that 500s because the log table is full is a
+worse outcome than a missing row.
+
+**The actor is `SET_NULL`, and `actor_label` is a copy.** Deleting a user must
+not erase the record that they were deleted — often the entry that matters most.
+
+Users read their own activity at `/api/v1/account/activity/`. There is no
+endpoint returning everyone's: staff read the admin, which is access-controlled
+separately rather than through a surface a stolen session could reach.
+
+Add an action by adding it to `AuditAction` in `apps/core/audit.py` *and* to
+`Action` in `apps/audit/models.py` — a test fails if the two drift. The
+vocabulary lives in `core` because the call sites are in apps that are always
+installed, and this one is not.
+
+### Removing it
+
+```bash
+git rm -r apps/audit
+```
+
+Then drop the `AUDIT_LOG_ENABLED` branches from `template/settings/base.py` and
+`template/urls.py`. The `audit()` calls scattered through the other apps can
+stay: they import from `apps/core/audit.py`, which no-ops when the flag is off.
 
 ---
 

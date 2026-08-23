@@ -12,6 +12,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from apps.core.audit import AuditAction, audit
 from utils.api_utils import api_response
 
 from .models import APIKey, generate_key
@@ -50,6 +51,15 @@ class APIKeyListCreateView(APIView):
             hashed_secret=hashed_secret,
         )
 
+        audit(
+            AuditAction.API_KEY_CREATED,
+            actor=request.user,
+            request=request,
+            target=key.name,
+            prefix=key.prefix,
+            scope=key.scope,
+        )
+
         return api_response(
             data={
                 **APIKeySerializer(key).data,
@@ -72,4 +82,11 @@ class APIKeyDetailView(APIView):
         # the prefix meaningful when working out what a leaked key reached.
         key = get_object_or_404(APIKey, pk=key_id, user=request.user)
         key.revoke()
+        audit(
+            AuditAction.API_KEY_REVOKED,
+            actor=request.user,
+            request=request,
+            target=key.name,
+            prefix=key.prefix,
+        )
         return api_response(data=APIKeySerializer(key).data, message='API key revoked.')
