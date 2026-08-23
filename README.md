@@ -250,6 +250,14 @@ which is what makes the session cookies work without `SameSite=None` or CORS.
 It switches itself on and off by whether `website/dist` exists, so local
 development still uses the Vite dev server; `SERVE_SPA` overrides either way.
 
+**Health probes bypass the host and scheme checks.** Platforms probe over
+plain HTTP with their own `Host` header (Railway uses
+`healthcheck.railway.app`), which would otherwise be a 301 from
+`SECURE_SSL_REDIRECT` or a 400 from `ALLOWED_HOSTS` — never the 200 the probe
+needs. `apps/core/middleware.py` runs first and answers `/api/v1/health/` and
+`/api/v1/ready/` before either check. The responses are static, so nothing
+reflects the `Host` header; every other route stays protected.
+
 ### Railway
 
 The repo ships a `railway.json`, so Railway builds from the `Dockerfile` and
@@ -269,6 +277,12 @@ health-checks `/api/v1/health/`.
    | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | optional, creates an admin on first boot |
 
 4. **Settings → Networking → Generate Domain.**
+
+The `DATABASE_URL` and `REDIS_URL` values above are Railway variable
+references and must be typed with the `${{...}}` braces — adding the Postgres
+and Redis plugins does **not** inject their variables into the web service.
+Miss `DATABASE_URL` and production refuses to start with a message saying so,
+rather than quietly retrying a connection to localhost.
 
 `PORT` and `RAILWAY_PUBLIC_DOMAIN` are injected by Railway. `ALLOWED_HOSTS`,
 `CSRF_TRUSTED_ORIGINS` and `FRONTEND_URL` are all derived from that domain, so

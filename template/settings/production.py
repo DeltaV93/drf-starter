@@ -100,10 +100,16 @@ CSRF_COOKIE_SECURE = True
 # backend if you would rather serve from a CDN.
 # --------------------------------------------------------------------------
 
+_HEALTH_MIDDLEWARE = 'apps.core.middleware.HealthCheckMiddleware'
+_SECURITY_MIDDLEWARE = 'django.middleware.security.SecurityMiddleware'
+
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
+    # Health probes stay ahead of the SSL redirect; WhiteNoise sits directly
+    # after SecurityMiddleware as its documentation requires.
+    _HEALTH_MIDDLEWARE,
+    _SECURITY_MIDDLEWARE,
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    *[m for m in MIDDLEWARE if m != 'django.middleware.security.SecurityMiddleware'],
+    *[m for m in MIDDLEWARE if m not in (_HEALTH_MIDDLEWARE, _SECURITY_MIDDLEWARE)],
 ]
 
 STORAGES = {

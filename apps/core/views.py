@@ -1,4 +1,3 @@
-from django.db import connection
 from django.views.generic import TemplateView
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -8,11 +7,19 @@ from rest_framework.views import APIView
 from utils.api_utils import api_response
 from utils.logging_utils import get_logger
 
+from .health import check_database
+
 logger = get_logger(__name__)
 
 
 class HealthView(APIView):
-    """Liveness probe. Answers as long as the process is up."""
+    """Liveness probe. Answers as long as the process is up.
+
+    In practice HealthCheckMiddleware answers this path first -- it has to,
+    to get ahead of the SSL redirect and ALLOWED_HOSTS. This view keeps the
+    endpoint in the OpenAPI schema and in reverse(), and stands in if the
+    middleware is ever removed.
+    """
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -24,7 +31,10 @@ class HealthView(APIView):
 
 
 class ReadinessView(APIView):
-    """Readiness probe. Fails if a dependency the app cannot serve without is down."""
+    """Readiness probe. Fails if a dependency the app cannot serve without is down.
+
+    Also normally answered by HealthCheckMiddleware; see HealthView.
+    """
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -32,7 +42,7 @@ class ReadinessView(APIView):
 
     @extend_schema(summary='Readiness probe', responses={200: None, 503: None})
     def get(self, request):
-        checks = {'database': self._check_database()}
+        checks = {'database': check_database()}
         healthy = all(checks.values())
 
         if not healthy:
@@ -45,17 +55,6 @@ class ReadinessView(APIView):
                 status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE
             ),
         )
-
-    @staticmethod
-    def _check_database():
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute('SELECT 1')
-                cursor.fetchone()
-        except Exception:
-            logger.exception('Database readiness check failed')
-            return False
-        return True
 
 
 class SPAView(TemplateView):

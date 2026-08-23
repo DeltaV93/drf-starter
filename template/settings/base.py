@@ -120,6 +120,10 @@ if SOCIAL_AUTH_ENABLED:
     INSTALLED_APPS.append('social_django')
 
 MIDDLEWARE = [
+    # First on purpose: health probes must be answered before the SSL
+    # redirect and before ALLOWED_HOSTS validation, because platforms probe
+    # over plain HTTP with their own Host header. See apps/core/middleware.py.
+    'apps.core.middleware.HealthCheckMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',

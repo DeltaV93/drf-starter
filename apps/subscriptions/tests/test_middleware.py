@@ -100,7 +100,9 @@ def test_the_middleware_attaches_the_subscription_itself(session_client, subscri
 
 
 def test_anonymous_requests_are_annotated_without_a_database_lookup(api_client):
-    response = api_client.get(reverse('v1:health'))
+    # Not the health endpoint: HealthCheckMiddleware short-circuits that one
+    # before SubscriptionMiddleware runs, by design.
+    response = api_client.get(reverse('v1:csrf_token'))
 
     assert response.wsgi_request.subscription is None
     assert response.wsgi_request.subscription_expired is False

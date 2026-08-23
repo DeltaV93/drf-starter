@@ -43,6 +43,14 @@ what authenticates it. Do not add `csrf_exempt` anywhere else.
 
 **Logging goes to stdout.** No `FileHandler` in any settings module.
 
+**`HealthCheckMiddleware` stays first in `MIDDLEWARE`.** It has to run
+before `SecurityMiddleware`'s SSL redirect and before anything calls
+`request.get_host()`, or platform health probes get a 301 or a 400 instead of
+a 200 — which is what broke the first Railway deploy's healthcheck. Both
+`base.py` and `production.py` place it first; `production.py` rebuilds the
+list to insert WhiteNoise and must keep it there.
+`apps/core/tests/test_health_probes.py` pins it.
+
 **The SPA catch-all stays last in `urlpatterns`** and must keep excluding
 `api/`, `admin/`, `static/` and `media/`. Widen it and every endpoint starts
 answering with `index.html` and a 200, which nothing else would catch.
