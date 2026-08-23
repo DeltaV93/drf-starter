@@ -14,6 +14,28 @@ env:
   NODE_VERSION: '22'
 
 jobs:
+  # A generated .gitignore contributes unanchored patterns (lib/, build/,
+  # dist/, out/) that match at any depth, which silently excluded
+  # website/src/lib/ from the repo -- everything passed locally and CI failed
+  # on modules that were never pushed. This catches that in seconds.
+  tracked:
+    name: Source is tracked
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: No source file is gitignored
+        run: |
+          untracked=$(git ls-files --others --ignored --exclude-standard \
+            -- 'apps/**/*.py' 'utils/**/*.py' 'template/**/*.py' 'scripts/**/*.py' \
+               'website/src/**/*.ts' 'website/src/**/*.tsx')
+          if [ -n "$untracked" ]; then
+            echo "::error::These source files are ignored by .gitignore and are not in the repo:"
+            echo "$untracked"
+            exit 1
+          fi
+          echo "All source files are tracked."
+
   backend:
     name: Backend
     runs-on: ubuntu-latest
