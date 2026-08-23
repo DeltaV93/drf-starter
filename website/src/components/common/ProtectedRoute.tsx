@@ -1,22 +1,44 @@
-import React from 'react';
+import { CircularProgress, Box } from '@mui/material';
+import type { ReactElement } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAtom } from 'jotai';
-import { authAtom } from '../../store/auth';
+
+import { useAuth } from '../../store/auth';
 
 interface ProtectedRouteProps {
-  children: React.ReactElement;
+  children: ReactElement;
+  /** Also require a confirmed email address. */
+  requireVerifiedEmail?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated } = authAtom();
-  const [isAuthenticatedValue] = useAtom(isAuthenticated);
+/**
+ * Gate a route on the session.
+ *
+ * Waits for the session check to finish before deciding. Redirecting while
+ * the answer is still 'loading' would bounce every authenticated user to the
+ * login page on a hard refresh.
+ */
+export default function ProtectedRoute({
+  children,
+  requireVerifiedEmail = false,
+}: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
-  if (!isAuthenticatedValue) {
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return children;
-};
+  if (requireVerifiedEmail && !user?.email_verified) {
+    return <Navigate to="/profile" replace />;
+  }
 
-export default ProtectedRoute;
+  return children;
+}

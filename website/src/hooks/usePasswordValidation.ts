@@ -1,43 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
-interface PasswordValidation {
+export interface PasswordValidation {
   isValid: boolean;
   errors: string[];
 }
 
-export const usePasswordValidation = (password: string, confirmPassword: string): PasswordValidation => {
-  const [isValid, setIsValid] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
+/**
+ * Client-side password checks.
+ *
+ * These mirror Django's default AUTH_PASSWORD_VALIDATORS: at least 8
+ * characters and not entirely numeric. Deliberately no uppercase/symbol
+ * rules -- the previous version required them, so it rejected passwords the
+ * backend would happily accept, and the two never agreed.
+ *
+ * If you tighten AUTH_PASSWORD_VALIDATORS on the backend, tighten this to
+ * match. The server remains the authority either way.
+ */
+export function usePasswordValidation(
+  password: string,
+  confirmPassword?: string,
+): PasswordValidation {
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    const newErrors: string[] = [];
+  return useMemo(() => {
+    const errors: string[] = [];
 
     if (password.length < 8) {
-      newErrors.push('Password must be at least 8 characters long');
+      errors.push(t('passwordTooShort'));
     }
-    if (!/[A-Z]/.test(password)) {
-      newErrors.push('Password must contain at least one uppercase letter');
+    if (password.length > 0 && /^\d+$/.test(password)) {
+      errors.push(t('passwordAllNumeric'));
     }
-    if (!/[a-z]/.test(password)) {
-      newErrors.push('Password must contain at least one lowercase letter');
-    }
-    if (!/[0-9]/.test(password)) {
-      newErrors.push('Password must contain at least one number');
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      newErrors.push('Password must contain at least one special character');
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      newErrors.push('Password must contain at least one special character');
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      errors.push(t('passwordsDontMatch'));
     }
 
-    if (password !== confirmPassword) {
-      newErrors.push('Passwords much match each other');
-    }
+    return { isValid: errors.length === 0, errors };
+  }, [password, confirmPassword, t]);
+}
 
-    setErrors(newErrors);
-    setIsValid(newErrors.length === 0);
-  }, [password, confirmPassword]);
-
-  return { isValid, errors };
-};
+export default usePasswordValidation;

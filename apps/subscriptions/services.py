@@ -28,7 +28,12 @@ class StripeService:
     @log_exception(logger)
     @timed_function(logger)
     def create_checkout_session(user, plan):
-        """Start a hosted-checkout subscription flow. Returns the session id."""
+        """Start a hosted-checkout subscription flow.
+
+        Returns the session id and its hosted URL. The frontend navigates to
+        the URL -- stripe.js dropped redirectToCheckout, so the id alone is
+        no longer enough to get the user to the payment page.
+        """
         session = stripe.checkout.Session.create(
             customer_email=user.email,
             # Wallets such as Apple Pay and Google Pay are surfaced through
@@ -41,7 +46,7 @@ class StripeService:
             client_reference_id=str(user.pk),
         )
         logger.info('Created checkout session for user %s on plan %s', user.pk, plan.pk)
-        return session.id
+        return {'session_id': session.id, 'url': session.url}
 
     @staticmethod
     @log_exception(logger)

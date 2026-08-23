@@ -22,13 +22,20 @@ class _StripeObject(dict):
 PERIOD_END = 1893456000  # 2030-01-01T00:00:00Z
 
 
-def test_create_checkout_session_returns_the_session_id(user, plan):
+def test_create_checkout_session_returns_the_id_and_hosted_url(user, plan):
     with patch('stripe.checkout.Session.create') as create:
-        create.return_value = _StripeObject(id='cs_test_123')
+        create.return_value = _StripeObject(
+            id='cs_test_123', url='https://checkout.stripe.com/c/pay/cs_test_123'
+        )
 
-        session_id = StripeService.create_checkout_session(user, plan)
+        session = StripeService.create_checkout_session(user, plan)
 
-    assert session_id == 'cs_test_123'
+    # The URL matters as much as the id: stripe.js dropped redirectToCheckout,
+    # so the frontend navigates to the hosted page directly.
+    assert session == {
+        'session_id': 'cs_test_123',
+        'url': 'https://checkout.stripe.com/c/pay/cs_test_123',
+    }
     kwargs = create.call_args.kwargs
     assert kwargs['line_items'] == [{'price': plan.stripe_price_id, 'quantity': 1}]
     assert kwargs['mode'] == 'subscription'

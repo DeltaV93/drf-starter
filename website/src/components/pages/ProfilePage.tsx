@@ -1,74 +1,163 @@
-import React, { useEffect, useState } from 'react';
-import { Typography, Container, Box, Button } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import {
+  Alert,
+  Box,
+  Button,
+  Container,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useAtom } from 'jotai';
-import { authAtom } from '../../store/auth';
-import { apiCall } from '../../utils/api';
-import {routes} from '../../libs/routes';
 
-const ProfilePage: React.FC = () => {
+import { ApiError, apiCall } from '../../lib/api';
+import { routes } from '../../lib/routes';
+import type { User } from '../../lib/types';
+import { useAuth } from '../../store/auth';
+import { useToast } from '../../store/toast';
+
+interface ProfileForm {
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+}
+
+export default function ProfilePage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [isAuthenticated] = useAtom(authAtom().isAuthenticated);
-  const [user] = useAtom(authAtom().user);
-  const [, dispatch] = useAtom(authAtom().authActions);
-  const [profileData, setProfileData] = useState(null);
+  const toast = useToast();
+  const { user, refresh } = useAuth();
+  const {
+    control,
+    handleSubmit,
+    formState: { isSubmitting, isDirty },
+  } = useForm<ProfileForm>({
+    values: {
+      first_name: user?.first_name ?? '',
+      last_name: user?.last_name ?? '',
+      phone_number: user?.phone_number ?? '',
+    },
+  });
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await apiCall({
-          url: routes.api.user.profile(),
-          method: "GET",
-        } );
-        setProfileData(response);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        // Handle error (show toast, etc.)
-      }
-    };
-
-    if (isAuthenticated) {
-      fetchProfile();
-      console.log('here')
+  const onSubmit = async (values: ProfileForm) => {
+    try {
+      await apiCall<User>({
+        url: routes.api.users.me(),
+        method: 'PATCH',
+        data: values,
+        errorMessage: t('profileUpdateError'),
+      });
+      await refresh();
+      toast.success(t('profileUpdated'));
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t('genericError'));
     }
-  }, [isAuthenticated]);
-
-  const handleLogout = () => {
-    dispatch({ type: 'LOGOUT' });
-    navigate('/');
   };
 
-  // if (!isAuthenticated) {
-  //   navigate('/login');
-  //   return null;
-  // }
+  const resendVerification = async () => {
+    try {
+      await apiCall({
+        url: routes.api.auth.resendVerification(),
+        method: 'POST',
+        data: { email: user?.email },
+      });
+      toast.success(t('verificationResent'));
+    } catch {
+      toast.error(t('genericError'));
+    }
+  };
+
+  if (!user) return null;
 
   return (
     <Container maxWidth="sm">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ mt: 8 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           {t('profile')}
         </Typography>
-        {user && (
-          <Box>
-            <Typography variant="body1">{t('name')}: {user.name || 'user.name' }</Typography>
-            <Typography variant="body1">{t('email')}: {user.email || 'user.email' }</Typography>
-            {/* Add more profile information as needed */}
-          </Box>
+
+        {!user.email_verified && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 3 }}
+            action={
+              <Button color="inherit" size="small" onClick={resendVerification}>
+                {t('resend')}
+              </Button>
+            }
+          >
+            {t('emailNotVerified')}
+          </Alert>
         )}
-        {profileData && (
-          <Box>
-            {/* Add additional profile data here if needed */}
-          </Box>
-        )}
-        <Button variant="contained" color="primary" onClick={handleLogout} sx={{ mt: 3 }}>
-          {t('logout')}
-        </Button>
+
+        <Stack spacing={1} sx={{ mb: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            {t('username')}: {user.username}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t('email')}: {user.email}
+          </Typography>
+        </Stack>
+
+        <Divider sx={{ mb: 3 }} />
+
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Controller
+            name="first_name"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="first_name"
+                label={t('firstName')}
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
+          <Controller
+            name="last_name"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="last_name"
+                label={t('lastName')}
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
+          <Controller
+            name="phone_number"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="phone_number"
+                label={t('phoneNumber')}
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
+
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={isSubmitting || !isDirty}
+            sx={{ mt: 2 }}
+          >
+            {t('saveChanges')}
+          </Button>
+        </Box>
       </Box>
     </Container>
   );
-};
-
-export default ProfilePage;
+}

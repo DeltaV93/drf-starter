@@ -1,96 +1,120 @@
-import React from 'react';
-import {Controller, useForm} from 'react-hook-form';
-import {Box, Button, Container, TextField, Typography} from '@mui/material';
-import {useNavigate} from 'react-router-dom';
-import {useTranslation} from 'react-i18next';
-import {useAtom} from 'jotai';
-import {authAtom} from '../../store/auth';
-import {apiCall} from '../../utils/api';
-import {routes} from '../../libs/routes.ts';
+import { Alert, Box, Button, Container, TextField, Typography } from '@mui/material';
+import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+
+import { ApiError } from '../../lib/api';
+import { useAuth } from '../../store/auth';
+import { useToast } from '../../store/toast';
 
 interface LoginForm {
-    username: string;
-    password: string;
+  username: string;
+  password: string;
 }
 
-const LoginPage: React.FC = () => {
-    const {t} = useTranslation();
-    const navigate = useNavigate();
-    const [, dispatch] = useAtom(authAtom().authActions)
-    const {control, handleSubmit} = useForm<LoginForm>();
+export default function LoginPage() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
+  const { login } = useAuth();
+  const {
+    control,
+    handleSubmit,
+    setError,
+    formState: { isSubmitting, errors },
+  } = useForm<LoginForm>({ defaultValues: { username: '', password: '' } });
 
-    const onSubmit = async (data: LoginForm) => {
-        try {
-            const response = await apiCall({
-                url: routes.api.auth.login(),
-                method: 'POST',
-                data: data,
-                useCsrfToken: true,
-                withCredentials: true,
-            });
-            dispatch({
-                type: 'LOGIN',
-                payload: {user: response.user, token: response.token}
-            });
-            navigate('/profile');
-        } catch (error) {
-            console.error('Login error:', error);
-            // Handle error (show toast, etc.)
-        }
-    };
+  // Send the user back where ProtectedRoute intercepted them.
+  const redirectTo = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
 
-    return (
-        <Container maxWidth="xs">
-            <Box sx={{mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                <Typography variant="h4" component="h1" gutterBottom>
-                    {t('login')}
-                </Typography>
-                <form onSubmit={handleSubmit(onSubmit)} style={{width: '100%'}}>
+  const onSubmit = async (values: LoginForm) => {
+    try {
+      await login(values);
+      toast.success(t('loginSuccess'));
+      navigate(redirectTo ?? '/profile', { replace: true });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        // The backend answers identically for unknown user and wrong
+        // password, so surface it as a form-level error, not a field one.
+        setError('root', { message: error.message });
+        toast.error(error.message);
+        return;
+      }
+      toast.error(t('genericError'));
+    }
+  };
 
-                    <Controller
-                        name="username"
-                        control={control}
-                        defaultValue=""
-                        rules={{required: t('usernameRequired')}}
-                        render={({field, fieldState: {error}}) => (
-                            <TextField
-                                {...field}
-                                label={'username'}
-                                fullWidth
-                                type="text"
-                                margin="normal"
-                                error={!!error}
-                                helperText={error?.message}
-                            />
-                        )}
-                    />
-                    <Controller
-                        name="password"
-                        control={control}
-                        defaultValue=""
-                        rules={{required: t('passwordRequired')}}
-                        render={({field, fieldState: {error}}) => (
-                            <TextField
-                                {...field}
-                                type="password"
-                                label={t('password')}
-                                fullWidth
-                                margin="normal"
-                                error={!!error}
-                                helperText={error?.message}
-                            />
-                        )}
-                    />
-                    <Button type="submit" fullWidth variant="contained" color="primary" sx={{mt: 3, mb: 2}}>
-                        {t('login')}
-                    </Button>
-                </form>
-                <Button color="primary" onClick={() => navigate('/reset-password')}>
-                    {t('forgotPassword')}
-                </Button>
-            </Box>
-        </Container>
-    );
-};
+  return (
+    <Container maxWidth="xs">
+      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          {t('login')}
+        </Typography>
 
-export default LoginPage;
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ width: '100%' }}>
+          {errors.root && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {errors.root.message}
+            </Alert>
+          )}
+
+          <Controller
+            name="username"
+            control={control}
+            rules={{ required: t('usernameRequired') }}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="username"
+                label={t('username')}
+                autoComplete="username"
+                autoFocus
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
+
+          <Controller
+            name="password"
+            control={control}
+            rules={{ required: t('passwordRequired') }}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="password"
+                type="password"
+                label={t('password')}
+                autoComplete="current-password"
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            disabled={isSubmitting}
+            sx={{ mt: 3, mb: 2 }}
+          >
+            {isSubmitting ? t('signingIn') : t('login')}
+          </Button>
+        </Box>
+
+        <Button component={Link} to="/reset-password">
+          {t('forgotPassword')}
+        </Button>
+        <Button component={Link} to="/signup">
+          {t('needAnAccount')}
+        </Button>
+      </Box>
+    </Container>
+  );
+}

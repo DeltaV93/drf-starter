@@ -66,9 +66,12 @@ class SubscribeView(APIView):
         if plan is None:
             return api_response(message='No such plan.', status_code=status.HTTP_404_NOT_FOUND)
 
-        checkout_session_id = StripeService.create_checkout_session(request.user, plan)
+        session = StripeService.create_checkout_session(request.user, plan)
         return api_response(
-            data={'checkout_session_id': checkout_session_id},
+            data={
+                'checkout_session_id': session['session_id'],
+                'checkout_url': session['url'],
+            },
             message='Checkout session created.',
         )
 

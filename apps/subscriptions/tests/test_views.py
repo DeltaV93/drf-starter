@@ -26,11 +26,15 @@ def test_subscribe_returns_a_checkout_session(auth_client, plan):
     url = reverse('v1:subscribe', kwargs={'stripe_price_id': plan.stripe_price_id})
 
     with patch('apps.subscriptions.services.StripeService.create_checkout_session') as create:
-        create.return_value = 'cs_test_123'
+        create.return_value = {
+            'session_id': 'cs_test_123',
+            'url': 'https://checkout.example/c',
+        }
         response = auth_client.post(url)
 
     assert response.status_code == 200
     assert response.data['data']['checkout_session_id'] == 'cs_test_123'
+    assert response.data['data']['checkout_url'] == 'https://checkout.example/c'
 
 
 def test_subscribe_404s_for_an_unknown_plan(auth_client):

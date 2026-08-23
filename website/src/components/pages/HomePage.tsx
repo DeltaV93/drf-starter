@@ -1,38 +1,36 @@
-import React from 'react';
-import { Typography, Button, Container, Box } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Box, Button, Container, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { useAtom } from 'jotai';
-import {isAuthenticatedAtom} from '../../store/auth.tsx';
+import { Link } from 'react-router-dom';
 
-const HomePage: React.FC = () => {
+import { useAuth } from '../../store/auth';
+
+export default function HomePage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [isAuthenticated] = useAtom(isAuthenticatedAtom);
+  const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Container maxWidth="sm">
       <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Typography variant="h2" component="h1" gutterBottom>
+        <Typography variant="h2" component="h1" gutterBottom align="center">
           {t('welcome')}
         </Typography>
-        {isAuthenticated ? (
-          <Button variant="contained" color="primary" onClick={() => navigate('/profile')}>
-            {t('goToProfile')}
-          </Button>
-        ) : (
-          <Box>
-            <Button variant="contained" color="primary" onClick={() => navigate('/login')} sx={{ mr: 2 }}>
-              {t('login')}
+
+        {!isLoading &&
+          (isAuthenticated ? (
+            <Button component={Link} to="/profile" variant="contained">
+              {t('goToProfile')}
             </Button>
-            <Button variant="outlined" color="primary" onClick={() => navigate('/signup')}>
-              {t('signup')}
-            </Button>
-          </Box>
-        )}
+          ) : (
+            <Box>
+              <Button component={Link} to="/login" variant="contained" sx={{ mr: 2 }}>
+                {t('login')}
+              </Button>
+              <Button component={Link} to="/signup" variant="outlined">
+                {t('signup')}
+              </Button>
+            </Box>
+          ))}
       </Box>
     </Container>
   );
-};
-
-export default HomePage;
+}

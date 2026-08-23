@@ -1,32 +1,36 @@
-import React, {useEffect} from 'react';
-import {Snackbar, Alert} from '@mui/material';
-import {useAtom} from 'jotai';
-import {toastAtom, toastManagerAtom, ToastMessage} from '../../store/toast';
+import { Alert, Snackbar } from '@mui/material';
 
-const Toast: React.FC = () => {
-    const [toasts] = useAtom(toastAtom);
-    const [, dispatchToast] = useAtom(toastManagerAtom);
+import { useToast, useToasts } from '../../store/toast';
 
-    const handleClose = (id: string) => {
-        dispatchToast({type: 'remove', payload: id});
-    };
+/**
+ * Renders queued toasts. Only the oldest is shown at a time -- stacking
+ * MUI Snackbars puts them all in the same corner, on top of each other.
+ */
+export default function Toast() {
+  const toasts = useToasts();
+  const { dismiss } = useToast();
+  const current = toasts[0];
 
-    return (
-        <>
-            {toasts.map((toast) => (
-                <Snackbar
-                    key={toast.id}
-                    open={true}
-                    autoHideDuration={5000}
-                    onClose={() => handleClose(toast.id)}
-                >
-                    <Alert onClose={() => handleClose(toast.id)} severity={toast.type} sx={{width: '100%'}}>
-                        {toast.message}
-                    </Alert>
-                </Snackbar>
-            ))}
-        </>
-    );
-};
+  if (!current) return null;
 
-export default Toast;
+  return (
+    <Snackbar
+      key={current.id}
+      open
+      autoHideDuration={current.duration}
+      onClose={(_event, reason) => {
+        if (reason !== 'clickaway') dismiss(current.id);
+      }}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    >
+      <Alert
+        severity={current.severity}
+        variant="filled"
+        onClose={() => dismiss(current.id)}
+        sx={{ width: '100%' }}
+      >
+        {current.message}
+      </Alert>
+    </Snackbar>
+  );
+}

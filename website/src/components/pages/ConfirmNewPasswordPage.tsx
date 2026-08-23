@@ -1,138 +1,182 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
-import { TextField, Button, Typography, Box, List, ListItem } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  List,
+  ListItem,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { apiCall } from '../../utils/api';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+
+import { ApiError, apiCall } from '../../lib/api';
+import { routes } from '../../lib/routes';
 import { usePasswordValidation } from '../../hooks/usePasswordValidation';
-import { getToast } from '../../store/toast';
-import {routes} from "../../libs/routes.ts";
+import { useToast } from '../../store/toast';
 
 interface ConfirmPasswordForm {
   password: string;
   password_confirm: string;
 }
 
-const ConfirmNewPasswordPage: React.FC = () => {
+type TokenState = 'checking' | 'valid' | 'invalid';
+
+export default function ConfirmNewPasswordPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const toast = useToast();
   const { uid, token } = useParams<{ uid: string; token: string }>();
-  const [isValidToken, setIsValidToken] = useState(false);
-  const { control, handleSubmit, watch } = useForm<ConfirmPasswordForm>();
-  const password = watch('password', '');
-  const confirmPassword = watch('password_confirm', '');
-  const { isValid, errors } = usePasswordValidation(password, confirmPassword);
-  const toast = getToast();
+  // Derived at mount rather than set from inside the effect: a synchronous
+  // setState in an effect body causes a cascading re-render.
+  const [tokenState, setTokenState] = useState<TokenState>(() =>
+    uid && token ? 'checking' : 'invalid',
+  );
+
+  const {
+    control,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<ConfirmPasswordForm>({ defaultValues: { password: '', password_confirm: '' } });
+
+  // useWatch subscribes through `control`, which is stable; watch() is not.
+  const password = useWatch({ control, name: 'password' });
+  const passwordConfirm = useWatch({ control, name: 'password_confirm' });
+  const { isValid, errors } = usePasswordValidation(password, passwordConfirm);
 
   useEffect(() => {
-    const verifyToken = async () => {
+    if (!uid || !token) return;
+
+    let cancelled = false;
+
+    (async () => {
       try {
-        const response = await apiCall({
+        const envelope = await apiCall<{ is_valid: boolean }>({
           method: 'GET',
-          url: routes.api.auth.confirmPasswordToken(uid, token),
+          url: routes.api.auth.passwordResetValidate(uid, token),
         });
-        if(response.data.status == "success"){
-          setIsValidToken(response.data.data.is_valid);
-        }
-      } catch (error) {
-        console.error('Token verification error:', error);
-        toast.error(t('invalidResetLink'));
+        if (cancelled) return;
+        setTokenState(envelope.data?.is_valid ? 'valid' : 'invalid');
+      } catch {
+        if (cancelled) return;
+        setTokenState('invalid');
       }
+    })();
+
+    return () => {
+      cancelled = true;
     };
+  }, [uid, token]);
 
-    verifyToken();
-  }, []);
-
-  const onSubmit = async (data: ConfirmPasswordForm) => {
-    if (data.password !== data.password_confirm) {
-      toast.error(t('passwordsDontMatch'));
-      return;
-    }
-
-    if (!isValid) {
-      toast.error(t('passwordRequirements'));
-      return;
-    }
-
+  const onSubmit = async (values: ConfirmPasswordForm) => {
     try {
       await apiCall({
         method: 'POST',
-        url: routes.api.auth.passwordReset(),
-        data: { uid, token, password: data.password, password_confirm: data.password_confirm },
+        url: routes.api.auth.passwordResetConfirm(),
+        data: { uid, token, ...values },
+        errorMessage: t('passwordResetError'),
       });
       toast.success(t('passwordResetSuccess'));
       navigate('/login');
     } catch (error) {
-      console.error('Password reset error:', error);
-      toast.error(t('passwordResetError'));
+      toast.error(error instanceof ApiError ? error.message : t('genericError'));
     }
   };
 
+  if (tokenState === 'checking') {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (tokenState === 'invalid') {
+    return (
+      <Container maxWidth="xs">
+        <Box sx={{ mt: 8 }}>
+          <Alert severity="error">{t('invalidResetLink')}</Alert>
+          <Button component={Link} to="/reset-password" fullWidth sx={{ mt: 2 }}>
+            {t('requestNewLink')}
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
   return (
-    <Box sx={{ maxWidth: 400, margin: 'auto', mt: 4 }}>
+    <Container maxWidth="xs">
+      <Box sx={{ mt: 8 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          {t('resetPassword')}
+        </Typography>
 
-            {isValidToken ? (
-              <>
-              <Typography variant="h4" component="h1" gutterBottom>
-                {t('resetPassword')}
-              </Typography>
-              <form onSubmit={handleSubmit(onSubmit)}>
-                <Controller
-                  name="password"
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: t('passwordRequired') }}
-                  render={({ field, fieldState: { error } }) => (
-                    <TextField
-                      {...field}
-                      type="password"
-                      label={t('newPassword')}
-                      fullWidth
-                      margin="normal"
-                      error={!!error}
-                      helperText={error?.message}
-                    />
-                  )}
-                />
-                <Controller
-                  name="password_confirm"
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: t('confirmPasswordRequired') }}
-                  render={({ field, fieldState: { error } }) => (
-                    <TextField
-                      {...field}
-                      type="password"
-                      label={t('confirmPassword')}
-                      fullWidth
-                      margin="normal"
-                      error={!!error}
-                      helperText={error?.message}
-                    />
-                  )}
-                />
-                {errors.length > 0 && (
-                  <List>
-                    {errors.map((error, index) => (
-                      <ListItem key={index}>
-                        <Typography color="error">{error}</Typography>
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-                <Button type="submit" disabled={!isValid} fullWidth variant="contained" color="primary" sx={{ mt: 3 }}>
-                  {t('resetPassword')}
-                </Button>
-              </form>
-              </>
-            ) : (
-              <>
-                <Typography>{t('verifyingToken')}</Typography>
-              </>
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Controller
+            name="password"
+            control={control}
+            rules={{ required: t('passwordRequired') }}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="password"
+                type="password"
+                label={t('newPassword')}
+                autoComplete="new-password"
+                autoFocus
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message}
+              />
             )}
+          />
+          <Controller
+            name="password_confirm"
+            control={control}
+            rules={{ required: t('confirmPasswordRequired') }}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="password_confirm"
+                type="password"
+                label={t('confirmPassword')}
+                autoComplete="new-password"
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message}
+              />
+            )}
+          />
 
-    </Box>
+          {password.length > 0 && errors.length > 0 && (
+            <List dense>
+              {errors.map((message) => (
+                <ListItem key={message} disableGutters>
+                  <Typography variant="body2" color="error">
+                    {message}
+                  </Typography>
+                </ListItem>
+              ))}
+            </List>
+          )}
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            disabled={!isValid || isSubmitting}
+            sx={{ mt: 3 }}
+          >
+            {t('resetPassword')}
+          </Button>
+        </Box>
+      </Box>
+    </Container>
   );
-};
-
-export default ConfirmNewPasswordPage;
+}
