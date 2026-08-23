@@ -12,6 +12,7 @@ command, with the auth, billing, tooling and CI already wired up.
 - **API keys** — hashed, scoped, expiring credentials for machine access, optional
 - **Audit log** — append-only, allow-listed metadata, retention command, optional
 - **Two-factor** — TOTP with hashed single-use recovery codes, optional
+- **Uploads** — content-sniffed, size-limited, private-by-default S3 storage, optional
 - **Tooling** — ruff, ESLint, pytest, Vitest, pre-commit with secret scanning,
   GitHub Actions, Docker
 
@@ -75,6 +76,7 @@ apps/
   organizations/   teams, membership, invitations (optional)
   api_keys/        programmatic access credentials (optional)
   audit/           append-only record of security-relevant actions (optional)
+  uploads/         validated file storage, S3-backed (optional)
 template/
   settings/        base + development / production / testing
 utils/             response envelope, email, logging, GDPR helpers
@@ -416,6 +418,53 @@ Delete `apps/authentication/two_factor.py`, `two_factor_services.py`,
 `apps/authentication/models.py` (with a migration), drop `pyotp` from
 `requirements/base.txt`, and remove the `TWO_FACTOR_ENABLED` branches from
 `template/settings/base.py`, `apps/authentication/urls.py` and `LoginView`.
+
+---
+
+## File uploads
+
+Off by default; `UPLOADS_ENABLED=true` turns them on.
+
+> **The local filesystem backend is a development convenience only.** Container
+> filesystems are ephemeral — on Railway, Render, Fly or any rebuild, every
+> uploaded file is gone, silently, leaving rows pointing at nothing. Set
+> `AWS_STORAGE_BUCKET_NAME` before you accept a single real upload.
+
+**The type comes from the file's own bytes**, never from the `Content-Type`
+header or the extension — both are supplied by the uploader. A shell script
+called `avatar.png` announced as `image/png` is a shell script, and is refused.
+Unrecognised formats are refused too: `UPLOAD_ALLOWED_TYPES` is an allow-list,
+not a deny-list.
+
+**The uploaded filename is never used to build a path** — not even sanitised. It
+can carry `../`, a null byte, a second extension, a name long enough to break a
+filesystem, or a right-to-left override that makes `exe` render as `gpj`. Stored
+names are generated, with the extension derived from the *sniffed* type. The
+original is kept in a column for display.
+
+**Private by default**, with the bucket ACL unset and query-string auth on. A
+public bucket turns every key into a permanent public URL the moment one leaks.
+Downloads go through `/api/v1/files/<id>/download/`, which checks who is asking
+and then redirects to a URL that expires after
+`UPLOAD_URL_EXPIRY_SECONDS` — so the application never becomes the bandwidth
+path. Ownership is checked rather than trusted to an unguessable path, because a
+leaked URL stays valid and a permission check does not.
+
+**Deleting removes the bytes as well as the row.** An orphaned object in a bucket
+is invisible and paid for indefinitely.
+
+Files are partitioned by purpose and user id, so no single directory accumulates
+everything.
+
+### Removing it
+
+```bash
+git rm -r apps/uploads
+```
+
+Then drop `django-storages` from `requirements/base.txt` and the
+`UPLOADS_ENABLED` branches from `template/settings/base.py` and
+`template/urls.py`.
 
 ---
 

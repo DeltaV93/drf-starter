@@ -51,3 +51,6 @@ sentry-sdk[django]>=2.20
 # TWO_FACTOR_ENABLED is true; safe to remove with apps/authentication's
 # two_factor module if the project does not need it)
 pyotp>=2.9
+
+# S3 storage for uploads (only used when AWS_STORAGE_BUCKET_NAME is set)
+django-storages[s3]>=1.14

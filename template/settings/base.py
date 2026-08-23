@@ -121,6 +121,9 @@ AUDIT_LOG_ENABLED = env_bool('AUDIT_LOG_ENABLED', default=False)
 # the models live in apps.authentication, which is always installed, so the
 # migration does not appear and disappear with the flag.
 TWO_FACTOR_ENABLED = env_bool('TWO_FACTOR_ENABLED', default=False)
+# File uploads. Off by default: the local filesystem is ephemeral on every
+# managed host, so this is not useful until S3 is configured.
+UPLOADS_ENABLED = env_bool('UPLOADS_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -156,6 +159,9 @@ if API_KEYS_ENABLED:
 
 if AUDIT_LOG_ENABLED:
     INSTALLED_APPS.append('apps.audit')
+
+if UPLOADS_ENABLED:
+    INSTALLED_APPS.append('apps.uploads')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -294,6 +300,48 @@ STORAGES = {
         'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
     },
 }
+
+# --------------------------------------------------------------------------
+# Uploads
+#
+# The default filesystem backend is a DEVELOPMENT CONVENIENCE ONLY. Container
+# filesystems are ephemeral: on Railway, Render, Fly or any rebuild, every
+# uploaded file is gone, silently, leaving rows pointing at nothing. Setting
+# AWS_STORAGE_BUCKET_NAME swaps in S3, which is what a deployment needs.
+# --------------------------------------------------------------------------
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+
+if AWS_STORAGE_BUCKET_NAME:
+    STORAGES = {
+        **STORAGES,
+        'default': {'BACKEND': 'storages.backends.s3.S3Storage'},
+    }
+    # Read from the environment rather than reusing AWS_SES_REGION_NAME:
+    # that is defined further down, in the email section, so referring to it
+    # here is a NameError -- and one that only fires for deployments that
+    # actually set a bucket.
+    AWS_S3_REGION_NAME = (
+        os.environ.get('AWS_S3_REGION_NAME')
+        or os.environ.get('AWS_SES_REGION_NAME')
+        or 'us-east-1'
+    )
+    AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL') or None
+    # Private by default. A public bucket turns every unguessable key into a
+    # permanent public URL the moment one leaks.
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = True
+    AWS_S3_FILE_OVERWRITE = False
+
+# Sniffed from the file's own bytes, never from the Content-Type header or the
+# extension. Keep this list short: whatever is here is what the application
+# will accept and later serve.
+UPLOAD_ALLOWED_TYPES = env_list(
+    'UPLOAD_ALLOWED_TYPES',
+    default=['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
+)
+UPLOAD_MAX_BYTES = env_int('UPLOAD_MAX_BYTES', 5 * 1024 * 1024)
+UPLOAD_URL_EXPIRY_SECONDS = env_int('UPLOAD_URL_EXPIRY_SECONDS', 300)
 
 
 # --------------------------------------------------------------------------

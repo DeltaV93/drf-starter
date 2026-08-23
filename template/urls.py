@@ -28,6 +28,9 @@ if settings.API_KEYS_ENABLED:
 if settings.AUDIT_LOG_ENABLED:
     api_v1_patterns.append(path('', include('apps.audit.urls')))
 
+if settings.UPLOADS_ENABLED:
+    api_v1_patterns.append(path('', include('apps.uploads.urls')))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),
