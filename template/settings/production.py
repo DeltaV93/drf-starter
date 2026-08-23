@@ -1,43 +1,107 @@
+"""Production settings.
+
+Everything here is driven by the environment. Run
+`python manage.py check --deploy` against this module before shipping.
+"""
+
+import os
+
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *
+from .base import (
+    CSRF_TRUSTED_ORIGINS,
+    MIDDLEWARE,
+    SERVE_SPA,
+    SPA_DIST_DIR,
+    STORAGES,
+    env_bool,
+    env_int,
+    env_list,
+)
 
 DEBUG = False
 
-# Add your production-specific settings here
-ALLOWED_HOSTS = ['www.yourdomain.com', 'yourdomain.com']
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS')
 
-# Use a more secure session cookie setting
+# Platforms that assign a domain (Railway, Render, Fly) only expose it after
+# the first deploy, so requiring ALLOWED_HOSTS up front would make that first
+# boot crash. Pick the injected domain up automatically when it is there.
+_PLATFORM_DOMAIN = (
+    os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    or os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    or (os.environ.get('FLY_APP_NAME') and f'{os.environ["FLY_APP_NAME"]}.fly.dev')
+)
+if _PLATFORM_DOMAIN and _PLATFORM_DOMAIN not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, _PLATFORM_DOMAIN]
+
+if not ALLOWED_HOSTS:
+    raise ImproperlyConfigured(
+        'ALLOWED_HOSTS must be set in production, e.g. '
+        'ALLOWED_HOSTS=example.com,www.example.com'
+    )
+
+# Session auth needs the origin trusted for CSRF as well as the host allowed.
+if _PLATFORM_DOMAIN:
+    _PLATFORM_ORIGIN = f'https://{_PLATFORM_DOMAIN}'
+    if _PLATFORM_ORIGIN not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _PLATFORM_ORIGIN]
+    # Same-origin SPA: the frontend is this domain, so it is also the base for
+    # the links in password reset and verification emails.
+    if not os.environ.get('FRONTEND_URL'):
+        FRONTEND_URL = _PLATFORM_ORIGIN
+        STRIPE_SUCCESS_URL = os.environ.get(
+            'STRIPE_SUCCESS_URL', f'{FRONTEND_URL}/subscription/success'
+        )
+        STRIPE_CANCEL_URL = os.environ.get(
+            'STRIPE_CANCEL_URL', f'{FRONTEND_URL}/subscription/cancel'
+        )
+
+# --------------------------------------------------------------------------
+# HTTPS and security headers
+# --------------------------------------------------------------------------
+
+# Terminating TLS at a load balancer means Django only learns the original
+# scheme from this header. Leave SECURE_PROXY_SSL_HEADER unset if the app
+# itself terminates TLS.
+if env_bool('USE_X_FORWARDED_PROTO', default=True):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', default=True)
+SECURE_HSTS_SECONDS = env_int('SECURE_HSTS_SECONDS', 60 * 60 * 24 * 365)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True)
+SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', default=True)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+X_FRAME_OPTIONS = 'DENY'
+
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-# Set up production-level logging
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'file': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': '/path/to/django/errors.log',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'ERROR',
-            'propagate': True,
-        },
+# --------------------------------------------------------------------------
+# Static files
+#
+# WhiteNoise serves compressed, hashed static files straight from the app, so
+# no separate static host is required. Swap STORAGES['staticfiles'] for an S3
+# backend if you would rather serve from a CDN.
+# --------------------------------------------------------------------------
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    *[m for m in MIDDLEWARE if m != 'django.middleware.security.SecurityMiddleware'],
+]
+
+STORAGES = {
+    **STORAGES,
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
 
-# You might want to use different cache settings in production
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
-    }
-}
-
-# Add any other production-specific settings
+# WhiteNoise also serves the SPA build at the root. Vite already hashes its
+# asset filenames, so running that output through ManifestStaticFilesStorage
+# would fight it -- WHITENOISE_ROOT serves the directory as-is instead.
+if SERVE_SPA:
+    WHITENOISE_ROOT = SPA_DIST_DIR
+    WHITENOISE_INDEX_FILE = True

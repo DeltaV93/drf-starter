@@ -1,29 +1,37 @@
-  import React from 'react';
-  import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
-  import {Link, useNavigate} from 'react-router-dom';
-  import { useTranslation } from 'react-i18next';
-  import { useAtom } from 'jotai';
-  import { isAuthenticatedAtom, authActionsAtom } from '../../store/auth';
+import { AppBar, Box, Button, Toolbar, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
 
-  const Header: React.FC = () => {
-    const { t } = useTranslation();
-    const navigate = useNavigate();
-    const [isAuthenticated] = useAtom(isAuthenticatedAtom);
-    const [, dispatch] = useAtom(authActionsAtom);
+import { useAuth } from '../../store/auth';
+import { useToast } from '../../store/toast';
 
-    const handleLogout = () => {
-      dispatch({ type: "LOGOUT" });
-      navigate('/');
-    };
+export default function Header() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const { isAuthenticated, isLoading, logout } = useAuth();
 
-    return (
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            <Link to="/">
-              {t('appName')}
-            </Link>
-          </Typography>
+  const handleLogout = async () => {
+    await logout();
+    toast.success(t('loggedOut'));
+    navigate('/');
+  };
+
+  return (
+    <AppBar position="static">
+      <Toolbar>
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Box
+            component={Link}
+            to="/"
+            sx={{ color: 'inherit', textDecoration: 'none' }}
+          >
+            {t('appName')}
+          </Box>
+        </Typography>
+        {/* Render nothing until the session is known, so the nav does not
+            flicker from signed-out to signed-in on every page load. */}
+        {!isLoading && (
           <Box>
             {isAuthenticated ? (
               <>
@@ -45,9 +53,8 @@
               </>
             )}
           </Box>
-        </Toolbar>
-      </AppBar>
-    );
-  };
-
-  export default Header;
+        )}
+      </Toolbar>
+    </AppBar>
+  );
+}

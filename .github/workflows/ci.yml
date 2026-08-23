@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '22'
+
+jobs:
+  # A generated .gitignore contributes unanchored patterns (lib/, build/,
+  # dist/, out/) that match at any depth, which silently excluded
+  # website/src/lib/ from the repo -- everything passed locally and CI failed
+  # on modules that were never pushed. This catches that in seconds.
+  tracked:
+    name: Source is tracked
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: No source file is gitignored
+        run: |
+          untracked=$(git ls-files --others --ignored --exclude-standard \
+            -- 'apps/**/*.py' 'utils/**/*.py' 'template/**/*.py' 'scripts/**/*.py' \
+               'website/src/**/*.ts' 'website/src/**/*.tsx')
+          if [ -n "$untracked" ]; then
+            echo "::error::These source files are ignored by .gitignore and are not in the repo:"
+            echo "$untracked"
+            exit 1
+          fi
+          echo "All source files are tracked."
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test_app
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DJANGO_SETTINGS_MODULE: template.settings.testing
+      DB_ENGINE: postgres
+      DB_NAME: test_app
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: '5432'
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/dev.txt -r requirements/prod.txt
+
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Test against Postgres
+        run: pytest --cov --cov-report=term-missing --cov-report=xml
+
+      # Billing is optional. Prove the project still boots and passes with it
+      # switched off, not just with the default-on test configuration.
+      - name: Test with billing disabled
+        env:
+          STRIPE_ENABLED: 'false'
+        run: pytest -q
+
+      - name: Production deployment checklist
+        env:
+          DJANGO_SETTINGS_MODULE: template.settings.production
+          SECRET_KEY: ci-only-key-long-enough-to-satisfy-the-deploy-check-000000
+          ALLOWED_HOSTS: example.com
+          STRIPE_ENABLED: 'true'
+        run: python manage.py check --deploy --fail-level WARNING
+
+      - name: OpenAPI schema generates without warnings
+        run: python manage.py spectacular --fail-on-warn --file /dev/null
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Builds the production image, which also runs collectstatic -- the step
+      # that used to be in the wrong stage.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: drf-starter:ci
+          build-args: REQUIREMENTS=requirements/prod.txt
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the image
+        run: |
+          # Django imports, and the SPA build actually landed in the image --
+          # a frontend stage that silently produced nothing would otherwise
+          # ship an API with no UI.
+          docker run --rm --entrypoint python drf-starter:ci \
+            -c "import django; print('django', django.get_version())"
+          docker run --rm --entrypoint sh drf-starter:ci \
+            -c "test -s /app/website/dist/index.html && ls /app/website/dist/assets | head -5"
+          # The catch-all must be registered when the build is present.
+          docker run --rm --entrypoint python \
+            -e DJANGO_ENVIRONMENT=production \
+            -e SECRET_KEY=ci-only-key-long-enough-to-satisfy-the-deploy-check-000000 \
+            -e ALLOWED_HOSTS=localhost \
+            drf-starter:ci -c "
+          import django; django.setup()
+          from django.conf import settings
+          assert settings.SERVE_SPA, 'SERVE_SPA should be on when the build is present'
+          print('SERVE_SPA on, WHITENOISE_ROOT =', settings.WHITENOISE_ROOT)
+          "

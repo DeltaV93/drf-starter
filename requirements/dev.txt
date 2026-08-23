@@ -1,0 +1,22 @@
+# Local development and CI dependencies.
+#
+# Install with:  pip install -r requirements/dev.txt
+
+-r base.txt
+
+# Testing
+pytest>=8.3
+pytest-django>=4.9
+pytest-cov>=6.0
+factory-boy>=3.3
+
+# Linting and formatting (replaces the old flake8 + black pair)
+ruff>=0.9
+pre-commit>=4.0
+
+# Debugging
+django-debug-toolbar>=5.0
+debugpy>=1.8
+
+# Dependency management
+pip-tools>=7.4

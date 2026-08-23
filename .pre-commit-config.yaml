@@ -1,0 +1,43 @@
+# Install once with:  pre-commit install
+# Run against everything with:  pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+        exclude: ^website/tsconfig.*\.json$   # these allow comments
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: missing-migrations
+        name: check for missing migrations
+        entry: python manage.py makemigrations --check --dry-run
+        language: system
+        pass_filenames: false
+        files: models\.py$
+        env:
+          DJANGO_SETTINGS_MODULE: template.settings.testing
+
+      - id: frontend-lint
+        name: eslint
+        entry: bash -c 'cd website && npx eslint --max-warnings 0'
+        language: system
+        pass_filenames: false
+        files: ^website/src/.*\.(ts|tsx)$

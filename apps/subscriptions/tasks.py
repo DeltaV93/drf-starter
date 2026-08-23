@@ -1,33 +1,40 @@
 from celery import shared_task
-from django.core.mail import send_mail
+
+from utils.emails_utils import send_email
+from utils.logging_utils import get_logger, log_exception
+
 from .models import Invoice
-from utils.logging_utils import get_logger, log_exception, timed_function
 
 logger = get_logger(__name__)
 
 
 @shared_task
 @log_exception(logger)
-@timed_function(logger)
-def generate_invoice_pdf(invoice_id):
-    invoice = Invoice.objects.get(id=invoice_id)
-    # Implement custom PDF generation logic here
-    pdf_url = "https://example.com/invoices/123.pdf"  # Replace with actual URL
-    invoice.pdf_url = pdf_url
-    invoice.save()
+def email_invoice(invoice_id):
+    """Email a user the link to an invoice PDF.
 
-    logger.info(f"Generated PDF invoice for invoice {invoice_id}")
+    Stripe already hosts a PDF for every invoice and stores its URL on
+    Invoice.pdf_url when the invoice.paid webhook arrives, so there is no PDF
+    generation to do here. Swap in your own renderer if you need branded
+    invoices.
 
-    # Send email with PDF link
-    send_mail(
-        'Your invoice is ready',
-        f'You can download your invoice here: {pdf_url}',
-        'from@example.com',
-        [invoice.user.email],
-        fail_silently=False,
+    Call with: email_invoice.delay(invoice.id)
+    """
+    invoice = Invoice.objects.select_related('user').filter(pk=invoice_id).first()
+    if invoice is None:
+        logger.warning('email_invoice called for missing invoice %s', invoice_id)
+        return False
+
+    if not invoice.pdf_url:
+        logger.warning('Invoice %s has no PDF url yet; not sending.', invoice_id)
+        return False
+
+    sent = send_email(
+        subject='Your invoice is ready',
+        template_name='emails/invoice_ready.html',
+        context={'user': invoice.user, 'invoice': invoice},
+        recipient_list=[invoice.user.email],
     )
-
-    logger.info(f"Sent invoice email for invoice {invoice_id}")
-
-# Call this task as:
-# generate_invoice_pdf.delay(invoice.id)
+    if sent:
+        logger.info('Sent invoice email for invoice %s', invoice_id)
+    return sent

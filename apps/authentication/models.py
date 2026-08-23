@@ -1,3 +1,2 @@
-from django.db import models
-
-# Create your models here.
+# This app holds authentication views, serializers and permissions only.
+# The user model lives in apps.users.
