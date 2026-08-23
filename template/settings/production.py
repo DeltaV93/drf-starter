@@ -18,6 +18,7 @@ from .base import (
     env_bool,
     env_int,
     env_list,
+    is_local_db_host,
 )
 
 DEBUG = False
@@ -46,13 +47,36 @@ if not ALLOWED_HOSTS:
 # Postgres inside the application container. Without this guard an unset
 # DATABASE_URL surfaces as a connection-refused loop against 127.0.0.1
 # rather than as the configuration mistake it is.
+_RAILWAY_HINT = (
+    'On Railway you reference it as ${{Postgres.DATABASE_URL}} in the web '
+    "service's variables -- adding the Postgres service alone does not inject it."
+)
+
 if not os.environ.get('DATABASE_URL') and not os.environ.get('DB_HOST'):
     raise ImproperlyConfigured(
         'No database is configured. Set DATABASE_URL -- managed hosts expose '
-        'one, and on Railway you reference it as ${{Postgres.DATABASE_URL}} in '
-        "the web service's variables (adding the Postgres plugin alone does not "
-        'inject it). Alternatively set DB_HOST, DB_NAME, DB_USER and '
+        f'one. {_RAILWAY_HINT} Alternatively set DB_HOST, DB_NAME, DB_USER and '
         'DB_PASSWORD individually. Refusing to fall back to localhost.'
+    )
+
+# DB_HOST pointing at a remote server with no password is the shape this takes
+# when someone sets DB_HOST by hand on a managed host and leaves the rest at
+# their defaults: DB_NAME becomes 'app' and DB_PASSWORD becomes empty, neither
+# of which the provider created. Without this the process boots, blocks in the
+# entrypoint's connection loop, and the platform reports the missing port
+# rather than the missing password.
+if (
+    not os.environ.get('DATABASE_URL')
+    and not is_local_db_host(os.environ.get('DB_HOST'))
+    and not os.environ.get('DB_PASSWORD')
+):
+    raise ImproperlyConfigured(
+        f'DB_HOST is set to the remote host {os.environ["DB_HOST"]!r} but '
+        'DB_PASSWORD is empty, so this configuration cannot connect. A managed '
+        'database is configured through DATABASE_URL, which carries the host, '
+        f'name, user and password together. {_RAILWAY_HINT} Set DATABASE_URL and '
+        'unset DB_HOST, or set DB_NAME, DB_USER and DB_PASSWORD to match the '
+        'database the provider actually created.'
     )
 
 # Session auth needs the origin trusted for CSRF as well as the host allowed.

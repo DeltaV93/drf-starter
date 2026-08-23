@@ -59,10 +59,14 @@ def env_int(name, default):
         raise ImproperlyConfigured(f'{name} must be an integer, got {value!r}') from exc
 
 
+def is_local_db_host(host):
+    """True when a database host is this machine or the compose service."""
+    return (host or '').lower() in {'localhost', '127.0.0.1', '::1', 'db', ''}
+
+
 def _is_local_url(url):
     """True when a database URL points at this machine or a compose service."""
-    host = (urlparse(url).hostname or '').lower()
-    return host in {'localhost', '127.0.0.1', '::1', 'db', ''}
+    return is_local_db_host(urlparse(url).hostname)
 
 
 # --------------------------------------------------------------------------

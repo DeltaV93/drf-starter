@@ -82,6 +82,55 @@ def test_individual_db_variables_satisfy_the_guard(load_production):
     assert production.DATABASES['default']['HOST'] == 'db'
 
 
+def test_a_remote_db_host_without_a_password_is_refused(load_production):
+    """The shape a hand-set DB_HOST takes on a managed host.
+
+    DB_NAME falls back to 'app' and DB_PASSWORD to '', neither of which the
+    provider created, so the connection can never succeed -- but it fails in
+    the entrypoint's retry loop, by which point the platform is reporting an
+    unopened port rather than a missing password.
+    """
+    with pytest.raises(ImproperlyConfigured) as exc:
+        load_production({'DB_HOST': 'postgres.railway.internal'})
+
+    message = str(exc.value)
+    assert 'postgres.railway.internal' in message
+    assert 'DATABASE_URL' in message
+
+
+def test_a_remote_db_host_with_a_password_is_allowed(load_production):
+    """Individually configured remote databases stay a supported path."""
+    production = load_production(
+        {
+            'DB_HOST': 'postgres.example.com',
+            'DB_NAME': 'appdb',
+            'DB_USER': 'appuser',
+            'DB_PASSWORD': 'a-real-password',
+        }
+    )
+
+    assert production.DATABASES['default']['HOST'] == 'postgres.example.com'
+
+
+def test_a_local_db_host_without_a_password_is_allowed(load_production):
+    """Compose and peer/trust authentication legitimately have no password."""
+    production = load_production({'DB_HOST': 'localhost', 'DB_NAME': 'app'})
+
+    assert production.DATABASES['default']['HOST'] == 'localhost'
+
+
+def test_database_url_is_not_second_guessed_by_the_password_check(load_production):
+    """The URL carries its own credentials; an empty DB_PASSWORD is irrelevant."""
+    production = load_production(
+        {
+            'DATABASE_URL': 'postgres://u:p@postgres.railway.internal:5432/railway',
+            'DB_PASSWORD': '',
+        }
+    )
+
+    assert production.DATABASES['default']['NAME'] == 'railway'
+
+
 def test_the_platform_domain_is_trusted_without_extra_config(load_production):
     production = load_production(
         {
