@@ -13,6 +13,7 @@ import os
 # to prove the project still boots and passes without it.
 os.environ.setdefault('STRIPE_ENABLED', 'true')
 os.environ.setdefault('ORGANIZATIONS_ENABLED', 'true')
+os.environ.setdefault('API_KEYS_ENABLED', 'true')
 
 # Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
 # suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the
@@ -79,6 +80,7 @@ REST_FRAMEWORK = {
         'user': '100000/day',
         'login': '100000/day',
         'password_reset': '100000/day',
+        'api_key': '100000/day',
     },
 }
 

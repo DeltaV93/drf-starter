@@ -22,6 +22,9 @@ if settings.STRIPE_ENABLED:
 if settings.ORGANIZATIONS_ENABLED:
     api_v1_patterns.append(path('', include('apps.organizations.urls')))
 
+if settings.API_KEYS_ENABLED:
+    api_v1_patterns.append(path('', include('apps.api_keys.urls')))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),

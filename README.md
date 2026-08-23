@@ -9,6 +9,7 @@ command, with the auth, billing, tooling and CI already wired up.
   password reset, GDPR-compliant account deletion
 - **Billing** — Stripe hosted Checkout, optional and removable
 - **Teams** — organizations, per-org roles, invitations and seat limits, optional
+- **API keys** — hashed, scoped, expiring credentials for machine access, optional
 - **Tooling** — ruff, ESLint, pytest, Vitest, pre-commit with secret scanning,
   GitHub Actions, Docker
 
@@ -70,6 +71,7 @@ apps/
   authentication/  login, registration, password reset, verification
   subscriptions/   Stripe billing (optional)
   organizations/   teams, membership, invitations (optional)
+  api_keys/        programmatic access credentials (optional)
 template/
   settings/        base + development / production / testing
 utils/             response envelope, email, logging, GDPR helpers
@@ -260,6 +262,50 @@ git rm templates/emails/organization_invitation.html
 Then drop the `ORGANIZATIONS_ENABLED` branches from `template/settings/base.py`
 and `template/urls.py`, and the routes from `website/src/App.tsx`. Nothing
 outside the app holds a foreign key into it, so nothing else needs touching.
+
+---
+
+## API keys
+
+Off by default; `API_KEYS_ENABLED=true` turns them on. Session cookies serve a
+browser and nothing else — this is the credential for a CLI, a CI job or a
+server-to-server integration.
+
+```bash
+curl -H 'Authorization: Api-Key <prefix>.<secret>' https://example.com/api/v1/users/me/
+```
+
+**The key is shown once, at creation, and is not recoverable afterwards** — by
+you, by staff, or by anyone with database access. Only a SHA-256 digest of the
+secret half is stored. The prefix is not secret and is stored in the clear on
+purpose: it makes a key identifiable in a listing and in a log, and lets lookup
+be one indexed query instead of a scan that hashes every row. A key found in a
+log can therefore be revoked without anyone learning its secret.
+
+**Keys cannot manage keys.** The management endpoints accept sessions only. If
+a key could mint keys, a leaked read-only key would buy a write key, and a
+stolen key would mint replacements that survive revoking the original —
+revocation would stop being a containment tool.
+
+**Scopes.** `read` allows safe methods; `write` allows the rest. Enforcement is
+opt-in per view via `apps.api_keys.permissions.HasWriteScope`, which ignores
+requests that did not come from a key — a browser session already carries the
+user's full authority.
+
+**Revoking, not deleting.** A revoked key keeps its row, so `last_used_at` and
+the prefix stay available when working out what a leaked key reached.
+
+Key traffic is throttled under its own `api_key` scope rather than spending the
+interactive user's `THROTTLE_USER` allowance.
+
+### Removing it
+
+```bash
+git rm -r apps/api_keys
+```
+
+Then drop the `API_KEYS_ENABLED` branches from `template/settings/base.py` and
+`template/urls.py`. Nothing else references it.
 
 ---
 

@@ -111,6 +111,9 @@ SOCIAL_AUTH_ENABLED = env_bool('SOCIAL_AUTH_ENABLED', default=False)
 # and costs nothing; turn it on for B2B. Nothing outside apps/organizations
 # holds a foreign key into it, so it comes out cleanly.
 ORGANIZATIONS_ENABLED = env_bool('ORGANIZATIONS_ENABLED', default=False)
+# Programmatic access. Session cookies serve a browser and nothing else --
+# no CLI, no CI job, no server-to-server integration.
+API_KEYS_ENABLED = env_bool('API_KEYS_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -140,6 +143,9 @@ if SOCIAL_AUTH_ENABLED:
 
 if ORGANIZATIONS_ENABLED:
     INSTALLED_APPS.append('apps.organizations')
+
+if API_KEYS_ENABLED:
+    INSTALLED_APPS.append('apps.api_keys')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -309,8 +315,23 @@ REST_FRAMEWORK = {
         # rate limiting far more aggressively than general anonymous traffic.
         'login': os.environ.get('THROTTLE_LOGIN', '10/min'),
         'password_reset': os.environ.get('THROTTLE_PASSWORD_RESET', '5/hour'),
+        # Machine traffic gets its own budget: an integration is
+        # legitimately noisier than a person, and a runaway script must not
+        # exhaust the interactive user's allowance.
+        'api_key': os.environ.get('THROTTLE_API_KEY', '10000/day'),
     },
 }
+
+if API_KEYS_ENABLED:
+    # Appended, not substituted: the browser keeps using session cookies.
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+        *REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'],
+        'apps.api_keys.authentication.APIKeyAuthentication',
+    ]
+    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = [
+        *REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'],
+        'apps.api_keys.throttles.APIKeyRateThrottle',
+    ]
 
 SPECTACULAR_SETTINGS = {
     'TITLE': os.environ.get('API_TITLE', 'DRF Starter API'),
