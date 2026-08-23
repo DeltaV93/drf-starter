@@ -27,7 +27,7 @@ celery>=5.5,<6.0
 redis>=5.2
 
 # Caching
-django-redis>=5.4
+django-redis>=7.0.0
 
 # Email (AWS SES)
 boto3>=1.35
