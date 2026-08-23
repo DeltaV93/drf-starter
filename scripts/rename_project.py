@@ -78,21 +78,29 @@ PACKAGE_PATTERNS = [
     r'\btemplate\.asgi\b',
     r'\btemplate\.urls\b',
     r'\btemplate\.celery\b',
-    r"(?<=-A )template\b",
+    r'(?<=-A )template\b',
     r"(?<=Celery\(')template(?=')",
     r"(?<=')template(?=/)",
 ]
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('name', help='New Python package name, e.g. myapp (lowercase, no spaces)')
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        'name', help='New Python package name, e.g. myapp (lowercase, no spaces)'
+    )
     parser.add_argument(
         '--display-name',
         help='Human-readable name for the UI and API docs. Defaults to a title-cased `name`.',
     )
-    parser.add_argument('--dry-run', action='store_true', help='Report what would change and stop')
-    parser.add_argument('--force', action='store_true', help='Proceed even with a dirty working tree')
+    parser.add_argument(
+        '--dry-run', action='store_true', help='Report what would change and stop'
+    )
+    parser.add_argument(
+        '--force', action='store_true', help='Proceed even with a dirty working tree'
+    )
     return parser.parse_args(argv)
 
 
@@ -143,10 +151,14 @@ def iter_text_files():
 
 def rewrite(content: str, new_package: str, new_display_name: str) -> str:
     for pattern in PACKAGE_PATTERNS:
-        content = re.sub(pattern, lambda m: m.group(0).replace(OLD_PACKAGE, new_package), content)
+        content = re.sub(
+            pattern, lambda m: m.group(0).replace(OLD_PACKAGE, new_package), content
+        )
 
     # Bare references in settings paths and Docker/Make commands.
-    content = re.sub(rf"\b{OLD_PACKAGE}(?=\.(settings|wsgi|asgi|urls|celery))", new_package, content)
+    content = re.sub(
+        rf'\b{OLD_PACKAGE}(?=\.(settings|wsgi|asgi|urls|celery))', new_package, content
+    )
     content = content.replace(f"'{OLD_PACKAGE}'", f"'{new_package}'")
     content = content.replace(f'"{OLD_PACKAGE}"', f'"{new_package}"')
     content = content.replace(f'{OLD_PACKAGE}.wsgi', f'{new_package}.wsgi')
@@ -187,7 +199,11 @@ def main(argv=None):
     will_move = package_dir.is_dir()
 
     if args.dry_run:
-        print(f'Would rename package: {OLD_PACKAGE}/ -> {new_package}/' if will_move else 'Package directory not found.')
+        print(
+            f'Would rename package: {OLD_PACKAGE}/ -> {new_package}/'
+            if will_move
+            else 'Package directory not found.'
+        )
         print(f'Would set display name: {OLD_DISPLAY_NAME!r} -> {new_display_name!r}')
         print(f'Would rewrite {len(changed)} file(s):')
         for path in sorted(changed):
@@ -198,7 +214,10 @@ def main(argv=None):
         moved = False
         try:
             subprocess.run(
-                ['git', 'mv', OLD_PACKAGE, new_package], cwd=REPO_ROOT, check=True, capture_output=True
+                ['git', 'mv', OLD_PACKAGE, new_package],
+                cwd=REPO_ROOT,
+                check=True,
+                capture_output=True,
             )
             moved = True
         except (OSError, subprocess.CalledProcessError):
