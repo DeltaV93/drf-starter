@@ -26,7 +26,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_download_url(self, attachment):
+    def get_download_url(self, attachment) -> str:
         request = self.context.get('request')
         from django.urls import reverse
 

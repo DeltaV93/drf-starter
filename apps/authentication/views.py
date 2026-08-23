@@ -33,6 +33,7 @@ from utils.logging_utils import get_logger
 from . import two_factor_services
 from .serializers import (
     AccountDeletionSerializer,
+    AuthenticatedSerializer,
     EmailVerificationSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -83,7 +84,11 @@ class RegisterView(APIView):
     throttle_classes = [LoginRateThrottle]
     serializer_class = UserRegistrationSerializer
 
-    @extend_schema(summary='Register a new account', request=UserRegistrationSerializer)
+    @extend_schema(
+        summary='Register a new account',
+        request=UserRegistrationSerializer,
+        responses={201: AuthenticatedSerializer},
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
@@ -120,7 +125,13 @@ class LoginView(APIView):
     throttle_classes = [LoginRateThrottle]
     serializer_class = UserLoginSerializer
 
-    @extend_schema(summary='Log in', request=UserLoginSerializer)
+    @extend_schema(
+        summary='Log in',
+        request=UserLoginSerializer,
+        # 200 covers both outcomes: signed in, or stopped at the second
+        # factor. AuthenticatedSerializer documents which fields go with which.
+        responses={200: AuthenticatedSerializer},
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         if not serializer.is_valid():

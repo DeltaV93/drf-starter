@@ -17,8 +17,11 @@ from apps.users.serializers import UserSerializer
 from utils.api_utils import api_response
 
 from . import two_factor_services as services
+from .serializers import AuthenticatedSerializer
 from .serializers_two_factor import (
+    RecoveryCodesSerializer,
     TwoFactorCodeSerializer,
+    TwoFactorEnrolmentSerializer,
     TwoFactorPasswordSerializer,
     TwoFactorStatusSerializer,
 )
@@ -66,7 +69,11 @@ class TwoFactorStatusView(APIView):
 class TwoFactorEnrolView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(summary='Begin two-factor enrolment', request=TwoFactorPasswordSerializer)
+    @extend_schema(
+        summary='Begin two-factor enrolment',
+        request=TwoFactorPasswordSerializer,
+        responses={200: TwoFactorEnrolmentSerializer},
+    )
     def post(self, request):
         serializer = TwoFactorPasswordSerializer(data=request.data)
         if not serializer.is_valid():
@@ -93,7 +100,11 @@ class TwoFactorConfirmView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [LoginRateThrottle]
 
-    @extend_schema(summary='Confirm two-factor enrolment', request=TwoFactorCodeSerializer)
+    @extend_schema(
+        summary='Confirm two-factor enrolment',
+        request=TwoFactorCodeSerializer,
+        responses={200: RecoveryCodesSerializer},
+    )
     def post(self, request):
         serializer = TwoFactorCodeSerializer(data=request.data)
         if not serializer.is_valid():
@@ -114,7 +125,11 @@ class TwoFactorDisableView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [LoginRateThrottle]
 
-    @extend_schema(summary='Disable two-factor', request=TwoFactorPasswordSerializer)
+    @extend_schema(
+        summary='Disable two-factor',
+        request=TwoFactorPasswordSerializer,
+        responses={200: None},
+    )
     def post(self, request):
         serializer = TwoFactorPasswordSerializer(data=request.data)
         if not serializer.is_valid():
@@ -135,7 +150,11 @@ class TwoFactorDisableView(APIView):
 class TwoFactorRecoveryCodesView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(summary='Regenerate recovery codes', request=TwoFactorPasswordSerializer)
+    @extend_schema(
+        summary='Regenerate recovery codes',
+        request=TwoFactorPasswordSerializer,
+        responses={200: RecoveryCodesSerializer},
+    )
     def post(self, request):
         serializer = TwoFactorPasswordSerializer(data=request.data)
         if not serializer.is_valid():
@@ -167,7 +186,11 @@ class TwoFactorVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 
-    @extend_schema(summary='Verify a second factor', request=TwoFactorCodeSerializer)
+    @extend_schema(
+        summary='Verify a second factor',
+        request=TwoFactorCodeSerializer,
+        responses={200: AuthenticatedSerializer},
+    )
     def post(self, request):
         user = services.pending_user(request)
         if user is None:

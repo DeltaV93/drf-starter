@@ -401,7 +401,23 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
+    'ENUM_NAME_OVERRIDES': {},
 }
+
+# Two different fields are called `role` -- the product-wide one on the user
+# and the per-organization one on a membership -- and they are deliberately
+# separate. Left alone the generator resolves the clash with a hashed name
+# like `Role6d0Enum`, which reads as a bug in the schema. Naming them is also
+# the only way `python manage.py spectacular --fail-on-warn` passes, which CI
+# requires. Keyed by dotted path, so it is only added when the app is
+# installed and the flag stays independent.
+SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']['UserRoleEnum'] = (
+    'apps.users.models.CustomUser.Role'
+)
+if ORGANIZATIONS_ENABLED:
+    SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']['MembershipRoleEnum'] = (
+        'apps.organizations.models.Membership.Role'
+    )
 
 
 # --------------------------------------------------------------------------

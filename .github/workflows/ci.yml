@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.12'
-  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.14'
+  NODE_VERSION: '26'
 
 jobs:
   # A generated .gitignore contributes unanchored patterns (lib/, build/,
@@ -22,7 +22,7 @@ jobs:
     name: Source is tracked
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: No source file is gitignored
         run: |
@@ -64,7 +64,7 @@ jobs:
       DB_PORT: '5432'
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v6
         with:
@@ -153,7 +153,7 @@ jobs:
       - name: OpenAPI schema generates without warnings
         run: python manage.py spectacular --fail-on-warn --file /dev/null
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-coverage
@@ -168,9 +168,9 @@ jobs:
         working-directory: website
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -195,13 +195,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Builds the production image, which also runs collectstatic -- the step
       # that used to be in the wrong stage.
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: false

@@ -7,7 +7,7 @@
 # the API on one origin -- what the session-cookie and CSRF design assumes.
 # VITE_API_BASE_URL is therefore a relative path: the app calls its own origin.
 # ---------------------------------------------------------------------------
-FROM node:22-slim AS frontend
+FROM node:26-slim AS frontend
 
 WORKDIR /app/website
 
@@ -44,7 +44,7 @@ RUN npm run build
 #
 # Kept separate so the runtime image carries no compilers and no build headers.
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -71,7 +71,7 @@ RUN python -m venv /opt/venv \
 # ---------------------------------------------------------------------------
 # Runtime
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

@@ -27,10 +27,10 @@ celery>=5.5,<6.0
 redis>=5.2
 
 # Caching
-django-redis>=5.4
+django-redis>=7.0.0
 
 # Email (AWS SES)
-boto3>=1.35
+boto3>=1.43.75
 django-ses>=4.4
 
 # Third-party login
@@ -38,10 +38,10 @@ social-auth-app-django>=5.4
 
 # Billing (only imported when STRIPE_ENABLED is true; safe to remove along
 # with apps/subscriptions if the project does not need billing)
-stripe>=11.0
+stripe>=15.5.1
 
 # Retries for outbound API calls
-tenacity>=9.0
+tenacity>=9.1.4
 
 # Error tracking. Imported only when SENTRY_DSN is set, but kept in base
 # rather than prod so the code path is importable in the test suite.

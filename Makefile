@@ -89,6 +89,11 @@ check: ## Django checks, including the production deploy checklist
 	$(BIN)/python manage.py check --deploy --fail-level WARNING
 	DJANGO_SETTINGS_MODULE=template.settings.testing \
 		$(BIN)/python manage.py makemigrations --check --dry-run
+	@# CI fails the build on a schema warning, so run the same check here --
+	@# a view added without a declared request or response passes every other
+	@# target and only turns red on the pull request.
+	DJANGO_SETTINGS_MODULE=template.settings.testing \
+		$(BIN)/python manage.py spectacular --fail-on-warn --file /dev/null
 
 schema: ## Write the OpenAPI schema to schema.yml
 	$(BIN)/python manage.py spectacular --fail-on-warn --file schema.yml

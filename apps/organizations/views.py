@@ -19,6 +19,7 @@ from .context import active_membership, active_organization, set_active_organiza
 from .models import Invitation, Membership
 from .permissions import IsOrgAdmin, IsOrgMember
 from .serializers import (
+    ActiveOrganizationSerializer,
     InvitationAcceptSerializer,
     InvitationCreateSerializer,
     InvitationSerializer,
@@ -98,7 +99,10 @@ class ActiveOrganizationView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(summary='Get the active organization', responses={200: None})
+    @extend_schema(
+        summary='Get the active organization',
+        responses={200: ActiveOrganizationSerializer},
+    )
     def get(self, request):
         membership = active_membership(request)
         if membership is None:
@@ -114,7 +118,11 @@ class ActiveOrganizationView(APIView):
             message='Active organization retrieved.',
         )
 
-    @extend_schema(summary='Switch the active organization', request=None)
+    @extend_schema(
+        summary='Switch the active organization',
+        request=None,
+        responses={200: OrganizationSerializer},
+    )
     def post(self, request, slug):
         # Filtered by membership, so switching to an organization you do not
         # belong to is a 404 rather than a silent success.
@@ -151,7 +159,9 @@ class OrganizationDetailView(APIView):
         )
 
     @extend_schema(
-        summary='Rename the active organization', request=OrganizationCreateSerializer
+        summary='Rename the active organization',
+        request=OrganizationCreateSerializer,
+        responses={200: OrganizationSerializer},
     )
     def patch(self, request):
         self.permission_classes = [IsAuthenticated, IsOrgAdmin]
@@ -195,7 +205,11 @@ class MemberDetailView(APIView):
             organization=active_organization(request),
         )
 
-    @extend_schema(summary="Change a member's role", request=MemberRoleSerializer)
+    @extend_schema(
+        summary="Change a member's role",
+        request=MemberRoleSerializer,
+        responses={200: MemberSerializer},
+    )
     def patch(self, request, member_id):
         serializer = MemberRoleSerializer(data=request.data)
         if not serializer.is_valid():
@@ -224,7 +238,9 @@ class MemberDetailView(APIView):
 class LeaveOrganizationView(APIView):
     permission_classes = [IsAuthenticated, IsOrgMember]
 
-    @extend_schema(summary='Leave the active organization', request=None)
+    @extend_schema(
+        summary='Leave the active organization', request=None, responses={200: None}
+    )
     def post(self, request):
         membership = active_membership(request)
         try:
@@ -251,7 +267,12 @@ class InvitationListCreateView(APIView):
             message='Invitations retrieved.',
         )
 
-    @extend_schema(summary='Invite someone', request=InvitationCreateSerializer)
+    @extend_schema(
+        summary='Invite someone',
+        request=InvitationCreateSerializer,
+        # The raw token is absent by design -- it exists only in the email.
+        responses={201: InvitationSerializer},
+    )
     def post(self, request):
         serializer = InvitationCreateSerializer(data=request.data)
         if not serializer.is_valid():
@@ -301,7 +322,11 @@ class InvitationAcceptView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(summary='Accept an invitation', request=InvitationAcceptSerializer)
+    @extend_schema(
+        summary='Accept an invitation',
+        request=InvitationAcceptSerializer,
+        responses={201: OrganizationSerializer},
+    )
     def post(self, request):
         serializer = InvitationAcceptSerializer(data=request.data)
         if not serializer.is_valid():

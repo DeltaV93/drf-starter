@@ -42,3 +42,18 @@ class APIKeyCreateSerializer(serializers.Serializer):
                 'An expiry in the past would make the key useless.'
             )
         return value
+
+
+class CreatedAPIKeySerializer(APIKeySerializer):
+    """The creation response, which is the only one that carries the secret.
+
+    Documented separately from APIKeySerializer so the schema shows `key` on
+    exactly the one response that has it -- a reader should not come away
+    thinking a listing returns secrets.
+    """
+
+    key = serializers.CharField(read_only=True, help_text='Shown once. Not retrievable later.')
+
+    class Meta(APIKeySerializer.Meta):
+        fields = [*APIKeySerializer.Meta.fields, 'key']
+        read_only_fields = fields
