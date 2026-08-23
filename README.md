@@ -262,6 +262,14 @@ needs. `apps/core/middleware.py` runs first and answers `/api/v1/health/` and
 `/api/v1/ready/` before either check. The responses are static, so nothing
 reflects the `Host` header; every other route stays protected.
 
+What that does not do is answer before the server is listening. `entrypoint.sh`
+waits for the database and runs migrations before starting gunicorn — serving
+traffic against an unmigrated schema is worse than a slow boot — so while that
+wait is in progress the platform reports the health check as *service
+unavailable*. That message is about the port, not about the database. The
+container log carries the real reason, printed on the first failed connection
+rather than only after the last.
+
 ### Railway
 
 The repo ships a `railway.json`, so Railway builds from the `Dockerfile` and
@@ -287,6 +295,14 @@ references and must be typed with the `${{...}}` braces — adding the Postgres
 and Redis plugins does **not** inject their variables into the web service.
 Miss `DATABASE_URL` and production refuses to start with a message saying so,
 rather than quietly retrying a connection to localhost.
+
+**Do not set `DB_HOST` and the other `DB_*` variables on a managed host.** They
+are the local-development and compose path. Setting `DB_HOST` by hand is the
+tempting mistake, because the host is the one part of the connection Railway
+shows you — but `DB_NAME` then falls back to `app` and `DB_PASSWORD` to empty,
+neither of which the provider created, and nothing else picks up the slack.
+Production refuses that combination too. `DATABASE_URL` carries the host, name,
+user and password together, which is why it is the only variable you need.
 
 `PORT` and `RAILWAY_PUBLIC_DOMAIN` are injected by Railway. `ALLOWED_HOSTS`,
 `CSRF_TRUSTED_ORIGINS` and `FRONTEND_URL` are all derived from that domain, so
