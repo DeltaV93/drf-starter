@@ -9,7 +9,16 @@ set -e
 # settings resolved to -- DATABASE_URL on a managed host, the individual DB_*
 # variables locally. Re-parsing the connection details here would miss one.
 if [ "${WAIT_FOR_DB:-1}" = "1" ]; then
-    echo "Waiting for the database..."
+    # Name the target, so a misconfigured host is obvious from the first line
+    # rather than only from a traceback 30 attempts later.
+    python -c "
+import django
+django.setup()
+from django.conf import settings
+db = settings.DATABASES['default']
+print(f\"Waiting for the database at {db.get('HOST') or 'default'}:{db.get('PORT') or 'default'}\"
+      f\" (name={db.get('NAME')})...\")
+" || echo "Waiting for the database..."
     attempts=0
     max_attempts="${DB_WAIT_ATTEMPTS:-30}"
     until python -c "

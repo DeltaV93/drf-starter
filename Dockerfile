@@ -88,9 +88,13 @@ RUN chmod +x /app/entrypoint.sh
 # Static files are collected at build time -- it needs no database, only
 # settings that import cleanly. Migrations are NOT run here: they need a live
 # database, which does not exist during a build. entrypoint.sh runs them.
+# DATABASE_URL is parsed but never connected to -- production settings refuse
+# to fall back to a localhost database, and collectstatic still needs them to
+# import cleanly.
 RUN SECRET_KEY=build-only-not-used-at-runtime \
     DJANGO_ENVIRONMENT=production \
     ALLOWED_HOSTS=localhost \
+    DATABASE_URL=postgres://build:build@db.invalid:5432/build \
     python manage.py collectstatic --noinput
 
 USER app

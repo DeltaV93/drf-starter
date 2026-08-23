@@ -100,6 +100,9 @@ jobs:
           DJANGO_SETTINGS_MODULE: template.settings.production
           SECRET_KEY: ci-only-key-long-enough-to-satisfy-the-deploy-check-000000
           ALLOWED_HOSTS: example.com
+          # Production refuses to fall back to a localhost database, so the
+          # checklist needs one configured. Never connected to; only parsed.
+          DATABASE_URL: postgres://checks:checks@db.example.com:5432/checks
           STRIPE_ENABLED: 'true'
         run: python manage.py check --deploy --fail-level WARNING
 
@@ -178,6 +181,7 @@ jobs:
             -e DJANGO_ENVIRONMENT=production \
             -e SECRET_KEY=ci-only-key-long-enough-to-satisfy-the-deploy-check-000000 \
             -e ALLOWED_HOSTS=localhost \
+            -e DATABASE_URL=postgres://checks:checks@db.example.com:5432/checks \
             drf-starter:ci -c "
           import django; django.setup()
           from django.conf import settings

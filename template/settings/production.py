@@ -41,6 +41,20 @@ if not ALLOWED_HOSTS:
         'ALLOWED_HOSTS=example.com,www.example.com'
     )
 
+# base.py falls back to DB_HOST=localhost, which is right for local
+# development and essentially never right in production -- there is no
+# Postgres inside the application container. Without this guard an unset
+# DATABASE_URL surfaces as a connection-refused loop against 127.0.0.1
+# rather than as the configuration mistake it is.
+if not os.environ.get('DATABASE_URL') and not os.environ.get('DB_HOST'):
+    raise ImproperlyConfigured(
+        'No database is configured. Set DATABASE_URL -- managed hosts expose '
+        'one, and on Railway you reference it as ${{Postgres.DATABASE_URL}} in '
+        "the web service's variables (adding the Postgres plugin alone does not "
+        'inject it). Alternatively set DB_HOST, DB_NAME, DB_USER and '
+        'DB_PASSWORD individually. Refusing to fall back to localhost.'
+    )
+
 # Session auth needs the origin trusted for CSRF as well as the host allowed.
 if _PLATFORM_DOMAIN:
     _PLATFORM_ORIGIN = f'https://{_PLATFORM_DOMAIN}'
