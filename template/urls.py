@@ -43,14 +43,34 @@ if settings.DEBUG:
     else:
         urlpatterns.append(path('__debug__/', include('debug_toolbar.urls')))
 
-# The SPA catch-all must stay LAST and must keep excluding the prefixes below,
-# or it swallows the API and the admin and every endpoint starts returning
-# index.html. apps/core/tests/test_spa.py pins that.
+# The SPA catch-all must stay LAST, and it has to reject two kinds of path or
+# it hands back index.html for things that are not client-side routes.
+#
+# Prefixes Django or WhiteNoise owns. `admin` is matched with and without the
+# trailing slash: excluding only `admin/` meant `/admin` fell through to the
+# catch-all, which *resolved* it -- and because it resolved, CommonMiddleware's
+# APPEND_SLASH never redirected. `/admin` returned the SPA instead of the login
+# page. `assets/` is where Vite writes its hashed bundles.
+SPA_EXCLUDED_PREFIXES = r'api/|admin(?:/|$)|assets/|static/|media/|__debug__/'
+
+# Anything with a file extension. A client-side route has none, so a dotted
+# final segment is an asset that WhiteNoise did not serve -- meaning it is
+# missing. Returning index.html for it gives the browser HTML where it asked
+# for JavaScript, and a page that fails silently as a blank screen. A 404 says
+# what actually happened.
+#
+# The optional trailing slash matters: without it `/favicon.ico` 404s, then
+# APPEND_SLASH retries `/favicon.ico/`, which no longer looks like a file and
+# so gets the SPA -- the same bug one redirect further along.
+SPA_FILE_LIKE_PATH = r'.*\.[^/]*/?$'
+
 if settings.SERVE_SPA:
     from apps.core.views import SPAView
 
     urlpatterns.append(
         re_path(
-            r'^(?!api/|admin/|static/|media/|__debug__/).*$', SPAView.as_view(), name='spa'
+            rf'^(?!{SPA_EXCLUDED_PREFIXES})(?!{SPA_FILE_LIKE_PATH}).*$',
+            SPAView.as_view(),
+            name='spa',
         )
     )

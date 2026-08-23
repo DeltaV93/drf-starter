@@ -188,3 +188,75 @@ jobs:
           assert settings.SERVE_SPA, 'SERVE_SPA should be on when the build is present'
           print('SERVE_SPA on, WHITENOISE_ROOT =', settings.WHITENOISE_ROOT)
           "
+
+      # The checks above only prove the files are in the image. They were all
+      # green while the deployed app served index.html for every JavaScript
+      # bundle -- the browser got HTML where it asked for a script and rendered
+      # a blank page. Nothing is verified until something makes a request.
+      - name: Serve the image and check what a browser actually receives
+        run: |
+          set -euo pipefail
+
+          # No database: this exercises static serving and URL resolution only,
+          # so skip the entrypoint's wait and migrate.
+          docker run -d --name spa-smoke -p 8000:8000 \
+            -e DJANGO_ENVIRONMENT=production \
+            -e SECRET_KEY=ci-only-key-long-enough-to-satisfy-the-deploy-check-000000 \
+            -e ALLOWED_HOSTS=localhost \
+            -e DATABASE_URL=postgres://checks:checks@db.example.com:5432/checks \
+            -e SECURE_SSL_REDIRECT=false \
+            --entrypoint sh drf-starter:ci \
+            -c 'gunicorn template.wsgi:application --bind 0.0.0.0:8000 --workers 1 --access-logfile -'
+
+          for i in $(seq 1 30); do
+            curl -fsS -o /dev/null http://localhost:8000/api/v1/health/ && break
+            sleep 1
+          done
+
+          fail() { echo "::error::$1"; docker logs spa-smoke; docker rm -f spa-smoke; exit 1; }
+
+          # The SPA itself.
+          ctype=$(curl -sS -o /dev/null -w '%{content_type}' http://localhost:8000/)
+          case "$ctype" in text/html*) ;; *) fail "/ returned $ctype, expected text/html" ;; esac
+
+          # Every script the page pulls in. This is the assertion that matters:
+          # the status was 200 the whole time it was broken -- it was the type
+          # and the size that were wrong.
+          html=$(curl -sS http://localhost:8000/)
+          scripts=$(printf '%s' "$html" | grep -o '/assets/[A-Za-z0-9._-]*\.js' | sort -u)
+          [ -n "$scripts" ] || fail "index.html referenced no /assets/*.js"
+
+          # The failure being guarded against is an asset coming back as a byte
+          # copy of index.html, so compare against index.html rather than some
+          # arbitrary floor -- a small runtime chunk can legitimately be under
+          # a kilobyte.
+          index_size=$(curl -sS -o /dev/null -w '%{size_download}' http://localhost:8000/)
+
+          for src in $scripts; do
+            # Pipe-separated: content_type contains a space before its charset,
+            # so splitting on whitespace would put the charset in $size.
+            IFS='|' read -r code ctype size <<<"$(curl -sS -o /dev/null \
+              -w '%{http_code}|%{content_type}|%{size_download}' "http://localhost:8000$src")"
+            echo "$src -> $code $ctype $size"
+            [ "$code" = 200 ] || fail "$src returned $code"
+            case "$ctype" in *javascript*) ;; *) fail "$src served as $ctype, not JavaScript" ;; esac
+            [ "$size" -ne "$index_size" ] || fail "$src is byte-identical to index.html ($size bytes)"
+          done
+
+          # A missing asset must 404 rather than quietly returning the SPA.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8000/assets/not-real.js)
+          [ "$code" = 404 ] || fail "a missing asset returned $code, expected 404"
+
+          # The admin must not be swallowed, with or without the trailing slash.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8000/admin)
+          [ "$code" = 301 ] || fail "/admin returned $code, expected a 301 to /admin/"
+
+          # A client-side route still gets the SPA.
+          ctype=$(curl -sS -o /dev/null -w '%{content_type}' http://localhost:8000/login)
+          case "$ctype" in text/html*) ;; *) fail "/login returned $ctype, expected the SPA" ;; esac
+
+          # And the API still answers as JSON.
+          ctype=$(curl -sS -o /dev/null -w '%{content_type}' http://localhost:8000/api/v1/health/)
+          case "$ctype" in application/json*) ;; *) fail "health returned $ctype" ;; esac
+
+          docker rm -f spa-smoke
