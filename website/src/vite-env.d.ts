@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_API_PROXY_TARGET?: string;
   readonly VITE_STRIPE_ENABLED?: string;
   readonly VITE_ORGANIZATIONS_ENABLED?: string;
+  readonly VITE_SOCIAL_AUTH_ENABLED?: string;
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string;
 }
 

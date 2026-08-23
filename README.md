@@ -241,7 +241,7 @@ Then drop `stripe` from `requirements/base.txt`, the `@stripe/*` packages from
 `STRIPE_ENABLED` branches in `template/settings/base.py` and `template/urls.py`.
 
 Social login (`SOCIAL_AUTH_ENABLED`) works the same way and comes off the same
-way.
+way -- see **Social login** below.
 
 ---
 
@@ -491,6 +491,41 @@ git rm -r apps/uploads
 Then drop `django-storages` from `requirements/base.txt` and the
 `UPLOADS_ENABLED` branches from `template/settings/base.py` and
 `template/urls.py`.
+
+---
+
+## Social login
+
+Off by default; `SOCIAL_AUTH_ENABLED=true` plus a provider's key, and
+`VITE_SOCIAL_AUTH_ENABLED=true` on the frontend. Providers are offered only when
+their key is configured, so a button never appears for one that would fail on
+the redirect.
+
+**A social identity is never given an existing account by matching email.**
+python-social-auth's default pipeline includes `associate_by_email`, which does
+exactly that — and it is an account-takeover path: anyone who can make a
+provider assert an address inherits the password account. That covers providers
+that do not verify email at all, unverified accounts on ones that usually do,
+and compromised ones.
+
+This template replaces that step. An unrecognised identity whose email already
+belongs to someone is refused, and the user is told to sign in with their
+password and link the provider deliberately. The guard runs *before*
+`create_user` — after it, the account would already exist. Putting
+`associate_by_email` back turns six tests red.
+
+**An address is marked verified only when the provider says it verified it.**
+Google reports `email_verified`; several providers report nothing. Absent a
+positive signal the address stays unverified and the normal confirmation email
+applies — which is what stops a provider that does not verify from minting
+pre-verified accounts.
+
+**Unlinking is refused when it would leave no way to sign in.** Without a usable
+password, the last provider is the only credential, and password reset cannot
+help because there is nothing to reset to.
+
+Only `username`, `email`, `first_name` and `last_name` are stored. Providers
+return far more, and keeping it is a data-protection liability nobody asked for.
 
 ---
 

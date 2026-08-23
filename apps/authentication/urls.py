@@ -65,3 +65,23 @@ if settings.TWO_FACTOR_ENABLED:
         ),
         path('auth/2fa/verify/', TwoFactorVerifyView.as_view(), name='two_factor_verify'),
     ]
+
+if settings.SOCIAL_AUTH_ENABLED:
+    from django.urls import include
+
+    from .views_social import SocialConnectionsView, SocialDisconnectView
+
+    urlpatterns += [
+        # social_django's own views handle the redirect out and the callback.
+        path('auth/social/', include('social_django.urls', namespace='social')),
+        path(
+            'auth/social/connections/',
+            SocialConnectionsView.as_view(),
+            name='social_connections',
+        ),
+        path(
+            'auth/social/connections/<str:provider>/disconnect/',
+            SocialDisconnectView.as_view(),
+            name='social_disconnect',
+        ),
+    ]

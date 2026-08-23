@@ -37,6 +37,13 @@ export const routes = {
       resendVerification: () => join(BASE_URL, 'auth/verify-email/resend/'),
       deleteAccount: () => join(BASE_URL, 'auth/delete-account/'),
     },
+    social: {
+      connections: () => join(BASE_URL, 'auth/social/connections/'),
+      disconnect: (provider: string) =>
+        join(BASE_URL, `auth/social/connections/${provider}/disconnect/`),
+      // A full page navigation, not an XHR: the provider redirects the browser.
+      begin: (provider: string) => join(BASE_URL, `auth/social/login/${provider}/`),
+    },
     users: {
       me: () => join(BASE_URL, 'users/me/'),
     },

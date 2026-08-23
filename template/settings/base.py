@@ -536,6 +536,62 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_OAUTH2_SECRET')
 SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY = os.environ.get('LINKEDIN_OAUTH2_KEY')
 SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET = os.environ.get('LINKEDIN_OAUTH2_SECRET')
 
+# Which providers the frontend should offer. Derived from the keys that are
+# actually configured, so a button never appears for a provider that would
+# fail on the redirect.
+SOCIAL_AUTH_PROVIDERS = []
+if SOCIAL_AUTH_ENABLED:
+    if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
+        SOCIAL_AUTH_PROVIDERS.append('google-oauth2')
+    if SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY:
+        SOCIAL_AUTH_PROVIDERS.append('linkedin-oauth2')
+
+if SOCIAL_AUTH_ENABLED:
+    # Spelled out as dotted paths rather than imported from the app module.
+    # Importing app code from settings reaches the model registry before it is
+    # ready, and an import that looks unused to a linter gets removed -- which
+    # silently left this setting undefined once already.
+    #
+    # This is social_core's default pipeline with ONE step removed:
+    # social_auth.associate_by_email, which hands a social identity any
+    # existing account carrying the same address. That is an account-takeover
+    # path; see apps/authentication/social_pipeline.py.
+    SOCIAL_AUTH_PIPELINE = (
+        'social_core.pipeline.social_auth.social_details',
+        'social_core.pipeline.social_auth.social_uid',
+        'social_core.pipeline.social_auth.auth_allowed',
+        'social_core.pipeline.social_auth.social_user',
+        'social_core.pipeline.user.get_username',
+        # Before create_user: afterwards the account would already exist.
+        'apps.authentication.social_pipeline.refuse_silent_takeover',
+        'social_core.pipeline.user.create_user',
+        'social_core.pipeline.social_auth.associate_user',
+        'social_core.pipeline.social_auth.load_extra_data',
+        'social_core.pipeline.user.user_details',
+        'apps.authentication.social_pipeline.mark_email_verified',
+    )
+
+    # Where social_django sends the browser once the provider comes back. Both
+    # are SPA routes; the login page reads the error from the query string.
+    SOCIAL_AUTH_LOGIN_REDIRECT_URL = f'{FRONTEND_URL}/profile'
+    SOCIAL_AUTH_LOGIN_ERROR_URL = f'{FRONTEND_URL}/login'
+    # Turn a pipeline exception into a redirect with a message rather than a
+    # 500 page the user cannot act on.
+    SOCIAL_AUTH_RAISE_EXCEPTIONS = False
+
+    # Only the fields the pipeline needs. Providers return far more, and
+    # storing it is a data-protection liability nobody asked for.
+    SOCIAL_AUTH_PROTECTED_USER_FIELDS = ['email', 'username']
+    SOCIAL_AUTH_USER_FIELDS = ['username', 'email', 'first_name', 'last_name']
+
+    # The state parameter is what stops an attacker completing the flow in
+    # someone else's browser; social_core defaults it on, pinned here so a
+    # future edit has to be deliberate.
+    SOCIAL_AUTH_GOOGLE_OAUTH2_USE_STATE = True
+    SOCIAL_AUTH_LINKEDIN_OAUTH2_USE_STATE = True
+
+    SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ['email', 'profile']
+
 
 # --------------------------------------------------------------------------
 # Stripe
