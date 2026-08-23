@@ -59,6 +59,17 @@ def env_int(name, default):
         raise ImproperlyConfigured(f'{name} must be an integer, got {value!r}') from exc
 
 
+def env_float(name, default):
+    """Read a float from the environment, refusing a bad value."""
+    value = os.environ.get(name)
+    if value is None or not value.strip():
+        return default
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f'{name} must be a number, got {value!r}') from exc
+
+
 def is_local_db_host(host):
     """True when a database host is this machine or the compose service."""
     return (host or '').lower() in {'localhost', '127.0.0.1', '::1', 'db', ''}
@@ -385,6 +396,13 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_SES_REGION_NAME = os.environ.get('AWS_SES_REGION_NAME', 'us-east-1')
 AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
 
+# Hand rendered messages to Celery instead of sending them in the request.
+# Off by default because it needs a worker running; the default `make up` has
+# no worker, and a queued message nobody drains is worse than a slow one.
+# Templates are still rendered inline either way -- only delivery moves -- so
+# a broken template fails the request rather than a task nobody is watching.
+EMAIL_ASYNC = env_bool('EMAIL_ASYNC', default=False)
+
 # How long password reset and email verification links stay valid.
 PASSWORD_RESET_TIMEOUT = env_int('PASSWORD_RESET_TIMEOUT', 60 * 60 * 24 * 3)
 
@@ -469,3 +487,37 @@ LOGGING = {
         },
     },
 }
+
+
+# --------------------------------------------------------------------------
+# Error tracking
+#
+# Presence-gated rather than flag-gated: setting SENTRY_DSN is the only thing
+# that turns it on, and nothing is imported without it. Without this a
+# production 500 exists only in a log line nobody is reading.
+# --------------------------------------------------------------------------
+
+SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+
+# Never during a test run. A CI machine with a DSN in its environment would
+# otherwise fill a real project with noise from deliberately-failing tests.
+if SENTRY_DSN and ENVIRONMENT != 'testing':
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=ENVIRONMENT,
+        # Whatever the platform exposes; a release makes a traceback point at
+        # a commit instead of at "production".
+        release=(
+            os.environ.get('SENTRY_RELEASE')
+            or os.environ.get('RAILWAY_GIT_COMMIT_SHA')
+            or os.environ.get('RENDER_GIT_COMMIT')
+            or None
+        ),
+        # Off on purpose. Turning it on ships email addresses, usernames and
+        # IP addresses to a third party, which is a decision to make
+        # deliberately and document, not to inherit from a default.
+        send_default_pii=env_bool('SENTRY_SEND_PII', default=False),
+        traces_sample_rate=env_float('SENTRY_TRACES_SAMPLE_RATE', 0.0),
+    )

@@ -95,6 +95,7 @@ RUN SECRET_KEY=build-only-not-used-at-runtime \
     DJANGO_ENVIRONMENT=production \
     ALLOWED_HOSTS=localhost \
     DATABASE_URL=postgres://build:build@db.invalid:5432/build \
+    FRONTEND_URL=https://build.invalid \
     python manage.py collectstatic --noinput
 
 USER app

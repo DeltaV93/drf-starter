@@ -343,6 +343,38 @@ for static files. If TLS terminates at a load balancer, leave
 Logging goes to stdout — collection is the platform's job. Do not add file
 handlers.
 
+### Error tracking
+
+Set `SENTRY_DSN` and error reporting turns itself on; leave it unset and
+nothing is imported. There is no separate flag.
+
+`send_default_pii` is **off** by default, so email addresses, usernames and IP
+addresses are not sent to a third party unless you set `SENTRY_SEND_PII=true`
+deliberately. Performance sampling is off too (`SENTRY_TRACES_SAMPLE_RATE`),
+because it costs quota. Railway and Render expose the deployed commit, which is
+picked up automatically so a traceback points at a revision rather than just at
+"production"; `SENTRY_RELEASE` overrides it.
+
+It is never armed during a test run, so a DSN sitting in a CI environment
+cannot fill a real project with noise from tests that fail on purpose.
+
+### Sending email in the background
+
+Verification and password-reset mail is sent inside the request by default,
+which means a slow SMTP round trip shows up directly in response times. Set
+`EMAIL_ASYNC=true` and delivery moves onto Celery instead — you need a worker:
+
+```bash
+celery -A template worker --loglevel=info
+```
+
+Templates are still rendered in the request either way. Only delivery moves, so
+a broken template fails the request that caused it rather than disappearing
+into a worker log, and nothing but strings crosses the queue.
+
+It is off by default because the default compose stack runs no worker, and a
+queued message nobody drains is worse than a slow one.
+
 Set `DJANGO_SUPERUSER_USERNAME`, `_EMAIL` and `_PASSWORD` to have the
 entrypoint create an admin on first boot. It is a no-op unless all three
 are set.

@@ -121,6 +121,8 @@ def test_the_probe_middleware_runs_before_the_security_middleware(settings_modul
         'SECRET_KEY': 'test-key-long-enough-000000000000000000000000',
         'ALLOWED_HOSTS': 'example.com',
         'DATABASE_URL': 'postgres://u:p@db.example.com:5432/app',
+        # Production refuses to fall back to a localhost origin.
+        'FRONTEND_URL': 'https://example.com',
     }.items():
         os.environ.setdefault(key, value)
 

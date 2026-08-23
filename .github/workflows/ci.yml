@@ -95,6 +95,49 @@ jobs:
           STRIPE_ENABLED: 'false'
         run: pytest -q
 
+      # Optional subsystems are independent by design -- no feature holds a
+      # foreign key into another. This is what proves it: every flag off, then
+      # every flag on, then each one off on its own against the rest.
+      #
+      # It does NOT cover the full combination space, and is not meant to.
+      # With N flags that is 2^N; this catches the realistic failure, which is
+      # one feature quietly depending on another.
+      - name: Flag combinations
+        run: |
+          set -uo pipefail
+          FLAGS="STRIPE_ENABLED SOCIAL_AUTH_ENABLED EMAIL_ASYNC"
+
+          run_with() {
+            local label="$1"; shift
+            echo "::group::$label"
+            if ! env "$@" pytest -q; then
+              echo "::endgroup::"
+              echo "::error::suite failed with $label"
+              return 1
+            fi
+            echo "::endgroup::"
+          }
+
+          failed=0
+
+          off=(); for f in $FLAGS; do off+=("$f=false"); done
+          run_with "all flags off" "${off[@]}" || failed=1
+
+          on=();  for f in $FLAGS; do on+=("$f=true"); done
+          run_with "all flags on" "${on[@]}" || failed=1
+
+          for target in $FLAGS; do
+            combo=()
+            for f in $FLAGS; do
+              if [ "$f" = "$target" ]; then combo+=("$f=false"); else combo+=("$f=true"); fi
+            done
+            run_with "only $target off" "${combo[@]}" || failed=1
+          done
+
+          echo "Covered: all-off, all-on, and each of $FLAGS off individually."
+          echo "Not covered: the remaining combinations of $(echo $FLAGS | wc -w) flags."
+          exit $failed
+
       - name: Production deployment checklist
         env:
           DJANGO_SETTINGS_MODULE: template.settings.production
@@ -103,6 +146,7 @@ jobs:
           # Production refuses to fall back to a localhost database, so the
           # checklist needs one configured. Never connected to; only parsed.
           DATABASE_URL: postgres://checks:checks@db.example.com:5432/checks
+          FRONTEND_URL: https://example.com
           STRIPE_ENABLED: 'true'
         run: python manage.py check --deploy --fail-level WARNING
 
@@ -182,6 +226,7 @@ jobs:
             -e SECRET_KEY=ci-only-key-long-enough-to-satisfy-the-deploy-check-000000 \
             -e ALLOWED_HOSTS=localhost \
             -e DATABASE_URL=postgres://checks:checks@db.example.com:5432/checks \
+            -e FRONTEND_URL=https://example.com \
             drf-starter:ci -c "
           import django; django.setup()
           from django.conf import settings
@@ -204,6 +249,7 @@ jobs:
             -e SECRET_KEY=ci-only-key-long-enough-to-satisfy-the-deploy-check-000000 \
             -e ALLOWED_HOSTS=localhost \
             -e DATABASE_URL=postgres://checks:checks@db.example.com:5432/checks \
+            -e FRONTEND_URL=https://example.com \
             -e SECURE_SSL_REDIRECT=false \
             --entrypoint sh drf-starter:ci \
             -c 'gunicorn template.wsgi:application --bind 0.0.0.0:8000 --workers 1 --access-logfile -'

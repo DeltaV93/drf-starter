@@ -8,6 +8,12 @@ app = Celery('template')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+# Autodiscovery only walks INSTALLED_APPS, and `utils` is a plain package
+# rather than an app, so its tasks need naming explicitly. Without this the
+# email task registers in the web process (which imports it directly) but not
+# in the worker, and every queued message dies as an unregistered task.
+app.autodiscover_tasks(['utils'], related_name='tasks')
+
 
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):

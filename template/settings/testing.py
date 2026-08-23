@@ -13,6 +13,13 @@ import os
 # to prove the project still boots and passes without it.
 os.environ.setdefault('STRIPE_ENABLED', 'true')
 
+# Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
+# suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the
+# environment 'development'. Anything keyed off it would then be wrong during
+# a test run, including the guard that keeps Sentry from reporting deliberate
+# test failures into a real project.
+os.environ.setdefault('DJANGO_ENVIRONMENT', 'testing')
+
 from .base import *
 from .base import BASE_DIR
 

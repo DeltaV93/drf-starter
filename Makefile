@@ -84,6 +84,7 @@ check: ## Django checks, including the production deploy checklist
 	SECRET_KEY="$$($(BIN)/python -c 'from django.core.management.utils import get_random_secret_key as k; print(k())')" \
 	ALLOWED_HOSTS=example.com \
 	DATABASE_URL=postgres://checks:checks@db.example.com:5432/checks \
+	FRONTEND_URL=https://example.com \
 	STRIPE_ENABLED=true \
 	$(BIN)/python manage.py check --deploy --fail-level WARNING
 	DJANGO_SETTINGS_MODULE=template.settings.testing \

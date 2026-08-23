@@ -43,6 +43,11 @@ from .tokens import email_verification_token_generator
 User = get_user_model()
 logger = get_logger(__name__)
 
+# Named explicitly wherever a user is signed in without having been through
+# authenticate(). base.py always keeps this last in AUTHENTICATION_BACKENDS;
+# SOCIAL_AUTH_ENABLED only prepends to that list.
+PASSWORD_BACKEND = 'django.contrib.auth.backends.ModelBackend'
+
 # Answering identically whether or not the address exists is what stops these
 # endpoints from being used to enumerate accounts.
 GENERIC_EMAIL_RESPONSE = 'If an account exists for that address, we have sent an email.'
@@ -91,7 +96,14 @@ class RegisterView(APIView):
 
         # The user is signed in immediately but unverified. Protect whatever
         # must wait for confirmation with the IsEmailVerified permission.
-        login(request, user)
+        #
+        # The backend has to be named. login() can normally infer it from the
+        # `backend` attribute authenticate() leaves on the user, but this user
+        # was just created rather than authenticated, so there is nothing to
+        # infer from -- and with more than one entry in AUTHENTICATION_BACKENDS
+        # Django refuses to guess. Registration is by password, so it is always
+        # ModelBackend; turning SOCIAL_AUTH_ENABLED on used to 500 here.
+        login(request, user, backend=PASSWORD_BACKEND)
 
         return api_response(
             data={'user': UserSerializer(user).data, 'csrfToken': get_token(request)},
@@ -115,6 +127,8 @@ class LoginView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        # No backend argument needed here: the serializer went through
+        # authenticate(), which stamps the winning backend onto the user.
         user = serializer.validated_data['user']
         login(request, user)
 
