@@ -150,7 +150,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Builds the production image, which also runs collectstatic -- the step
       # that used to be in the wrong stage.
