@@ -8,7 +8,8 @@ command, with the auth, billing, tooling and CI already wired up.
 - **Auth** — session cookies with CSRF, registration, email verification,
   password reset, GDPR-compliant account deletion
 - **Billing** — Stripe hosted Checkout, optional and removable
-- **Tooling** — ruff, ESLint, pytest, Vitest, pre-commit, GitHub Actions, Docker
+- **Tooling** — ruff, ESLint, pytest, Vitest, pre-commit with secret scanning,
+  GitHub Actions, Docker
 
 ---
 
@@ -218,7 +219,10 @@ way.
 | `make schema` | Write the OpenAPI schema to `schema.yml` |
 | `make migrations` | Create migrations after a model change |
 
-Install the git hooks once with `pre-commit install`.
+Install the git hooks once with `pre-commit install`. They include ggshield
+for secret scanning, which needs a `GITGUARDIAN_API_KEY` — see
+[CONTRIBUTING.md](CONTRIBUTING.md), which also documents the branch
+protection `main` expects.
 
 ### Tests
 

@@ -66,6 +66,23 @@ whether someone had run a frontend build.
 `pydevd_pycharm.settrace()` unconditionally, which hung every `runserver`.
 Remote debugging is opt-in via `DEBUGPY=1`.
 
+## Merging
+
+**Green means every check run, not every workflow job.**
+`/actions/runs/{id}/jobs` returns only this repository's own workflow.
+Third-party App checks -- GitGuardian among them -- appear solely in
+`/commits/{sha}/check-runs`. A PR was once merged here with GitGuardian
+failing because only the workflow's jobs were inspected, and the security
+check was invisible to everything being watched.
+
+Before merging, read `/commits/{sha}/check-runs` and confirm every entry is
+`success`. Never merge past a failing security check: a human decides when a
+finding is acceptable, and the decision belongs in the GitGuardian dashboard,
+not in a merge.
+
+`main` requires a pull request, so do not push to it directly -- GitGuardian
+runs on `pull_request` events only, and a direct push is never scanned.
+
 ## Settings
 
 Split by environment under `template/settings/`, selected by
