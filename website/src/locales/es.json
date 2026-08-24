@@ -1,7 +1,5 @@
 {
-  "appName": "DRF Starter",
   "welcome": "Bienvenido",
-  "footerText": "DRF Starter",
   "login": "Iniciar sesión",
   "signup": "Registrarse",
   "logout": "Cerrar sesión",
@@ -122,5 +120,9 @@
   "delete": "Eliminar",
   "recentActivity": "Actividad reciente",
   "recentActivityHelp": "Acciones relevantes para la seguridad registradas en tu cuenta.",
-  "noActivity": "Todavía no hay nada registrado."
+  "noActivity": "Todavía no hay nada registrado.",
+  "themeLabel": "Apariencia",
+  "themeLight": "Claro",
+  "themeDark": "Oscuro",
+  "themeSystem": "Sistema"
 }

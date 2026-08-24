@@ -62,6 +62,22 @@ answering with `index.html` and a 200, which nothing else would catch.
 whether `website/dist` exists, which would make the test URLconf depend on
 whether someone had run a frontend build.
 
+**Visual values live in `website/src/styles/brand.ts`, nowhere else.** No
+component hardcodes a colour, radius or font, which is what makes a re-brand
+one file. `styles/theme.ts` derives the MUI theme and has no literals of its
+own. The two exceptions cannot read a token and say so where they live:
+`public/favicon.svg`, fetched before any JavaScript runs, and `index.html`,
+which gets its title and theme colours substituted at build time by the
+`brandHtml()` plugin in `vite.config.ts`.
+
+**The colour-scheme attribute is named in two places and must match.** The
+inline script in `index.html` sets `data-mui-color-scheme` on `<html>` before
+the bundle loads, which is the only thing preventing a white flash for a
+returning dark-mode visitor; `colorSchemeSelector` in `theme.ts` is what the
+stylesheet keys off. Change one and the flash returns silently -- the app
+still works, it just blinks. `styles/theme.test.ts` reads the HTML and pins
+them together.
+
 **TypeScript stays below 7 until typescript-eslint supports it.** Dependabot
 will keep proposing 7.x. `tsc` itself passes on it, which is what makes the
 bump look safe -- but typescript-eslint refuses to load against the TS 7 API

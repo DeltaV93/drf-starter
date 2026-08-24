@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="App icon">
+  <!-- A neutral placeholder mark. Replace it with your own.
+
+       This is the one place the brand colour is repeated: a favicon is a
+       static file the browser fetches before any JavaScript runs, so it
+       cannot read a token from brand.ts. If you change `primary.main`
+       there, change the fill below to match. -->
+  <rect width="64" height="64" rx="14" fill="#1976d2"/>
+  <path d="M20 44V20h10.5c7.2 0 11.5 4.4 11.5 12s-4.3 12-11.5 12H20zm7-6h3c3.4 0 5.2-2.1 5.2-6s-1.8-6-5.2-6h-3v12z" fill="#ffffff"/>
+</svg>
