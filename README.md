@@ -566,6 +566,77 @@ return far more, and keeping it is a data-protection liability nobody asked for.
 
 ---
 
+## Theming
+
+Everything visual comes from **`website/src/styles/brand.ts`**. No component
+hardcodes a colour or a radius, so a re-brand is one file:
+
+```ts
+export const identity = {
+  name: 'Thornbury',
+  tagline: 'Field notes for growers',
+};
+
+export const lightPalette: BrandPalette = {
+  primary: { main: '#1b5e3f', light: '#3d8563', dark: '#0e3d28', contrastText: '#fff' },
+  // ...
+};
+```
+
+That name reaches the browser tab, the header and the footer; the palette
+reaches every button, link, chip and surface. `styles/theme.ts` turns the
+tokens into the MUI theme and contains no literals of its own -- you should
+not need to open it.
+
+**Change both palettes.** `lightPalette` and `darkPalette` are separate
+objects, and the commonest re-branding mistake is editing the first, seeing
+the new colours, and shipping a dark mode still wearing the template's. The
+suite checks that the two agree on hue and says so by name when they do not.
+
+**Colours are checked for contrast.** `styles/theme.test.ts` computes the WCAG
+ratio for every `contrastText` against its own `main`, and for body text
+against both surfaces. A palette that looks fine to whoever picked it and is
+unreadable in daylight fails the build with the ratio in the message.
+
+Three of Material's own defaults -- `warning` and `info` in light, `error` in
+dark -- sit between 3:1 and 4.5:1. They clear the bar for a chip or an icon
+but not for a paragraph of body text. They are listed explicitly in
+`BELOW_AA_TEXT` rather than tolerated silently, so anything you introduce is
+held to the full 4.5:1. Darkening those three empties the list.
+
+### Light and dark
+
+MUI's `colorSchemes` keeps both palettes in one stylesheet, switched by a
+`data-mui-color-scheme` attribute on `<html>`. The header's control offers
+light, dark and *system* -- three states, because a plain two-way switch has
+no way back to following the OS once it has been touched.
+
+An inline script in `index.html` applies the saved scheme **before the bundle
+loads**. Without it a returning dark-mode visitor gets a white flash while
+React starts up. The script and `colorSchemeSelector` in `theme.ts` have to
+name the same attribute; a test reads the HTML and checks they do, because
+nothing else would notice -- the app still works, it just blinks.
+
+### What is not in brand.ts
+
+Two things cannot read a token, and both are called out where they live:
+
+- **`public/favicon.svg`** -- the browser fetches it before any JavaScript
+  runs, so the brand colour is repeated in the file.
+- **`index.html`** -- static, so the title, description and the two
+  `theme-color` values are substituted at build time by the `brandHtml()`
+  plugin in `vite.config.ts`, which imports `brand.ts`.
+
+### Fonts
+
+The default stack is the system UI font, so there is no webfont request
+blocking the first paint and no third party seeing every page view. To use a
+brand face, add its `@font-face` or a `<link>` in `index.html` and put the
+family first in `fontFamily` -- keeping the rest as fallbacks so text still
+renders while the file downloads.
+
+---
+
 ## Development
 
 | Command | What it does |

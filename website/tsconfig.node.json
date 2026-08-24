@@ -10,7 +10,14 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noEmit": true
+    "noEmit": true,
+    // vite.config.ts imports './src/styles/brand.ts' by its extension, which
+    // is what Vite's native config loader wants. Nothing is emitted from this
+    // project, so nothing has to resolve the path at runtime.
+    "allowImportingTsExtensions": true
   },
-  "include": ["vite.config.ts"]
+  // brand.ts is in here as well as in the app project because vite.config.ts
+  // imports it: the tab title and theme colours are substituted into
+  // index.html at build time, and a project has to list every file it reaches.
+  "include": ["vite.config.ts", "src/styles/brand.ts"]
 }

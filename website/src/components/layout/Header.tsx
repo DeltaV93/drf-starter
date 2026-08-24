@@ -4,7 +4,9 @@ import { Link, useNavigate } from 'react-router-dom';
 
 
 import { useAuth } from '../../store/auth';
+import { identity } from '../../styles/brand';
 import { useToast } from '../../store/toast';
+import ColorSchemeToggle from './ColorSchemeToggle';
 
 // Keep in step with UPLOADS_ENABLED on the backend, or the link leads to
 // a page whose calls 404.
@@ -31,9 +33,10 @@ export default function Header() {
             to="/"
             sx={{ color: 'inherit', textDecoration: 'none' }}
           >
-            {t('appName')}
+            {identity.name}
           </Box>
         </Typography>
+        <ColorSchemeToggle />
         {/* Render nothing until the session is known, so the nav does not
             flicker from signed-out to signed-in on every page load. */}
         {!isLoading && (

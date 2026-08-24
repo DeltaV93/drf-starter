@@ -2,10 +2,49 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Your App Name</title>
-    <script src="https://js.stripe.com/v3/" async></script>
+
+    <!-- The percent-delimited placeholders below are substituted at build
+         time from src/styles/brand.ts, by the brandHtml() plugin in
+         vite.config.ts. Change the product name there, not here. -->
+    <title>%APP_NAME%</title>
+    <meta name="description" content="%APP_TAGLINE%" />
+
+    <!-- Tints the browser chrome on mobile. Two entries, because one value
+         cannot suit both schemes. -->
+    <meta name="theme-color" content="%THEME_COLOR_LIGHT%" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="%THEME_COLOR_DARK%" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the saved colour scheme before the page paints.
+
+         Without it a returning dark-mode visitor gets a white flash: the
+         document renders with its default background, then React mounts,
+         reads localStorage and repaints. Running here -- a blocking script in
+         <head>, ahead of the bundle -- means the attribute is already set on
+         <html> when the first paint happens.
+
+         The keys and the attribute are MUI's documented defaults, and they
+         have to stay in step with `colorSchemeSelector` in styles/theme.ts.
+         Wrapped in try/catch because reading localStorage throws outright in
+         a browser configured to block site data, and a theme preference is
+         not worth a blank page. -->
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem('mui-mode') || 'system';
+          var scheme =
+            mode === 'system'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : mode;
+          document.documentElement.setAttribute('data-mui-color-scheme', scheme);
+        } catch (e) {
+          /* Storage unavailable: fall through to the light default. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
