@@ -21,6 +21,7 @@ command, with the auth, billing, tooling and CI already wired up.
 
 | | |
 |---|---|
+| [Getting started](docs/getting-started.md) | **Start here.** What to install, the four variables production needs, and which services you must sign up for |
 | [Configuration](docs/configuration.md) | Every environment variable, its default, and what it does. Kept in step with the code by a test |
 | [Architecture](docs/architecture.md) | What is here, how a request moves through it, and why the flags are independent |
 | [Extending](docs/extending.md) | Recipes: a new endpoint, a new feature behind a flag, a page, a task, a locale |

@@ -225,6 +225,7 @@ the deployment's authority. Stored credentials are encrypted at rest.
 | `MCP_CLIENT_TIMEOUT_SECONDS` | `60` | How long to wait. |
 | `MCP_CLIENT_MAX_TOOL_ROUNDS` | `8` | How many times the **local** transport hands a tool result back to the model before giving up. Only that transport runs the loop — with the connector, Anthropic does. Without a bound a model that keeps asking for tools runs until the process is killed. |
 | `MCP_CLIENT_SECRET_KEY` | *(falls back to `SECRET_KEY`)* | Encrypts stored per-user credentials. Rotating `SECRET_KEY` without setting this makes every stored credential undecryptable and every connection has to be re-authorised. |
+| `ANTHROPIC_API_KEY` | *(required when the flag is on)* | The key outbound calls are made with. The SDK would read it from the environment itself; `clients/base.py` reads it explicitly so it appears in `.env.example` and in this table — and so a missing key fails with a message naming it, rather than inside the first request. |
 
 ### The connector is beta
 

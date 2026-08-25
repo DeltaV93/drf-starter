@@ -172,8 +172,9 @@ class ConnectorMCPClient(BaseMCPClient):
             )
 
     def _client(self):
-        if self._api is not None:
-            return self._api
+        if self._api is None:
+            self._api = self._build_anthropic_client()
+        return self._api
 
         try:
             from anthropic import Anthropic
