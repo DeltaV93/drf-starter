@@ -106,6 +106,19 @@ This rewrites every reference and substitutes the display name in the API docs
 and the UI. It refuses to run on a dirty working tree, so commit first. Then
 delete the script — a project only gets renamed once.
 
+**If you have already built the frontend, rebuild it.** The display name is
+compiled into `website/dist`, which the script skips because it is generated
+output — and Django serves that build whenever it exists, so the nav bar and
+the browser tab keep the old name until:
+
+```bash
+make fe-build
+```
+
+The script checks for this and tells you, but only if a build is there when
+you run it. Renaming first and building later is the clean order.
+
+
 ---
 
 ## The four variables production needs

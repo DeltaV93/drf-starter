@@ -84,6 +84,35 @@ PACKAGE_PATTERNS = [
 ]
 
 
+def stale_frontend_build():
+    """A built SPA that still carries the old name, if there is one.
+
+    The rename rewrites source, and `website/dist` is generated output, so it
+    is skipped -- correctly. But Django serves that directory whenever it
+    exists (`SERVE_SPA` defaults to whether `dist/index.html` is there), and
+    the display name is compiled into the bundle. So a project renamed while a
+    build is lying around keeps showing the old name in the nav bar and the
+    browser tab, with nothing in the diff to explain it.
+
+    Rewriting the built files instead would be worse: they are minified,
+    hashed and about to be overwritten. Saying so is the fix.
+    """
+    dist = REPO_ROOT / 'website' / 'dist'
+    if not (dist / 'index.html').exists():
+        return []
+
+    stale = []
+    for path in dist.rglob('*'):
+        if not path.is_file() or path.suffix not in {'.html', '.js', '.css'}:
+            continue
+        try:
+            if OLD_DISPLAY_NAME in path.read_text(encoding='utf-8', errors='ignore'):
+                stale.append(path.relative_to(REPO_ROOT))
+        except OSError:
+            continue
+    return stale
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -228,11 +257,32 @@ def main(argv=None):
     print(f'Renamed package {OLD_PACKAGE}/ -> {new_package}/')
     print(f'Display name is now {new_display_name!r}')
     print(f'Rewrote {len(changed)} file(s).')
+
+    stale = stale_frontend_build()
+    if stale:
+        print()
+        print(f'WARNING: website/dist still has {OLD_DISPLAY_NAME!r} compiled in.')
+        print('Django serves that build when it exists, so the nav bar and the')
+        print('browser tab will keep showing the old name until you rebuild:')
+        print()
+        print('       make fe-build')
+        print()
+        for path in sorted(stale)[:5]:
+            print(f'  {path}')
+        if len(stale) > 5:
+            print(f'  ... and {len(stale) - 5} more')
+
     print()
     print('Next:')
     print('  1. Review the diff:  git diff')
-    print('  2. Re-run the suite: make test')
-    print('  3. Delete this script -- a project only gets renamed once:')
+    if stale:
+        print('  2. Rebuild the frontend, or the old name stays on screen:')
+        print('       make fe-build')
+        print('  3. Re-run the suite: make test')
+        print('  4. Delete this script -- a project only gets renamed once:')
+    else:
+        print('  2. Re-run the suite: make test')
+        print('  3. Delete this script -- a project only gets renamed once:')
     print('       git rm scripts/rename_project.py')
     return 0
 

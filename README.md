@@ -79,6 +79,11 @@ display name in the API docs and the UI. Run it on a clean working tree
 (`--dry-run` shows what it would touch), then delete the script — a project
 only gets renamed once.
 
+**Rebuild the frontend afterwards if you had already built it.** The name is
+compiled into `website/dist`, which the script skips as generated output, and
+Django serves that build when it exists — so the nav bar keeps the old name
+until `make fe-build`. The script warns you when it finds one.
+
 ---
 
 ## Layout
