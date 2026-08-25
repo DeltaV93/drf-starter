@@ -129,6 +129,13 @@ UPLOADS_ENABLED = env_bool('UPLOADS_ENABLED', default=False)
 # Gates the ASGI route rather than any URL -- the endpoint is mounted beside
 # Django, not inside its URLconf.
 MCP_SERVER_ENABLED = env_bool('MCP_SERVER_ENABLED', default=False)
+# OAuth 2.1 bearer tokens, validated against an external authorization server.
+# A separate flag from MCP_SERVER_ENABLED on purpose: the two are independent.
+# The MCP endpoint forwards whatever Authorization header it is given, so it
+# works on API keys alone; and bearer tokens are useful to the REST API whether
+# or not anything MCP is switched on. Turning this on requires an authorization
+# server to point at, which is why it cannot default to true.
+MCP_OAUTH_ENABLED = env_bool('MCP_OAUTH_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -170,6 +177,9 @@ if UPLOADS_ENABLED:
 
 if MCP_SERVER_ENABLED:
     INSTALLED_APPS.append('apps.mcp_server')
+
+if MCP_OAUTH_ENABLED:
+    INSTALLED_APPS.append('apps.mcp_oauth')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -403,6 +413,26 @@ if API_KEYS_ENABLED:
         'apps.api_keys.throttles.APIKeyRateThrottle',
     ]
 
+if MCP_OAUTH_ENABLED:
+    # Added to the list, not substituted for it: the browser keeps using
+    # session cookies and any API keys keep working. Being in the default list
+    # is also what gives the MCP endpoint bearer-token auth for free, because
+    # apps/mcp_server forwards the caller's Authorization header into this
+    # same stack -- there is no second auth path to keep in step.
+    #
+    # FIRST, not appended, and that position is load-bearing. DRF builds the
+    # WWW-Authenticate header from `authenticators[0]` alone. SessionAuthentication
+    # offers none, so with it first DRF has nothing to challenge with and
+    # answers 403 instead of 401 -- and the RFC 9728 `resource_metadata` hint
+    # never reaches the client. That hint is how an MCP client discovers the
+    # authorization server, so losing it means nothing can connect unaided.
+    # Ordering costs nothing else: the class returns None for any request that
+    # is not `Authorization: Bearer ...`, so the others still run.
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+        'apps.mcp_oauth.authentication.BearerTokenAuthentication',
+        *REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'],
+    ]
+
 SPECTACULAR_SETTINGS = {
     'TITLE': os.environ.get('API_TITLE', 'DRF Starter API'),
     'DESCRIPTION': os.environ.get('API_DESCRIPTION', 'API for DRF Starter'),
@@ -445,6 +475,75 @@ MCP_SERVER_NAME = os.environ.get(
 # Where the endpoint is mounted. Changing it means changing what every
 # connected client has configured, so it is a setting rather than a constant.
 MCP_MOUNT_PATH = os.environ.get('MCP_MOUNT_PATH', '/mcp')
+
+
+# --------------------------------------------------------------------------
+# OAuth 2.1 -- resource server only
+#
+# This application validates access tokens. It never issues them. RFC 9728
+# formalises that split and MCP's auth spec adopts it: everything genuinely
+# dangerous -- authorize, consent, code exchange, PKCE, redirect-URI matching,
+# token signing, key rotation -- belongs to the authorization server, which is
+# not this. See apps/mcp_oauth/validation.py.
+#
+# There is no OAuth server library in requirements: PyJWT and cryptography are
+# already installed and verification is all this side needs.
+# --------------------------------------------------------------------------
+
+if MCP_OAUTH_ENABLED:
+    # The authorization server's identifier, matched against `iss` exactly,
+    # and this resource server's own identifier, matched against `aud`
+    # exactly. Neither has a default and neither may be blank: a validator
+    # comparing against an empty string would accept a token that carried one,
+    # and the failure would be silent. Refusing to boot is the loud version.
+    MCP_OAUTH_ISSUER = os.environ.get('MCP_OAUTH_ISSUER', '').strip()
+    MCP_OAUTH_AUDIENCE = os.environ.get('MCP_OAUTH_AUDIENCE', '').strip()
+    for _name, _value in (
+        ('MCP_OAUTH_ISSUER', MCP_OAUTH_ISSUER),
+        ('MCP_OAUTH_AUDIENCE', MCP_OAUTH_AUDIENCE),
+    ):
+        if not _value:
+            raise ImproperlyConfigured(
+                f'{_name} must be set when MCP_OAUTH_ENABLED is on. '
+                'It is compared against a claim in every token, and comparing '
+                'against an empty value would accept tokens meant for someone '
+                'else. See docs/configuration.md.'
+            )
+
+    # Where the signing keys are published. Defaults to the conventional path
+    # under the issuer, which is what every compliant server uses.
+    MCP_OAUTH_JWKS_URL = os.environ.get(
+        'MCP_OAUTH_JWKS_URL',
+        f'{MCP_OAUTH_ISSUER.rstrip("/")}/.well-known/jwks.json',
+    )
+else:
+    # Defined but empty so the module is importable with the flag off. Nothing
+    # reads them in that state -- the authentication class is not installed
+    # and the metadata route is not registered.
+    MCP_OAUTH_ISSUER = ''
+    MCP_OAUTH_AUDIENCE = ''
+    MCP_OAUTH_JWKS_URL = ''
+
+# How long a fetched key set is trusted. Bounded so a rotation is picked up
+# without a restart, and so a poisoned cache cannot persist indefinitely.
+MCP_OAUTH_JWKS_CACHE_SECONDS = env_int('MCP_OAUTH_JWKS_CACHE_SECONDS', default=300)
+
+# The claim carrying the Django user's identifier, and the field to look it up
+# by. The authorization server delegates login to this application, so `sub` is
+# whatever the consent view put there -- the user's primary key by default.
+MCP_OAUTH_SUBJECT_CLAIM = os.environ.get('MCP_OAUTH_SUBJECT_CLAIM', 'sub')
+MCP_OAUTH_USER_LOOKUP_FIELD = os.environ.get('MCP_OAUTH_USER_LOOKUP_FIELD', 'pk')
+
+# The scope an unsafe method requires. Mirrors the API-key read/write split:
+# a token without it is read-only, which is the safe default for a credential
+# handed to an agent. Set empty to let any valid token write.
+MCP_OAUTH_WRITE_SCOPE = os.environ.get('MCP_OAUTH_WRITE_SCOPE', 'mcp:write')
+
+# Scopes advertised in the protected-resource metadata document, so a client
+# knows what to ask the authorization server for.
+MCP_OAUTH_SCOPES_SUPPORTED = env_list(
+    'MCP_OAUTH_SCOPES_SUPPORTED', default=['mcp:read', 'mcp:write']
+)
 
 
 # --------------------------------------------------------------------------
