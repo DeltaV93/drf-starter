@@ -157,3 +157,28 @@ def test_the_admin_itself_is_not_swallowed(spa_client):
     # Redirects to the admin login; either way it must not be the SPA.
     assert response.status_code in (200, 302)
     assert SPA_MARKER not in response.content.decode()
+
+
+@override_settings(ROOT_URLCONF=__name__)
+@pytest.mark.parametrize(
+    'path',
+    [
+        '/.well-known/oauth-protected-resource',
+        '/.well-known/oauth-protected-resource/mcp',
+        '/.well-known/openid-configuration',
+    ],
+)
+def test_well_known_paths_are_not_served_the_spa(spa_client, path):
+    """Discovery probes must get an honest 404 when nothing is published.
+
+    This URLconf has no metadata route -- MCP_OAUTH_ENABLED adds one, and with
+    the flag off there is genuinely nothing there. The catch-all answering
+    index.html with a 200 would tell a discovery client the document exists
+    and then hand it HTML to parse as JSON, which is a far worse answer than
+    "there is nothing here". Hence the exclusion is unconditional rather than
+    added with the flag.
+    """
+    response = spa_client.get(path)
+
+    assert response.status_code == 404
+    assert SPA_MARKER not in response.content.decode()

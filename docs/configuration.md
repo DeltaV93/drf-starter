@@ -120,6 +120,75 @@ you add one, add the twin with it.
 | `MCP_SERVER_NAME` | *(follows `API_TITLE`)* | What a client shows in its list of connected servers. |
 | `MCP_MOUNT_PATH` | `/mcp` | Where the endpoint is mounted. Changing it means reconfiguring every connected client. |
 
+## MCP OAuth
+
+Validates OAuth 2.1 access tokens. **It never issues them.** RFC 9728 splits
+the two roles and MCP's auth spec adopts the split: everything genuinely
+dangerous — authorize, consent, code exchange, PKCE, redirect-URI matching,
+token signing, key rotation — belongs to the *authorization server*, which is
+not this application. This side is a *resource server*: it verifies a token
+and publishes where its authorization server is.
+
+That is why there is no OAuth server library in `requirements/`. `PyJWT` and
+`cryptography` were already installed, and verification is all this side does.
+`apps/mcp_oauth/validation.py` is under a hundred lines, and
+`apps/mcp_oauth/tests/test_validation.py` attacks every one of them.
+
+**Independent of `MCP_SERVER_ENABLED`.** The MCP endpoint forwards whatever
+`Authorization` header it is given, so it works on API keys alone; and bearer
+tokens are useful to the REST API whether or not MCP is on. Turning this flag
+on adds `BearerTokenAuthentication` to `DEFAULT_AUTHENTICATION_CLASSES`, which
+is what gives the MCP endpoint token auth for free — there is no second auth
+path to keep in step.
+
+**`MCP_OAUTH_ISSUER` and `MCP_OAUTH_AUDIENCE` have no defaults, and the app
+refuses to boot without them when the flag is on.** Both are compared against a
+claim in every token. Comparing against an empty string would accept a token
+that carried one, and that failure is silent — the endpoint would look like it
+was working perfectly while accepting anybody's token. Refusing to boot is the
+loud version.
+
+**Two deliberate deviations from house convention**, both pinned by tests so
+nobody tidies them away:
+
+- `/.well-known/oauth-protected-resource` returns the **raw RFC 9728
+  document**, not the `{status, message, data, errors}` envelope. A compliant
+  client parses it directly and looks for `authorization_servers` at the top
+  level.
+- `BearerTokenAuthentication` goes **first** in
+  `DEFAULT_AUTHENTICATION_CLASSES`, not last. DRF builds the
+  `WWW-Authenticate` header from `authenticators[0]` alone;
+  `SessionAuthentication` offers none, so with it first DRF answers 403 with no
+  challenge and the `resource_metadata` discovery hint never reaches the
+  client. Anonymous API requests therefore answer 401 rather than 403 when this
+  flag is on.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `MCP_OAUTH_ENABLED` | `false` | Accepts OAuth bearer tokens. Requires an authorization server to point at. |
+| `MCP_OAUTH_ISSUER` | *(required)* | The authorization server's identifier, matched against `iss` exactly. |
+| `MCP_OAUTH_AUDIENCE` | *(required)* | This resource server's identifier, matched against `aud` exactly. The check that matters most: a token minted for another resource must be refused, or this application is a confused deputy for every service sharing the issuer. |
+| `MCP_OAUTH_JWKS_URL` | *(`ISSUER` + `/.well-known/jwks.json`)* | Where the signing keys are published. |
+| `MCP_OAUTH_JWKS_CACHE_SECONDS` | `300` | How long a fetched key set is trusted. Bounded, so a rotation is picked up without a restart. |
+| `MCP_OAUTH_SUBJECT_CLAIM` | `sub` | The claim carrying the Django user's identifier. |
+| `MCP_OAUTH_USER_LOOKUP_FIELD` | `pk` | The field it is looked up by. A token for an unknown subject is refused, never used to create an account. |
+| `MCP_OAUTH_WRITE_SCOPE` | `mcp:write` | The scope an unsafe method requires. Mirrors the API-key read/write split: a token without it is read-only. Set empty to let any valid token write. |
+| `MCP_OAUTH_SCOPES_SUPPORTED` | `mcp:read,mcp:write` | Advertised in the metadata document, so a client knows what to ask for. |
+
+### What the authorization server has to be
+
+Anything that issues RS256/ES256 JWTs carrying `iss`, `aud`, `sub`, `iat` and
+`exp`, and publishes a JWKS endpoint. Ory Hydra is the intended pairing because
+it deliberately does *not* manage users — it runs the protocol and delegates
+login and consent to the application, which is this shape exactly: Django
+already owns users, sessions and two-factor, so there is no directory to sync
+and an enrolled user gets their second factor on the OAuth login for free.
+Keycloak, Auth0, Okta and Entra all work too; they simply want to own the
+directory as well.
+
+Wiring one up is a deployment task, not a code change — nothing in
+`apps/mcp_oauth` is Hydra-specific.
+
 ## Organizations
 
 | Variable | Default | What it does |

@@ -18,6 +18,13 @@ os.environ.setdefault('AUDIT_LOG_ENABLED', 'true')
 os.environ.setdefault('TWO_FACTOR_ENABLED', 'true')
 os.environ.setdefault('UPLOADS_ENABLED', 'true')
 os.environ.setdefault('MCP_SERVER_ENABLED', 'true')
+os.environ.setdefault('MCP_OAUTH_ENABLED', 'true')
+# The issuer and audience have no defaults -- base.py refuses to boot without
+# them when the flag is on, because comparing a token claim against an empty
+# string would accept somebody else's token. These are the values the forgery
+# tests mint against; nothing here reaches the network for them.
+os.environ.setdefault('MCP_OAUTH_ISSUER', 'https://auth.example.test/')
+os.environ.setdefault('MCP_OAUTH_AUDIENCE', 'https://app.example.test/mcp')
 
 # Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
 # suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the

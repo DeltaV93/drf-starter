@@ -631,6 +631,89 @@ nothing else to unpick.
 
 ---
 
+## OAuth for agents
+
+`MCP_SERVER_ENABLED` gets you an endpoint that accepts an API key. That is
+enough for your own scripts, and not enough for a connector directory: an MCP
+client that has never met your deployment cannot be handed a key by hand.
+
+`MCP_OAUTH_ENABLED=true` accepts OAuth 2.1 bearer tokens instead.
+
+```
+client ──▶ authorization server ──redirect──▶ your Django login + consent
+       ◀── token ──                                   (users, sessions, 2FA)
+client ──token──▶ /mcp/  or  /api/v1/...      (validated here; never issued)
+```
+
+**This application is a resource server, and only that.** It validates tokens.
+It never issues them. Authorize, consent, code exchange, PKCE, redirect-URI
+matching, token signing, key rotation — all of it belongs to the authorization
+server, which is not this. RFC 9728 formalises the split and MCP's auth spec
+adopts it, and delegating deletes that risk rather than managing it. Which is
+why there is no OAuth server library in `requirements/`: `PyJWT` and
+`cryptography` were already there, and verification is all this side does.
+
+**The security-critical code is one file.** `apps/mcp_oauth/validation.py`
+checks the audience (the one people skip — accept a token minted for another
+service and you are a confused deputy for everything sharing the issuer), pins
+the algorithm rather than reading it from the token (`alg: none` and the
+RS256→HS256 confusion attack both come from trusting the header), matches the
+issuer exactly, enforces expiry, and caches the key set with a bounded
+lifetime.
+
+`apps/mcp_oauth/tests/test_validation.py` attacks it rather than exercising it:
+every test mints a token that is wrong in exactly one way and asserts it is
+refused — wrong audience, wrong issuer, wrong key, unsigned, re-signed with
+HMAC using the public key as the secret, expired, not yet valid, each required
+claim missing in turn.
+
+**MCP gets this for free.** `apps/mcp_server` contains no OAuth code and
+imports nothing from `apps/mcp_oauth` — it forwards the caller's
+`Authorization` header into the same Django stack, so adding
+`BearerTokenAuthentication` to the defaults is the whole integration. Swapping
+API keys for OAuth is a settings change, and
+`test_mcp_inherits_bearer_auth.py` pins both halves, including the import
+independence.
+
+**Read-only by default.** A token without `mcp:write` may not use an unsafe
+method — the same read/write split API keys have, enforced at authentication
+rather than by a permission class, because `permission_classes` on a view
+*replaces* the defaults and is therefore enforcement a view can forget.
+
+**Discovery works unaided.** An unauthenticated request answers 401 with
+`WWW-Authenticate: Bearer resource_metadata="…"`, and that document names the
+authorization server. A client that knows only your endpoint URL can complete
+the flow with nothing configured.
+
+Any authorization server issuing RS256/ES256 JWTs works. [Ory
+Hydra](https://www.ory.sh/hydra/) is the intended pairing because it
+deliberately does *not* manage users — it runs the protocol and delegates login
+and consent to your application, which is this shape exactly: Django already
+owns users, sessions and two-factor, so there is no directory to sync and an
+enrolled user gets their second factor on the OAuth login for free. Keycloak,
+Auth0, Okta and Entra all work too; they simply want to own the directory as
+well.
+
+> **Not verified end to end.** The token validator, the scope split, discovery
+> and the MCP integration are all covered by tests. A full browser flow against
+> a running authorization server was **not** exercised — no container runtime
+> was available where this was written. Stand one up and drive
+> discovery → authorize → login → consent → token → tool call before trusting
+> it in production.
+
+### Removing it
+
+```bash
+git rm -r apps/mcp_oauth
+```
+
+Then drop the `MCP_OAUTH_ENABLED` branches from `template/settings/base.py` and
+`template/urls.py`. The app owns no models, so there is no migration. Leaving
+`.well-known/` in `SPA_EXCLUDED_PREFIXES` is harmless and still correct — it
+keeps a discovery probe getting an honest 404 instead of the SPA.
+
+---
+
 ## Theming
 
 Everything visual comes from **`website/src/styles/brand.ts`**. No component

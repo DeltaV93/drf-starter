@@ -44,6 +44,11 @@ urlpatterns = [
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
+if settings.MCP_OAUTH_ENABLED:
+    # At the root, not under the version prefix: a well-known URI is fixed by
+    # RFC 9728 and cannot carry one.
+    urlpatterns.append(path('', include('apps.mcp_oauth.urls')))
+
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
@@ -63,7 +68,13 @@ if settings.DEBUG:
 # catch-all, which *resolved* it -- and because it resolved, CommonMiddleware's
 # APPEND_SLASH never redirected. `/admin` returned the SPA instead of the login
 # page. `assets/` is where Vite writes its hashed bundles.
-SPA_EXCLUDED_PREFIXES = r'api/|admin(?:/|$)|assets/|static/|media/|__debug__/'
+#
+# `.well-known/` is excluded unconditionally, not under MCP_OAUTH_ENABLED. A
+# discovery client that probes for the metadata document with the flag off
+# must get a 404 -- the SPA's index.html with a 200 tells it the document
+# exists and then fails to parse as JSON, which is a much worse answer than
+# "there is nothing here".
+SPA_EXCLUDED_PREFIXES = r'api/|admin(?:/|$)|assets/|static/|media/|__debug__/|\.well-known/'
 
 # Anything with a file extension. A client-side route has none, so a dotted
 # final segment is an asset that WhiteNoise did not serve -- meaning it is
