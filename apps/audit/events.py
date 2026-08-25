@@ -25,6 +25,11 @@ ALLOWED_METADATA = {
     Action.MEMBER_REMOVED: {'organization'},
     Action.MEMBER_ROLE_CHANGED: {'organization', 'from_role', 'to_role'},
     Action.ACCOUNT_DELETED: {'reason'},
+    # Which server, over which transport, and which of its tools ran.
+    # Deliberately not the arguments or the results: an outbound tool call
+    # can carry anything, and the audit log is the wrong place to find out
+    # what.
+    Action.MCP_SERVER_CALLED: {'transport', 'tools_used'},
 }
 
 # Never stored, whatever an action's allow-list says and whatever a caller

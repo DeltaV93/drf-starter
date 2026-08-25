@@ -136,6 +136,11 @@ MCP_SERVER_ENABLED = env_bool('MCP_SERVER_ENABLED', default=False)
 # or not anything MCP is switched on. Turning this on requires an authorization
 # server to point at, which is why it cannot default to true.
 MCP_OAUTH_ENABLED = env_bool('MCP_OAUTH_ENABLED', default=False)
+# Calling *out* to other people's MCP servers, for agentic features. The
+# mirror of MCP_SERVER_ENABLED and entirely independent of it: an application
+# can be agent-callable without itself being an agent, and the other way
+# round.
+MCP_CLIENT_ENABLED = env_bool('MCP_CLIENT_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -180,6 +185,9 @@ if MCP_SERVER_ENABLED:
 
 if MCP_OAUTH_ENABLED:
     INSTALLED_APPS.append('apps.mcp_oauth')
+
+if MCP_CLIENT_ENABLED:
+    INSTALLED_APPS.append('apps.mcp_client')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -476,6 +484,41 @@ MCP_SERVER_NAME = os.environ.get(
 # connected client has configured, so it is a setting rather than a constant.
 MCP_MOUNT_PATH = os.environ.get('MCP_MOUNT_PATH', '/mcp')
 
+
+# --------------------------------------------------------------------------
+# MCP client -- calling out to other servers
+#
+# Which servers exist is decided by the modules under
+# apps/mcp_client/servers/, in the repository and reviewable in a diff. These
+# settings choose which of those are live and how the call is made; they
+# cannot introduce a server nobody wrote a file for.
+# --------------------------------------------------------------------------
+
+# Slugs to enable. Empty means every server defined under servers/ -- which is
+# already a set bounded by what is in the repository, so this is a way to run
+# a subset per environment rather than a security boundary. A slug with no
+# module raises at startup rather than being silently ignored.
+MCP_CLIENT_SERVERS = env_list('MCP_CLIENT_SERVERS')
+
+# The model outbound calls use. No default on purpose: a model ID baked into a
+# template ages quietly -- it keeps working while better models ship and
+# nothing ever fails to make anyone notice. Set it to a current ID; the client
+# raises a clear error rather than guessing.
+MCP_CLIENT_MODEL = os.environ.get('MCP_CLIENT_MODEL', '')
+
+# Where Claude is being called. The MCP connector is available on the Claude
+# API and Claude Platform on AWS only -- not Bedrock, not Vertex, which route
+# to Claude but not through the endpoint that fetches an MCP server. A server
+# whose definition says transport='local' works on any of them.
+MCP_CLIENT_PROVIDER = os.environ.get('MCP_CLIENT_PROVIDER', 'anthropic')
+
+MCP_CLIENT_MAX_TOKENS = env_int('MCP_CLIENT_MAX_TOKENS', default=4096)
+MCP_CLIENT_TIMEOUT_SECONDS = env_float('MCP_CLIENT_TIMEOUT_SECONDS', default=60.0)
+
+# Encrypts a stored per-user credential at rest. Falls back to SECRET_KEY --
+# rotating that makes every stored credential undecryptable and every
+# connection has to be re-authorised. Recoverable, but a surprise.
+MCP_CLIENT_SECRET_KEY = os.environ.get('MCP_CLIENT_SECRET_KEY', '')
 
 # --------------------------------------------------------------------------
 # OAuth 2.1 -- resource server only

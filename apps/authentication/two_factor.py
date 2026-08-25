@@ -10,13 +10,13 @@ not be enough. See ENCRYPTION NOTE below for the key-rotation trade-off that
 buys.
 """
 
-import base64
 import hashlib
 import secrets
 
 import pyotp
-from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
+
+from utils.crypto import decrypt, encrypt
 
 # How many 30-second steps either side of now are accepted, to tolerate a
 # phone whose clock has drifted. One step each way is the usual compromise:
@@ -27,8 +27,8 @@ RECOVERY_CODE_COUNT = 10
 RECOVERY_CODE_BYTES = 5  # 10 hex characters, shown in two groups of five.
 
 
-def _fernet():
-    """Derive the encryption key.
+def _key_material():
+    """The material the secret is encrypted with.
 
     ENCRYPTION NOTE: TWO_FACTOR_SECRET_KEY falls back to SECRET_KEY, which
     means rotating SECRET_KEY makes every enrolled secret undecryptable and
@@ -36,12 +36,11 @@ def _fernet():
     invalidation rotation already causes. Set TWO_FACTOR_SECRET_KEY explicitly
     before you ever need to rotate.
     """
-    material = getattr(settings, 'TWO_FACTOR_SECRET_KEY', '') or settings.SECRET_KEY
-    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(material.encode()).digest()))
+    return getattr(settings, 'TWO_FACTOR_SECRET_KEY', '') or settings.SECRET_KEY
 
 
 def encrypt_secret(raw_secret):
-    return _fernet().encrypt(raw_secret.encode()).decode()
+    return encrypt(raw_secret, _key_material())
 
 
 def decrypt_secret(stored_secret):
@@ -51,10 +50,7 @@ def decrypt_secret(stored_secret):
     helpful error: a decryption problem must never be mistaken for a valid
     code.
     """
-    try:
-        return _fernet().decrypt(stored_secret.encode()).decode()
-    except (InvalidToken, ValueError, TypeError):
-        return None
+    return decrypt(stored_secret, _key_material())
 
 
 def generate_secret():

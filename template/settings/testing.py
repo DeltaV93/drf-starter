@@ -25,6 +25,11 @@ os.environ.setdefault('MCP_OAUTH_ENABLED', 'true')
 # tests mint against; nothing here reaches the network for them.
 os.environ.setdefault('MCP_OAUTH_ISSUER', 'https://auth.example.test/')
 os.environ.setdefault('MCP_OAUTH_AUDIENCE', 'https://app.example.test/mcp')
+os.environ.setdefault('MCP_CLIENT_ENABLED', 'true')
+# The client refuses to call without a model, on purpose -- see the setting's
+# comment. The tests never reach a real API, so this only has to be non-empty
+# and recognisable in a failure message.
+os.environ.setdefault('MCP_CLIENT_MODEL', 'model-under-test')
 
 # Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
 # suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the

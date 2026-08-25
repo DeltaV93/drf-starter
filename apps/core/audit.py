@@ -36,6 +36,7 @@ class AuditAction:
     MEMBER_ROLE_CHANGED = 'member.role_changed'
     TWO_FACTOR_ENABLED = 'two_factor.enabled'
     TWO_FACTOR_DISABLED = 'two_factor.disabled'
+    MCP_SERVER_CALLED = 'mcp_client.called'
 
     @classmethod
     def all(cls):
