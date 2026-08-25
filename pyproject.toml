@@ -54,6 +54,11 @@ addopts = [
     "--reuse-db",
     "-ra",
 ]
+# The container serves ASGI, so some tests have to drive the async handler.
+# Explicit rather than "auto": a plain `async def test_` with no marker should
+# be a visible mistake, not silently skipped.
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "error::DeprecationWarning:apps.*",
     "error::DeprecationWarning:utils.*",

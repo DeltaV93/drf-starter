@@ -12,7 +12,7 @@ so there is no token to store and no CORS preflight in the common case.
 
 ```
                     ┌─────────────────────────────────────────┐
-   browser ────────▶│ gunicorn                                │
+   browser ────────▶│ gunicorn + uvicorn worker (ASGI)        │
                     │  ├── WhiteNoise ──▶ /assets/*, /static/*│
                     │  └── Django                             │
                     │       ├── /api/v1/*  ──▶ DRF views      │
@@ -29,6 +29,32 @@ so there is no token to store and no CORS preflight in the common case.
 
 The worker is optional. With `EMAIL_ASYNC=false` — the default — mail is sent
 in the request and nothing needs draining.
+
+### Why ASGI
+
+The container runs `gunicorn template.asgi:application -k
+uvicorn.workers.UvicornWorker`. gunicorn still supervises, so `WEB_CONCURRENCY`
+and the process model are unchanged; uvicorn's worker class is what speaks
+ASGI.
+
+It is ASGI because the MCP endpoint's transport is ASGI-only —
+`handle_request(scope, receive, send)`, with no WSGI entry point.
+
+**Django behaves identically either way**, and that is a property rather than a
+hope: every middleware in the stack is sync, so Django adapts the whole chain
+once instead of hopping per layer. It was checked by hand across twelve paths
+against both servers — health, readiness, the SPA, hashed assets, a missing
+asset, `/admin` with and without its slash, the schema, a client-side route,
+the favicon and an unauthenticated POST — and every one matched.
+
+**WhiteNoise has no async support** (6.12 is current and contains no ASGI code
+at all), so its middleware is sync-adapted. Static files still serve correctly;
+the CI job that fetches every script the page references is what proves it, and
+it runs the same ASGI command the Dockerfile does.
+
+`apps/core/tests/test_asgi.py` drives the async handler directly, because the
+ordinary Django test client drives WSGI and would stay green while the deployed
+transport misbehaved.
 
 ## Layout
 

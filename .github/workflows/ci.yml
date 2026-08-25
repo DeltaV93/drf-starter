@@ -238,6 +238,11 @@ jobs:
       # green while the deployed app served index.html for every JavaScript
       # bundle -- the browser got HTML where it asked for a script and rendered
       # a blank page. Nothing is verified until something makes a request.
+      #
+      # This runs the ASGI command the Dockerfile's CMD uses, so it is also the
+      # check that the transport switch did not change what a browser receives.
+      # WhiteNoise has no async support, so its middleware is sync-adapted here
+      # -- these asset assertions are what prove that still serves correctly.
       - name: Serve the image and check what a browser actually receives
         run: |
           set -euo pipefail
@@ -252,7 +257,7 @@ jobs:
             -e FRONTEND_URL=https://example.com \
             -e SECURE_SSL_REDIRECT=false \
             --entrypoint sh drf-starter:ci \
-            -c 'gunicorn template.wsgi:application --bind 0.0.0.0:8000 --workers 1 --access-logfile -'
+            -c 'gunicorn template.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 1 --access-logfile -'
 
           for i in $(seq 1 30); do
             curl -fsS -o /dev/null http://localhost:8000/api/v1/health/ && break
