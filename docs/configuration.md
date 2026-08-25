@@ -230,7 +230,7 @@ test run, so a DSN in a CI environment cannot fill a real project with noise.
 | Variable | Default | What it does |
 |---|---|---|
 | `PORT` | `8000` | The port gunicorn binds to. Managed hosts inject this themselves. |
-| `WEB_CONCURRENCY` | `3` | gunicorn worker count. |
+| `WEB_CONCURRENCY` | `3` | gunicorn worker count. The workers are uvicorn's ASGI class; gunicorn still supervises them. |
 | `SERVE_SPA` | *(whether `website/dist/index.html` exists)* | Whether Django serves the built SPA. On in the container, off locally where the Vite dev server serves it instead. Pinned off in `testing.py` so the URLconf does not depend on whether someone has run a frontend build. |
 
 ## Local development
@@ -282,5 +282,5 @@ is known.
 | `FLY_APP_NAME` | `production.py` | The same, on Fly. |
 | `RAILWAY_GIT_COMMIT_SHA` | `base.py` | Tags Sentry releases. |
 | `RENDER_GIT_COMMIT` | `base.py` | The same, on Render. |
-| `DJANGO_SETTINGS_MODULE` | everything | Set by `manage.py`, the WSGI entrypoint or CI — not by a `.env` file. |
+| `DJANGO_SETTINGS_MODULE` | everything | Set by `manage.py`, the ASGI entrypoint or CI — not by a `.env` file. |
 | `DB_ENGINE` | `testing.py` | CI sets it to `postgres` to point the suite at a real database instead of SQLite. |
