@@ -53,6 +53,15 @@ it, which is harmless because what matters is the position relative to
 and must keep the ordering. `apps/core/tests/test_health_probes.py` pins the
 behaviour and the ordering in every environment.
 
+**The container serves ASGI, and `template/asgi.py` is what it names.**
+`gunicorn template.asgi:application -k uvicorn.workers.UvicornWorker` — because
+the MCP transport is ASGI-only. Django is unaffected: every middleware is sync,
+so the chain is adapted once. Two things follow. `apps/core/tests/test_asgi.py`
+must keep passing, because the ordinary test client drives WSGI and would not
+notice the deployed transport breaking. And WhiteNoise has no async support, so
+if you add async middleware, the sync ones around it start hopping threads per
+layer -- keep the stack uniformly sync unless you have measured otherwise.
+
 **The SPA catch-all stays last in `urlpatterns`** and must keep excluding
 `api/`, `admin/`, `static/` and `media/`. Widen it and every endpoint starts
 answering with `index.html` and a 200, which nothing else would catch.

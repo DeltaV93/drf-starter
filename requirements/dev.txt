@@ -8,6 +8,8 @@
 pytest>=8.3
 pytest-django>=4.9
 pytest-cov>=6.0
+# The container serves ASGI; apps/core/tests/test_asgi.py drives that handler.
+pytest-asyncio>=1.4
 factory-boy>=3.3.3
 
 # Linting and formatting (replaces the old flake8 + black pair)

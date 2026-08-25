@@ -4,8 +4,14 @@
 
 -r base.txt
 
-# WSGI server
+# The server. gunicorn supervises; uvicorn's worker class speaks ASGI.
+#
+# ASGI rather than WSGI because the MCP endpoint's transport is ASGI-only --
+# `handle_request(scope, receive, send)`, with no WSGI entry point. Django
+# itself behaves identically either way: every middleware here is sync, so
+# Django adapts the whole chain once rather than hopping per layer.
 gunicorn>=23.0
+uvicorn[standard]>=0.34
 
 # Static file serving without a separate web server
 whitenoise[brotli]>=6.8
