@@ -31,6 +31,9 @@ if settings.AUDIT_LOG_ENABLED:
 if settings.UPLOADS_ENABLED:
     api_v1_patterns.append(path('', include('apps.uploads.urls')))
 
+if settings.MCP_CLIENT_ENABLED:
+    api_v1_patterns.append(path('', include('apps.mcp_client.urls')))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),

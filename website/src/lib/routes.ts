@@ -55,6 +55,10 @@ export const routes = {
     users: {
       me: () => join(BASE_URL, 'users/me/'),
     },
+    mcp: {
+      servers: () => join(BASE_URL, 'mcp/servers/'),
+      server: (slug: string) => join(BASE_URL, `mcp/servers/${slug}/`),
+    },
     account: {
       requestExport: () => join(BASE_URL, 'account/export/'),
       activity: () => join(BASE_URL, 'account/activity/'),

@@ -20,6 +20,7 @@ const OrganizationPage = lazy(() => import('./components/pages/OrganizationPage'
 const AcceptInvitationPage = lazy(() => import('./components/pages/AcceptInvitationPage'));
 const SecurityPage = lazy(() => import('./components/pages/SecurityPage'));
 const FilesPage = lazy(() => import('./components/pages/FilesPage'));
+const ConnectionsPage = lazy(() => import('./components/pages/ConnectionsPage'));
 
 // Billing is optional on the backend too (STRIPE_ENABLED). Keep the two in
 // step, or the plans page will 404 against the API.
@@ -29,6 +30,9 @@ const BILLING_ENABLED = import.meta.env.VITE_STRIPE_ENABLED === 'true';
 // ORGANIZATIONS_ENABLED matches, or they 404 against the API.
 const ORGANIZATIONS_ENABLED = import.meta.env.VITE_ORGANIZATIONS_ENABLED === 'true';
 const UPLOADS_ENABLED = import.meta.env.VITE_UPLOADS_ENABLED === 'true';
+// Outbound MCP connections. Must match MCP_CLIENT_ENABLED, or the page
+// renders a list it can never load.
+const MCP_CLIENT_ENABLED = import.meta.env.VITE_MCP_CLIENT_ENABLED === 'true';
 
 function PageFallback() {
   return (
@@ -105,6 +109,16 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <FilesPage />
+                  </ProtectedRoute>
+                }
+              />
+            )}
+            {MCP_CLIENT_ENABLED && (
+              <Route
+                path="/connections"
+                element={
+                  <ProtectedRoute>
+                    <ConnectionsPage />
                   </ProtectedRoute>
                 }
               />

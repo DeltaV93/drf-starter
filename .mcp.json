@@ -1,0 +1,34 @@
+{
+  "$comment": [
+    "Optional developer tooling: MCP servers for an assistant working on THIS",
+    "repository. Nothing in the application reads this file, and contributing",
+    "does not require it -- see CONTRIBUTING.md.",
+    "",
+    "Not to be confused with apps/mcp_server (the endpoint this application",
+    "exposes) or apps/mcp_client (the servers it calls out to). This file is",
+    "about the repository, not the product.",
+    "",
+    "The Postgres entry points at the compose database and is READ-ONLY, which",
+    "is deliberate: an assistant that can read the schema answers most",
+    "questions, and one that can write to a developer's database can lose an",
+    "afternoon's fixtures without meaning to. Change it if you disagree, but",
+    "change it knowingly.",
+    "",
+    "The credentials below are the local compose ones in docker-compose.yml.",
+    "They are not secret and they reach nothing outside your machine."
+  ],
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://postgres:postgres@localhost:5432/app"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}

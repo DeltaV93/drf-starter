@@ -392,6 +392,7 @@ one on a deployed container does nothing until the image is rebuilt.
 | `VITE_AUDIT_LOG_ENABLED` | `false` | Must match `AUDIT_LOG_ENABLED`. |
 | `VITE_TWO_FACTOR_ENABLED` | `false` | Must match `TWO_FACTOR_ENABLED`. |
 | `VITE_UPLOADS_ENABLED` | `false` | Must match `UPLOADS_ENABLED`. |
+| `VITE_MCP_CLIENT_ENABLED` | `false` | Must match `MCP_CLIENT_ENABLED`. Mounts `/connections`, where a user authorises outbound MCP servers. There is no twin for `MCP_SERVER_ENABLED` or `MCP_OAUTH_ENABLED` — neither gates any UI. |
 
 **Not an environment variable:** the product name, colours, type and shape come
 from `website/src/styles/brand.ts`. See [Theming](../README.md#theming).
