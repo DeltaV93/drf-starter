@@ -118,7 +118,6 @@ make fe-build
 The script checks for this and tells you, but only if a build is there when
 you run it. Renaming first and building later is the clean order.
 
-
 ---
 
 ## The four variables production needs
@@ -443,6 +442,7 @@ misconfiguration without needing a real production `.env`.
 | A page renders, then every call 404s | A backend flag is on and its `VITE_` twin is off, or the reverse |
 | White screen, no server error | A JavaScript asset 404'd and the SPA catch-all returned HTML for it. Check the network tab, not the server log |
 | A feature "does nothing" | Its flag is on and its credentials are missing. See [boots ≠ works](#the-trap-boots--works) |
+| The old template name is still in the nav bar or footer after renaming | A stale `website/dist`. See below |
 
 ### The configuration reference cannot drift
 
@@ -457,3 +457,25 @@ That machinery has one blind spot worth knowing about: a variable read by a
 `clients/base.py` was changed to read it explicitly. If you add a library that
 reads its own environment variable, read it yourself and pass it in, or it
 will not appear in any of these lists.
+
+### Telling a stale build from a real problem
+
+Both halves of the page chrome — the nav bar and the footer — render
+`identity.name` from `website/src/styles/brand.ts`, and so does the browser
+tab. They cannot disagree. If any of them still shows the template's name
+after a rename, the source is fine and you are looking at a build.
+
+```bash
+grep -rl "DRF Starter" website/dist website/src 2>/dev/null
+```
+
+- **Only `website/dist` listed** → a stale build. `make fe-build`.
+- **Anything under `website/src` listed** → a genuine miss. That is a bug;
+  `apps/core/tests/test_rename_project.py` should have caught it, so please
+  add the case there rather than only fixing the file.
+- **Nothing listed, old name still on screen** → the browser is serving a
+  cached `index.html`. Hard-reload.
+
+Django serves `website/dist` whenever it exists — `SERVE_SPA` defaults to
+whether `dist/index.html` is there — so a build left over from before the
+rename wins over the source you just changed, in every environment at once.

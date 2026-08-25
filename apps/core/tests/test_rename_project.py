@@ -87,10 +87,10 @@ def renamed(tmp_path_factory):
 # ---------------------------------------------------------------------------
 
 
-def test_the_name_in_the_nav_bar_is_renamed(renamed):
+def test_the_product_name_is_renamed_at_its_single_source(renamed):
     """The one that prompted these tests.
 
-    `identity.name` is what the header and the footer render. It arrived with
+    `identity.name` is what every chrome component renders. It arrived with
     the theming work, long after this script was written, and nothing checked
     that the script could still reach it.
     """
@@ -100,16 +100,46 @@ def test_the_name_in_the_nav_bar_is_renamed(renamed):
     assert OLD_DISPLAY_NAME not in brand
 
 
-def test_the_header_still_reads_the_name_from_the_brand_file(renamed):
-    """Guards the test above.
+# Everywhere the product name is shown as page chrome. Both were reported
+# separately -- the nav bar first, the footer second -- which is the argument
+# for listing them rather than testing whichever one someone happened to
+# notice.
+NAME_IS_DISPLAYED_IN = ['Header.tsx', 'Footer.tsx']
 
-    Renaming `brand.ts` proves nothing if a component has since hardcoded the
-    name instead -- the rename would pass and the nav bar would not change.
+
+@pytest.mark.parametrize('component', NAME_IS_DISPLAYED_IN)
+def test_each_place_the_name_appears_reads_it_from_the_brand_file(renamed, component):
+    """Guards the test above, once per surface.
+
+    Renaming `brand.ts` proves nothing about a component that has since
+    hardcoded the name instead: the rename would pass, the tests would be
+    green, and that one corner of the UI would keep the template's name. Which
+    is exactly what a reader of this suite would assume could not happen.
     """
-    header = (renamed / 'website' / 'src' / 'components' / 'layout' / 'Header.tsx').read_text()
+    source = (renamed / 'website' / 'src' / 'components' / 'layout' / component).read_text()
 
-    assert 'identity.name' in header
-    assert OLD_DISPLAY_NAME not in header
+    assert 'identity.name' in source, f'{component} no longer reads the shared name'
+    assert OLD_DISPLAY_NAME not in source
+
+
+def test_no_other_component_displays_a_product_name_of_its_own(renamed):
+    """Catches a third surface being added without a third test.
+
+    The list above has to be maintained by hand; this does not. Anything under
+    `components/` mentioning the template's name is either a hardcoded string
+    the rename cannot reach, or a stale comment.
+    """
+    components = renamed / 'website' / 'src' / 'components'
+
+    offenders = [
+        path.relative_to(renamed)
+        for path in components.rglob('*.tsx')
+        if OLD_DISPLAY_NAME in path.read_text(encoding='utf-8', errors='ignore')
+    ]
+
+    assert not offenders, 'hardcoded product name in:\n  ' + '\n  '.join(
+        str(p) for p in sorted(offenders)
+    )
 
 
 def test_the_api_title_is_renamed(renamed):
