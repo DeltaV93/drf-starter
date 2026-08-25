@@ -580,6 +580,57 @@ return far more, and keeping it is a data-protection liability nobody asked for.
 
 ---
 
+## MCP server
+
+Off by default; `MCP_SERVER_ENABLED=true` mounts an
+[MCP](https://modelcontextprotocol.io) endpoint at `/mcp`, so Claude or any
+other MCP client can act on behalf of a user.
+
+```
+agent ──credential──▶ /mcp ──▶ tool ──▶ the application's own API ──▶ database
+```
+
+**Every tool goes through the API, not the ORM.** `apps/mcp_server/call.py`
+makes a real in-process Django request — full middleware, DRF authentication,
+permission classes, throttles, serializers — that never touches a socket. So
+every rule the API already enforces applies to an agent for free, and an agent
+cannot reach anything a user holding the same credential could not. Not by
+convention: there is no other path.
+
+**The server holds no credential of its own.** It carries the caller's, and
+refuses when there is none rather than falling back to anonymous — an empty
+list reads as "you have none of those" rather than "I could not tell who you
+are". A service credential of its own would make it a confused deputy.
+
+**What an agent can do** — read your profile, organizations and members, your
+files (as a signed link, never the bytes), your own activity; update your own
+profile and request a data export.
+
+**What it deliberately cannot** — subscribe, cancel or change billing; mint or
+revoke API keys; remove a member; delete an account; disable two-factor. The
+rule: *if the audit log exists to record it, an agent does not get to do it.*
+Those operations are not permission-checked, they simply have no tool, which is
+a stronger guarantee. `apps/mcp_server/tests/test_tool_surface.py` pins the
+list, so changing it shows up in a diff.
+
+Adding a tool is adding an async function to a module under
+`apps/mcp_server/tools/` and naming it in `TOOLS`. The docstring becomes the
+description the model reads and the signature becomes the schema, so both are
+load-bearing.
+
+### Removing it
+
+```bash
+git rm -r apps/mcp_server
+```
+
+Then drop the `MCP_SERVER_ENABLED` branches from `template/settings/base.py`
+and the router from `template/asgi.py`, and `mcp` from
+`requirements/base.txt`. The app owns no models, so there is no migration and
+nothing else to unpick.
+
+---
+
 ## Theming
 
 Everything visual comes from **`website/src/styles/brand.ts`**. No component

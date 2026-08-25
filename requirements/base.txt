@@ -52,5 +52,10 @@ sentry-sdk[django]>=2.20
 # two_factor module if the project does not need it)
 pyotp>=2.9
 
+# Model Context Protocol. Only imported when MCP_SERVER_ENABLED is true;
+# safe to remove along with apps/mcp_server if the application does not need
+# to be callable by agents.
+mcp>=2.0
+
 # S3 storage for uploads (only used when AWS_STORAGE_BUCKET_NAME is set)
 django-storages[s3]>=1.14

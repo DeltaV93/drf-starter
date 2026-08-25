@@ -17,6 +17,7 @@ os.environ.setdefault('API_KEYS_ENABLED', 'true')
 os.environ.setdefault('AUDIT_LOG_ENABLED', 'true')
 os.environ.setdefault('TWO_FACTOR_ENABLED', 'true')
 os.environ.setdefault('UPLOADS_ENABLED', 'true')
+os.environ.setdefault('MCP_SERVER_ENABLED', 'true')
 
 # Pointing DJANGO_SETTINGS_MODULE straight at this module -- which is how the
 # suite runs -- leaves DJANGO_ENVIRONMENT unset, so base.py would call the

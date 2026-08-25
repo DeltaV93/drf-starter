@@ -104,6 +104,22 @@ API with no way to reach it.
 The GDPR data export has no flag: portability is the other half of the erasure
 the template already implements.
 
+## MCP server
+
+Exposes the application's capabilities as MCP tools, so an agent can act as
+whoever's credential it sends. The endpoint is mounted beside Django rather
+than inside its URLconf, because the transport is ASGI-only.
+
+**No `VITE_` twin, unlike every other flag.** The rule exists because a UI
+whose backend is off renders a page that 404s — and this flag gates no UI. If
+you add one, add the twin with it.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `MCP_SERVER_ENABLED` | `false` | Mounts the endpoint. Off by default: making an application agent-callable is a decision to take deliberately. |
+| `MCP_SERVER_NAME` | *(follows `API_TITLE`)* | What a client shows in its list of connected servers. |
+| `MCP_MOUNT_PATH` | `/mcp` | Where the endpoint is mounted. Changing it means reconfiguring every connected client. |
+
 ## Organizations
 
 | Variable | Default | What it does |

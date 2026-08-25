@@ -10,6 +10,7 @@ import hmac
 from django.utils import timezone
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
+from rest_framework.permissions import SAFE_METHODS
 
 from .models import APIKey, hash_secret, split_key
 
@@ -55,6 +56,17 @@ class APIKeyAuthentication(BaseAuthentication):
         if not key.user.is_active:
             raise exceptions.AuthenticationFailed('Invalid API key.')
 
+        if not self._scope_allows(key, request):
+            # Deliberately raised here rather than left to a permission class.
+            #
+            # HasWriteScope exists and is correct, but `permission_classes` on
+            # a view *replaces* DEFAULT_PERMISSION_CLASSES rather than adding
+            # to them -- so enforcement was opt-in, nothing opted in, and a
+            # read-only key could write anywhere. Authentication is the single
+            # choke point every key-authenticated request passes through, and
+            # the one a view cannot forget.
+            raise exceptions.AuthenticationFailed('This API key is read-only.')
+
         self._touch(key)
         return key.user, key
 
@@ -71,6 +83,13 @@ class APIKeyAuthentication(BaseAuthentication):
         if len(parts) != 2 or parts[0] != KEYWORD:
             return None
         return parts[1]
+
+    @staticmethod
+    def _scope_allows(key, request):
+        """A read-only key may not use an unsafe method."""
+        if key.scope == APIKey.Scope.WRITE:
+            return True
+        return request.method in SAFE_METHODS
 
     @staticmethod
     def _secret_matches(key, secret):
