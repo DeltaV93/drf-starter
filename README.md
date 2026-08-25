@@ -751,8 +751,20 @@ directory.
 A server behind a VPC is simply not reachable from Anthropic's side, whatever a
 deployment would prefer in general. `clients/base.py` makes the two
 interchangeable at the call site, so switching is one line in one `servers/`
-module and no caller moves. *(The local transport lands in the next PR; the
-factory says so clearly rather than raising an opaque import error.)*
+module and no caller moves.
+
+**The local transport runs the tool loop itself** — connect, list the tools,
+offer them to the model, call what it asks for, feed the result back, repeat
+until it stops asking. Bounded by `MCP_CLIENT_MAX_TOOL_ROUNDS`, because a model
+that keeps asking otherwise runs until the process is killed. It speaks
+streamable HTTP or launches a subprocess over stdio; the command for that comes
+from a `servers/` module and **never from the database**, which is the whole
+safety argument — a stored command would be remote code execution with extra
+steps.
+
+For an async caller there is `aask()`, which resolves the credential and
+records the call exactly as `ask()` does. Reaching past it to `arun()` skips
+both.
 
 **The base class holds everything that is not "how do I reach it".** Credential
 resolution, the refusal when there is none, the result shape, the audit call,
@@ -779,6 +791,11 @@ that never mentions MCP.
 > tests against an injected SDK — no API key was available where this was
 > written, so no real call was made. The beta is isolated in
 > `clients/connector.py` so a change to it is a one-file problem.
+>
+> The *local* transport is verified further than that: it is driven against
+> **this project's own MCP server**, in process, over the real transport — real
+> handshake, real tool listing, real tool call reaching a real Django view.
+> Only the model is faked, because only the model needs an API key.
 
 ### Removing it
 

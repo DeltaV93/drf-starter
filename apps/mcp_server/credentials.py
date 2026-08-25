@@ -4,10 +4,18 @@ An MCP tool function receives its arguments and nothing else -- there is no
 request object in its signature. The credential still has to reach it, because
 every call this server makes is made *as the caller* and never as the server.
 
-A context variable is the mechanism, set by the ASGI middleware in `asgi.py`
-and read by `call_api`. Deliberately not an SDK internal: reaching into the
-server's request context would couple every tool to a private API that moves
-between releases, and this needs to keep working.
+A context variable is the mechanism. It is set per tool call by the wrapper
+in `asgi.py`, from the headers the SDK attaches to that message, and read by
+`call_api`.
+
+**Not from ASGI middleware, and that was a real bug rather than a preference.**
+Setting it while handling the HTTP request looks equivalent and is not: the
+Streamable HTTP transport hands the message to the MCP server loop, which runs
+in a task started by the application's *lifespan*. A context variable set in
+the request task is invisible there, so every tool refused every call for want
+of a credential -- while the unit tests, which set the variable and called the
+tool function directly, all passed. Nothing but a real client over the real
+transport could have shown it.
 
 `ContextVar` rather than a module global because the server is async and
 concurrent -- a global would let one caller's credential leak into another

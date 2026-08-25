@@ -205,7 +205,8 @@ in a diff.
 **Transport is per server, not per deployment.** A server Anthropic can reach
 over HTTPS uses `transport='connector'` — Anthropic fetches it and the model
 calls its tools directly, with no outbound plumbing here. A server on a private
-network or speaking stdio uses `transport='local'` (added in a follow-up PR).
+network or speaking stdio uses `transport='local'`, where this application
+opens the connection and runs the tool loop itself.
 `clients/base.py` makes them interchangeable at the call site, so changing one
 is editing one line in one module.
 
@@ -222,6 +223,7 @@ the deployment's authority. Stored credentials are encrypted at rest.
 | `MCP_CLIENT_PROVIDER` | `anthropic` | `anthropic`, `aws`, `bedrock` or `vertex`. The connector transport works on the first two only; the others route to Claude but not through the endpoint that fetches an MCP server, so a server needs `transport='local'` there. The client says so rather than letting the provider reject the request with an error that never mentions MCP. |
 | `MCP_CLIENT_MAX_TOKENS` | `4096` | Response budget for an outbound call. |
 | `MCP_CLIENT_TIMEOUT_SECONDS` | `60` | How long to wait. |
+| `MCP_CLIENT_MAX_TOOL_ROUNDS` | `8` | How many times the **local** transport hands a tool result back to the model before giving up. Only that transport runs the loop — with the connector, Anthropic does. Without a bound a model that keeps asking for tools runs until the process is killed. |
 | `MCP_CLIENT_SECRET_KEY` | *(falls back to `SECRET_KEY`)* | Encrypts stored per-user credentials. Rotating `SECRET_KEY` without setting this makes every stored credential undecryptable and every connection has to be re-authorised. |
 
 ### The connector is beta

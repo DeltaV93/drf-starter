@@ -513,6 +513,12 @@ MCP_CLIENT_MODEL = os.environ.get('MCP_CLIENT_MODEL', '')
 MCP_CLIENT_PROVIDER = os.environ.get('MCP_CLIENT_PROVIDER', 'anthropic')
 
 MCP_CLIENT_MAX_TOKENS = env_int('MCP_CLIENT_MAX_TOKENS', default=4096)
+
+# How many times the local transport will hand a tool result back to the model
+# before giving up. Only the local transport runs the loop -- with the
+# connector, Anthropic does. A model that keeps asking for tools would
+# otherwise loop until the process is killed.
+MCP_CLIENT_MAX_TOOL_ROUNDS = env_int('MCP_CLIENT_MAX_TOOL_ROUNDS', default=8)
 MCP_CLIENT_TIMEOUT_SECONDS = env_float('MCP_CLIENT_TIMEOUT_SECONDS', default=60.0)
 
 # Encrypts a stored per-user credential at rest. Falls back to SECRET_KEY --
