@@ -124,6 +124,11 @@ TWO_FACTOR_ENABLED = env_bool('TWO_FACTOR_ENABLED', default=False)
 # File uploads. Off by default: the local filesystem is ephemeral on every
 # managed host, so this is not useful until S3 is configured.
 UPLOADS_ENABLED = env_bool('UPLOADS_ENABLED', default=False)
+# The MCP endpoint. Off by default: it makes the application callable by
+# agents, which is a decision to take deliberately rather than inherit.
+# Gates the ASGI route rather than any URL -- the endpoint is mounted beside
+# Django, not inside its URLconf.
+MCP_SERVER_ENABLED = env_bool('MCP_SERVER_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -162,6 +167,9 @@ if AUDIT_LOG_ENABLED:
 
 if UPLOADS_ENABLED:
     INSTALLED_APPS.append('apps.uploads')
+
+if MCP_SERVER_ENABLED:
+    INSTALLED_APPS.append('apps.mcp_server')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -418,6 +426,25 @@ if ORGANIZATIONS_ENABLED:
     SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']['MembershipRoleEnum'] = (
         'apps.organizations.models.Membership.Role'
     )
+
+
+# --------------------------------------------------------------------------
+# MCP
+#
+# The endpoint is mounted by template/asgi.py at MCP_MOUNT_PATH, beside Django
+# rather than inside its URLconf, because the SDK's transport is ASGI-only.
+# --------------------------------------------------------------------------
+
+# What a client shows in its list of connected servers. Defaults to the same
+# value API_TITLE uses -- read from the environment rather than from that
+# name, which is only ever a literal inside SPECTACULAR_SETTINGS.
+MCP_SERVER_NAME = os.environ.get(
+    'MCP_SERVER_NAME', os.environ.get('API_TITLE', 'DRF Starter API')
+)
+
+# Where the endpoint is mounted. Changing it means changing what every
+# connected client has configured, so it is a setting rather than a constant.
+MCP_MOUNT_PATH = os.environ.get('MCP_MOUNT_PATH', '/mcp')
 
 
 # --------------------------------------------------------------------------
