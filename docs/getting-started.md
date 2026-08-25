@@ -118,7 +118,7 @@ one variable at a time until it started:
 | `SECRET_KEY` | 50+ random characters | Refuses to start. **No fallback, on purpose** — a default here would be a published key |
 | `ALLOWED_HOSTS` | `example.com,www.example.com` | Refuses to start |
 | `DATABASE_URL` | `postgres://user:pass@host:5432/db` | Refuses to start rather than retrying against localhost |
-| `FRONTEND_URL` | `https://example.com` | Refuses to start. It is the base for reset and verification links, and the default for CORS and CSRF origins |
+| `FRONTEND_URL` | `https://example.com` | Refuses to start. Base for reset and verification links, and the default for CORS and CSRF origins |
 
 Generate a key with:
 
@@ -126,9 +126,8 @@ Generate a key with:
 python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"
 ```
 
-Each of the four refuses to boot with a message naming itself and saying what
-it is for. That is deliberate: every one of them fails *silently and later* if
-it defaults to something plausible.
+Each refuses to boot with a message naming itself. That is deliberate: every
+one of them fails *silently and later* if it defaults to something plausible.
 
 **On Railway, Render and Fly it is two, not four.** Those platforms inject
 their own domain, and `production.py` derives `ALLOWED_HOSTS` and
@@ -136,9 +135,148 @@ their own domain, and `production.py` derives `ALLOWED_HOSTS` and
 `SECRET_KEY` and `DATABASE_URL` and you are up. Override the other two later
 when you point a real domain at it.
 
-> `FRONTEND_URL` needs the scheme. `example.com` without `https://` passes the
-> boot check and then fails CORS validation at runtime with an error about
-> `corsheaders.E013` that does not mention the variable.
+Two of the four have more to them than a one-line description, and both are
+where deploys actually go wrong. They get a section each.
+
+---
+
+### `DATABASE_URL` in detail
+
+**The format**
+
+```
+postgres://USER:PASSWORD@HOST:PORT/DATABASE
+```
+
+`postgresql://` works identically — `dj_database_url` accepts both. The port is
+required. If the password contains `@`, `/`, `:` or `#`, percent-encode it, or
+the URL parses into something silently wrong rather than failing.
+
+**Where it comes from**
+
+| Platform | How to get it |
+|---|---|
+| Railway | **Adding the Postgres service does not inject it.** Reference `${{Postgres.DATABASE_URL}}` explicitly in the *web* service's variables |
+| Render | Copy the "Internal Database URL" from the database's page |
+| Fly | `fly postgres attach` sets it for you |
+| Heroku | Set automatically by the Postgres add-on |
+| Your own server | Build it by hand from the five parts above |
+
+The Railway one is the trap. The service exists, the dashboard shows a healthy
+database, and the app still cannot see it — because a service's variables are
+not shared with other services unless you reference them.
+
+**TLS is decided for you, based on the host**
+
+| URL host | `sslmode` | Why |
+|---|---|---|
+| Anything remote | `require` | Managed Postgres is reached over the network and expects TLS |
+| `localhost`, `127.0.0.1`, `::1`, `db` | not set | A local or compose instance has no certificate |
+
+**A query parameter does not override this.** Putting `?sslmode=disable` on a
+remote URL is ignored — the setting is passed explicitly and wins. To turn TLS
+off against a remote host, which you should have a specific reason for, set
+`DB_SSL_REQUIRE=false`.
+
+**The `DB_*` alternative, and why to avoid it in production**
+
+Without `DATABASE_URL`, the individual `DB_NAME` / `DB_USER` / `DB_PASSWORD` /
+`DB_HOST` / `DB_PORT` variables are used instead. That path is meant for local
+development and docker compose.
+
+Two reasons not to use it on a managed host:
+
+- **It does not enable TLS.** A remote host configured through `DB_*` connects
+  without `sslmode=require`; the same host through `DATABASE_URL` gets it
+  automatically.
+- **Partial configuration is the common mistake.** Setting `DB_HOST` alone
+  leaves `DB_NAME` at `app` and `DB_PASSWORD` empty — neither of which the
+  provider created. `production.py` refuses to start on exactly that shape
+  rather than letting the container block in a connection loop, where the
+  platform reports a missing port instead of a missing password.
+
+**What each failure looks like**
+
+| Symptom | Cause |
+|---|---|
+| `No database is configured. Set DATABASE_URL` | Neither `DATABASE_URL` nor `DB_HOST` is set |
+| `DB_HOST is set to the remote host … but DB_PASSWORD is empty` | Half-configured `DB_*` |
+| Connection refused to `127.0.0.1:5432` in production | Should be impossible now — the guard above exists because this used to be the symptom |
+
+Locally, none of this applies: the compose defaults already match.
+
+---
+
+### `FRONTEND_URL` in detail
+
+The one that costs an afternoon, because it fails in three different places
+and none of the errors name the variable.
+
+**It needs a scheme, and no trailing slash.** Both are checked by
+`manage.py check`, so `make check` catches them before a deploy does:
+
+| Value | Result |
+|---|---|
+| `https://example.com` | ✅ |
+| `http://example.com` | ✅ — valid, but you want TLS in production |
+| `example.com` | ❌ `corsheaders.E013` *and* `4_0.E001` |
+| `https://example.com/` | ❌ `corsheaders.E014` |
+
+The exact errors, so they are searchable:
+
+```
+?: (4_0.E001) As of Django 4.0, the values in the CSRF_TRUSTED_ORIGINS setting
+   must start with a scheme (usually http:// or https://) but found example.com.
+
+?: (corsheaders.E013) Origin 'example.com' in CORS_ALLOWED_ORIGINS is missing
+   scheme or netloc
+
+?: (corsheaders.E014) Origin 'https://example.com/' in CORS_ALLOWED_ORIGINS
+   should not have path
+```
+
+Neither mentions `FRONTEND_URL`, because by the time the check runs the value
+has already been copied into `CORS_ALLOWED_ORIGINS` and
+`CSRF_TRUSTED_ORIGINS`. If you see any of these three codes, this is the
+variable to look at.
+
+**The trailing slash also corrupts every emailed link.** Nothing validates
+that, and nothing fails:
+
+```
+FRONTEND_URL=https://example.com/
+  → https://example.com//confirm-password/UID/TOKEN
+```
+
+Depending on your host and router that either 404s or redirects in a way that
+drops the token.
+
+**Everything it feeds**
+
+One variable, six consumers — which is why getting it wrong breaks unrelated
+things at once:
+
+| Used for | Where |
+|---|---|
+| Password reset links | `apps/authentication/views.py` |
+| Email verification links | `apps/authentication/views.py` |
+| Organization invitation links | `apps/organizations/views.py` |
+| `CORS_ALLOWED_ORIGINS` default | `base.py` / `production.py` |
+| `CSRF_TRUSTED_ORIGINS` default | `base.py` / `production.py` |
+| Stripe success/cancel URLs, social login redirects | `base.py` |
+
+**It is the origin the SPA is served from, not the API.** In the default
+deployment they are the same container and the same origin, which is what the
+session-cookie and CSRF design assumes. If you split them, this is the browser
+one.
+
+**Why production will not inherit the development default.** `base.py` defaults
+it to `http://localhost:3000`. `production.py` recomputes it rather than
+falling back, because `CORS_ALLOW_CREDENTIALS` is on — a leftover localhost
+entry would tell browsers that a page on a developer's laptop may make
+credentialed cross-origin requests to production and read the responses.
+
+---
 
 Everything else has a working default. You do not need to read the rest of
 this document to deploy.
@@ -283,8 +421,12 @@ misconfiguration without needing a real production `.env`.
 |---|---|
 | 500 on login, locally | Redis is not running |
 | `SECRET_KEY must be set` | You are in production settings without one — that is the check working |
-| `corsheaders.E013` | `FRONTEND_URL` is missing its `https://` |
-| Connection refused to `127.0.0.1:5432` in production | `DATABASE_URL` is unset. On Railway, adding the Postgres service does not inject it — reference `${{Postgres.DATABASE_URL}}` in the web service's variables |
+| `corsheaders.E013` or `4_0.E001` | `FRONTEND_URL` has no scheme — see [FRONTEND_URL in detail](#frontend_url-in-detail) |
+| `corsheaders.E014` | `FRONTEND_URL` has a trailing slash |
+| Password reset links 404, with `//` in the path | `FRONTEND_URL` has a trailing slash |
+| `No database is configured` | Neither `DATABASE_URL` nor `DB_HOST` is set. On Railway, adding the Postgres service does not inject it — reference `${{Postgres.DATABASE_URL}}` in the web service's variables |
+| `DB_HOST is set to the remote host … but DB_PASSWORD is empty` | Half-configured `DB_*`. Use `DATABASE_URL` instead |
+| TLS not used against a managed database | Configured through `DB_*` rather than `DATABASE_URL`, which is the path that sets `sslmode=require` |
 | A page renders, then every call 404s | A backend flag is on and its `VITE_` twin is off, or the reverse |
 | White screen, no server error | A JavaScript asset 404'd and the SPA catch-all returned HTML for it. Check the network tab, not the server log |
 | A feature "does nothing" | Its flag is on and its credentials are missing. See [boots ≠ works](#the-trap-boots--works) |

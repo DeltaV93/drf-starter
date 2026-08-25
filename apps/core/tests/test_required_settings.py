@@ -33,6 +33,34 @@ REQUIRED_IN_PRODUCTION = {
 GUIDE = BASE_DIR / 'docs' / 'getting-started.md'
 
 
+def _check(environment):
+    """Run `manage.py check` and return (passed, combined output).
+
+    The scheme and trailing-slash rules below are enforced by Django's and
+    django-cors-headers' own checks rather than by anything in this project,
+    which is exactly why they are worth pinning: an upgrade could change the
+    codes or drop a check, and the guide quotes them verbatim.
+    """
+    env = {
+        'PATH': os.environ.get('PATH', ''),
+        'HOME': os.environ.get('HOME', '/tmp'),
+        'PYTHONPATH': str(BASE_DIR),
+        'DJANGO_SETTINGS_MODULE': 'template.settings',
+        'DJANGO_ENVIRONMENT': 'production',
+        **REQUIRED_IN_PRODUCTION,
+        **environment,
+    }
+    result = subprocess.run(
+        [sys.executable, 'manage.py', 'check'],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=BASE_DIR,
+        timeout=120,
+    )
+    return result.returncode == 0, result.stdout + result.stderr
+
+
 def _boot(environment):
     """Import a settings module in a clean subprocess.
 
@@ -126,3 +154,142 @@ def test_the_guide_names_the_same_four():
     section = text.split(heading, 1)[1].split('\n## ', 1)[0]
     for name in REQUIRED_IN_PRODUCTION:
         assert f'`{name}`' in section, f'{GUIDE.name} does not name {name}'
+
+
+# ---------------------------------------------------------------------------
+# FRONTEND_URL, which fails in three places and names itself in none of them.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize('value', ['https://example.com', 'http://example.com'])
+def test_a_frontend_url_with_a_scheme_and_no_trailing_slash_passes(value):
+    passed, output = _check({'FRONTEND_URL': value})
+
+    assert passed, output
+
+
+def test_a_frontend_url_without_a_scheme_is_refused():
+    """Two checks catch this, and the guide quotes both codes."""
+    passed, output = _check({'FRONTEND_URL': 'example.com'})
+
+    assert not passed
+    assert 'corsheaders.E013' in output, output
+    assert '4_0.E001' in output, output
+
+
+def test_a_frontend_url_with_a_trailing_slash_is_refused():
+    passed, output = _check({'FRONTEND_URL': 'https://example.com/'})
+
+    assert not passed
+    assert 'corsheaders.E014' in output, output
+
+
+# ---------------------------------------------------------------------------
+# DATABASE_URL, and the shapes that cannot connect.
+# ---------------------------------------------------------------------------
+
+
+def _database(environment):
+    """The resolved default database, as settings see it."""
+    import json
+
+    env = {
+        'PATH': os.environ.get('PATH', ''),
+        'HOME': os.environ.get('HOME', '/tmp'),
+        'PYTHONPATH': str(BASE_DIR),
+        'DJANGO_SETTINGS_MODULE': 'template.settings',
+        'DJANGO_ENVIRONMENT': 'production',
+        'SECRET_KEY': REQUIRED_IN_PRODUCTION['SECRET_KEY'],
+        'ALLOWED_HOSTS': REQUIRED_IN_PRODUCTION['ALLOWED_HOSTS'],
+        'FRONTEND_URL': REQUIRED_IN_PRODUCTION['FRONTEND_URL'],
+        **environment,
+    }
+    result = subprocess.run(
+        [
+            sys.executable,
+            '-c',
+            'import django, json; django.setup()\n'
+            'from django.conf import settings\n'
+            'd = settings.DATABASES["default"]\n'
+            'print(json.dumps({"host": d.get("HOST"), "name": d.get("NAME"), '
+            '"sslmode": (d.get("OPTIONS") or {}).get("sslmode")}))',
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=BASE_DIR,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        return None
+    return json.loads(result.stdout.strip())
+
+
+@pytest.mark.parametrize('scheme', ['postgres', 'postgresql'])
+def test_both_url_schemes_are_accepted(scheme):
+    """Providers are inconsistent about which they hand out."""
+    resolved = _database({'DATABASE_URL': f'{scheme}://u:p@db.example.com:5432/mydb'})
+
+    assert resolved == {'host': 'db.example.com', 'name': 'mydb', 'sslmode': 'require'}
+
+
+def test_a_remote_database_requires_tls_and_a_local_one_does_not():
+    remote = _database({'DATABASE_URL': 'postgres://u:p@db.example.com:5432/mydb'})
+    local = _database({'DATABASE_URL': 'postgres://u:p@localhost:5432/mydb'})
+
+    assert remote['sslmode'] == 'require'
+    assert local['sslmode'] is None, 'a compose Postgres has no certificate to verify'
+
+
+def test_an_sslmode_query_parameter_does_not_override_the_setting():
+    """Documented because it is silent.
+
+    Someone debugging a TLS problem will reach for `?sslmode=disable` on the
+    URL first, and it does nothing -- `DB_SSL_REQUIRE` is what decides.
+    """
+    ignored = _database(
+        {'DATABASE_URL': 'postgres://u:p@db.example.com:5432/mydb?sslmode=disable'}
+    )
+    honoured = _database(
+        {
+            'DATABASE_URL': 'postgres://u:p@db.example.com:5432/mydb',
+            'DB_SSL_REQUIRE': 'false',
+        }
+    )
+
+    assert ignored['sslmode'] == 'require'
+    assert honoured['sslmode'] is None
+
+
+def test_the_url_wins_over_the_individual_variables():
+    resolved = _database(
+        {
+            'DATABASE_URL': 'postgres://u:p@fromurl.example.com:5432/urldb',
+            'DB_HOST': 'ignored.example.com',
+            'DB_NAME': 'ignored',
+        }
+    )
+
+    assert resolved['host'] == 'fromurl.example.com'
+    assert resolved['name'] == 'urldb'
+
+
+def test_a_half_configured_remote_host_is_refused_rather_than_dialled():
+    """DB_HOST set by hand on a managed host, with the rest left at defaults.
+
+    Without the guard the process boots, blocks in the entrypoint's connection
+    loop, and the platform reports a missing port rather than the missing
+    password.
+    """
+    started, error = _boot(
+        {
+            'DJANGO_ENVIRONMENT': 'production',
+            'SECRET_KEY': REQUIRED_IN_PRODUCTION['SECRET_KEY'],
+            'ALLOWED_HOSTS': REQUIRED_IN_PRODUCTION['ALLOWED_HOSTS'],
+            'FRONTEND_URL': REQUIRED_IN_PRODUCTION['FRONTEND_URL'],
+            'DB_HOST': 'db.example.com',
+        }
+    )
+
+    assert not started
+    assert 'DB_PASSWORD' in error, error
