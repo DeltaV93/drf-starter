@@ -124,5 +124,21 @@
   "themeLabel": "Apariencia",
   "themeLight": "Claro",
   "themeDark": "Oscuro",
-  "themeSystem": "Sistema"
+  "themeSystem": "Sistema",
+  "cancel": "Cancelar",
+  "connections": "Conexiones",
+  "connectionsHelp": "Servicios sobre los que esta aplicación puede actuar por ti. Conectar uno le permite usarlo en tu nombre; las herramientas indicadas son todo lo que podrá hacer.",
+  "mcpConnect": "Conectar",
+  "mcpConnecting": "Conectando...",
+  "mcpDisconnect": "Desconectar",
+  "mcpConnected": "Conectado.",
+  "mcpDisconnected": "Desconectado. Tu token se ha eliminado.",
+  "mcpEnabled": "Usar esta conexión",
+  "mcpAllTools": "Todas las herramientas de este servidor",
+  "mcpConnectTitle": "Conectar {{name}}",
+  "mcpCredential": "Token",
+  "mcpCredentialRequired": "Este servicio necesita tu propio token. Créalo allí y pégalo aquí.",
+  "mcpCredentialOptional": "Esta instalación proporciona un token para este servicio. Pega el tuyo solo si prefieres usarlo.",
+  "mcpCredentialHelp": "Se guarda cifrado y no se vuelve a mostrar. Déjalo en blanco para conservar el ya guardado.",
+  "mcpNoServers": "Esta instalación no ofrece conexiones."
 }

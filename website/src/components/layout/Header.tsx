@@ -11,6 +11,8 @@ import ColorSchemeToggle from './ColorSchemeToggle';
 // Keep in step with UPLOADS_ENABLED on the backend, or the link leads to
 // a page whose calls 404.
 const UPLOADS_ENABLED = import.meta.env.VITE_UPLOADS_ENABLED === 'true';
+// Same contract for MCP_CLIENT_ENABLED.
+const MCP_CLIENT_ENABLED = import.meta.env.VITE_MCP_CLIENT_ENABLED === 'true';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -49,6 +51,11 @@ export default function Header() {
                 {UPLOADS_ENABLED && (
                   <Button color="inherit" onClick={() => navigate('/files')}>
                     {t('files')}
+                  </Button>
+                )}
+                {MCP_CLIENT_ENABLED && (
+                  <Button color="inherit" onClick={() => navigate('/connections')}>
+                    {t('connections')}
                   </Button>
                 )}
                 <Button color="inherit" onClick={() => navigate('/security')}>

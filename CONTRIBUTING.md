@@ -114,3 +114,18 @@ a blank line, then the detail. Reference an issue if there is one.
 
 Please do not open a public issue for a security problem. Email the
 maintainer instead.
+
+## Optional: MCP tooling for your assistant
+
+`.mcp.json` at the repository root configures MCP servers for a coding
+assistant working on this repository — the compose Postgres (read-only) and
+the filesystem. It is **entirely optional**: nothing in the application reads
+it, no test depends on it, and you can delete it without consequence.
+
+It is unrelated to `apps/mcp_server` and `apps/mcp_client`, which are product
+features. See [docs/mcp.md](docs/mcp.md) for which is which.
+
+Read-only Postgres is deliberate. An assistant that can read the schema
+answers most questions; one that can write to your development database can
+lose an afternoon of fixtures without meaning to. Change it if you disagree —
+but change it knowingly.

@@ -24,6 +24,7 @@ command, with the auth, billing, tooling and CI already wired up.
 | [Configuration](docs/configuration.md) | Every environment variable, its default, and what it does. Kept in step with the code by a test |
 | [Architecture](docs/architecture.md) | What is here, how a request moves through it, and why the flags are independent |
 | [Extending](docs/extending.md) | Recipes: a new endpoint, a new feature behind a flag, a page, a task, a locale |
+| [MCP](docs/mcp.md) | The three separate things called MCP here, what each one guarantees, and what has not been verified |
 | [Theming](#theming) | Re-skinning the SPA for a new brand |
 | [CLAUDE.md](CLAUDE.md) | The decisions that are easy to undo by accident. Read before changing anything structural |
 
@@ -618,6 +619,9 @@ Adding a tool is adding an async function to a module under
 description the model reads and the signature becomes the schema, so both are
 load-bearing.
 
+[docs/mcp.md](docs/mcp.md) has the full picture, including three transport
+bugs worth knowing about if you touch the ASGI wiring.
+
 ### Removing it
 
 ```bash
@@ -770,6 +774,11 @@ both.
 resolution, the refusal when there is none, the result shape, the audit call,
 the error type. Two transports disagreeing about any of those would be two
 integrations wearing one name.
+
+Users connect servers at **`/connections`**, behind `VITE_MCP_CLIENT_ENABLED`.
+The page lists what each server would be able to do *before* anyone agrees to
+it — a connection screen that does not name the tools is asking for consent to
+something unnamed. Disconnecting deletes the stored token; pausing keeps it.
 
 **Credentials.** A user's own wins over the deployment-wide one, and a server
 marked `requires_user_credential` **refuses rather than falling back** — the

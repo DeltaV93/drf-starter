@@ -147,3 +147,25 @@ export interface SocialConnections {
   /** False means the last provider cannot be unlinked -- nothing else to sign in with. */
   has_usable_password: boolean;
 }
+
+/**
+ * One outbound MCP server this user could connect, with their own connection
+ * state folded in.
+ *
+ * Everything except `connected`, `enabled` and `last_used_at` comes from a
+ * module in the backend repository, not from a row -- so none of it can be
+ * changed by a request, and the UI treats it as read-only.
+ */
+export interface ConnectableServer {
+  slug: string;
+  label: string;
+  description: string;
+  transport: string;
+  /** True when the token has to be this user's own rather than the deployment's. */
+  requires_user_credential: boolean;
+  /** The curated surface, or null for "whatever the server offers". */
+  allowed_tools: string[] | null;
+  connected: boolean;
+  enabled: boolean;
+  last_used_at: string | null;
+}

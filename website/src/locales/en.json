@@ -124,5 +124,21 @@
   "themeLabel": "Appearance",
   "themeLight": "Light",
   "themeDark": "Dark",
-  "themeSystem": "System"
+  "themeSystem": "System",
+  "cancel": "Cancel",
+  "connections": "Connections",
+  "connectionsHelp": "Services this application can act on for you. Connecting one lets it use that service on your behalf; the tools listed are all it will ever be able to do.",
+  "mcpConnect": "Connect",
+  "mcpConnecting": "Connecting...",
+  "mcpDisconnect": "Disconnect",
+  "mcpConnected": "Connected.",
+  "mcpDisconnected": "Disconnected. Your token has been deleted.",
+  "mcpEnabled": "Use this connection",
+  "mcpAllTools": "Every tool this server offers",
+  "mcpConnectTitle": "Connect {{name}}",
+  "mcpCredential": "Token",
+  "mcpCredentialRequired": "This service needs your own token. Create one there, then paste it here.",
+  "mcpCredentialOptional": "This deployment supplies a token for this service. Paste your own only if you want to use it instead.",
+  "mcpCredentialHelp": "Stored encrypted and never shown again. Leave blank to keep the one already stored.",
+  "mcpNoServers": "This deployment offers no connections."
 }
