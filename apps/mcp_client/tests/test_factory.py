@@ -34,12 +34,15 @@ def test_the_same_call_site_follows_a_changed_transport():
     connector = client_for_definition(
         ServerDefinition(slug='s', label='S', url='https://x.test/mcp')
     )
-    assert connector.transport == 'connector'
+    local = client_for_definition(
+        ServerDefinition(slug='s', label='S', transport='local', url='https://x.test/mcp')
+    )
 
-    # PR 5 adds the local transport; until then the factory should say so
-    # clearly rather than raising an opaque ImportError.
-    with pytest.raises(MCPClientError, match='local'):
-        client_for_definition(ServerDefinition(slug='s', label='S', transport='local'))
+    # One line different in the definition, two different transports, and the
+    # call site -- this function -- did not change.
+    assert connector.transport == 'connector'
+    assert local.transport == 'local'
+    assert connector.definition.slug == local.definition.slug
 
 
 def test_an_unknown_transport_names_the_ones_that_exist():

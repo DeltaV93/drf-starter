@@ -40,6 +40,22 @@ def _with_mcp(django_app):
     mount = settings.MCP_MOUNT_PATH.rstrip('/')
 
     async def router(scope, receive, send):
+        if scope['type'] == 'lifespan':
+            # The MCP app's, not Django's, and this is load-bearing rather
+            # than tidy. The SDK's Starlette app declares
+            # `lifespan=session_manager.run()`, and that is what starts the
+            # task group every request is handled inside. Without it the
+            # transport accepts a connection, speaks JSON-RPC, and answers
+            # every single call with "Task group is not initialized" --
+            # a server that looks mounted and works for nothing.
+            #
+            # Django is not given the scope because its ASGI handler raises
+            # on anything but `http`, which is also why sending lifespan
+            # there looked harmless: the server logs a failure, decides the
+            # application has no lifespan support, and carries on.
+            await mcp_app(scope, receive, send)
+            return
+
         if scope['type'] in {'http', 'websocket'}:
             path = scope.get('path', '')
             # Exactly the mount, or a path beneath it. A prefix test alone

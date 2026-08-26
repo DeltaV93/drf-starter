@@ -109,17 +109,19 @@ class BaseMCPClient(ABC):
         `messages` continues an existing conversation; `prompt` is appended to
         it. Passing only `prompt` is the common case.
         """
+        conversation = self._conversation(prompt, messages)
+        result = self._run(conversation, credential=self.credential(), **options)
+        self._record(result)
+        return result
+
+    @staticmethod
+    def _conversation(prompt, messages):
         conversation = list(messages or [])
         if prompt:
             conversation.append({'role': 'user', 'content': prompt})
         if not conversation:
             raise MCPClientError('There is nothing to send: no prompt and no messages.')
-
-        credential = self.credential()
-        result = self._run(conversation, credential=credential, **options)
-
-        self._record(result)
-        return result
+        return conversation
 
     @abstractmethod
     def _run(self, messages: list[dict], *, credential: str | None, **options) -> MCPResult:
