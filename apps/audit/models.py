@@ -37,6 +37,7 @@ class Action(models.TextChoices):
     MEMBER_ROLE_CHANGED = AuditAction.MEMBER_ROLE_CHANGED, 'Member role changed'
     TWO_FACTOR_ENABLED = AuditAction.TWO_FACTOR_ENABLED, 'Two-factor enabled'
     TWO_FACTOR_DISABLED = AuditAction.TWO_FACTOR_DISABLED, 'Two-factor disabled'
+    MCP_SERVER_CALLED = AuditAction.MCP_SERVER_CALLED, 'Outbound MCP server called'
 
 
 class AuditEvent(models.Model):

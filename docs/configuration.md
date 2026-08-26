@@ -189,6 +189,47 @@ directory as well.
 Wiring one up is a deployment task, not a code change — nothing in
 `apps/mcp_oauth` is Hydra-specific.
 
+## MCP client
+
+The mirror of the MCP server, and independent of it: an application can be
+agent-callable without itself being an agent, and the other way round.
+
+**Which servers exist is decided in the repository, not in configuration.**
+One module per connection under `apps/mcp_client/servers/`, each defining a
+`SERVER = ServerDefinition(...)`. The registry finds them by walking the
+package, so adding a connection is adding a file and removing one is deleting a
+file. The settings below choose which of those files are live; they cannot
+introduce a server nobody wrote one for, which is what makes the set auditable
+in a diff.
+
+**Transport is per server, not per deployment.** A server Anthropic can reach
+over HTTPS uses `transport='connector'` — Anthropic fetches it and the model
+calls its tools directly, with no outbound plumbing here. A server on a private
+network or speaking stdio uses `transport='local'` (added in a follow-up PR).
+`clients/base.py` makes them interchangeable at the call site, so changing one
+is editing one line in one module.
+
+**A per-user credential wins over the deployment-wide one, and a server marked
+`requires_user_credential` refuses rather than falling back.** That refusal is
+the point: falling back would let a user who has authorised nothing act with
+the deployment's authority. Stored credentials are encrypted at rest.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `MCP_CLIENT_ENABLED` | `false` | Lets the application call out to MCP servers. |
+| `MCP_CLIENT_SERVERS` | *(all defined)* | Comma-separated slugs to enable. A slug with no module raises at startup rather than being silently ignored. |
+| `MCP_CLIENT_MODEL` | *(required)* | The model outbound calls use. No default on purpose — a model ID baked into a template ages quietly, since it keeps working while better models ship. See the [model list](https://docs.claude.com/en/docs/about-claude/models). |
+| `MCP_CLIENT_PROVIDER` | `anthropic` | `anthropic`, `aws`, `bedrock` or `vertex`. The connector transport works on the first two only; the others route to Claude but not through the endpoint that fetches an MCP server, so a server needs `transport='local'` there. The client says so rather than letting the provider reject the request with an error that never mentions MCP. |
+| `MCP_CLIENT_MAX_TOKENS` | `4096` | Response budget for an outbound call. |
+| `MCP_CLIENT_TIMEOUT_SECONDS` | `60` | How long to wait. |
+| `MCP_CLIENT_SECRET_KEY` | *(falls back to `SECRET_KEY`)* | Encrypts stored per-user credentials. Rotating `SECRET_KEY` without setting this makes every stored credential undecryptable and every connection has to be re-authorised. |
+
+### The connector is beta
+
+`mcp-client-2025-11-20`, and it may change. It is one constant in
+`apps/mcp_client/clients/connector.py`, which is the reason that transport is
+its own module rather than a branch inside the base class.
+
 ## Organizations
 
 | Variable | Default | What it does |

@@ -714,6 +714,85 @@ keeps a discovery probe getting an honest 404 instead of the SPA.
 
 ---
 
+## Calling other MCP servers
+
+The mirror of the section above. `MCP_SERVER_ENABLED` makes this application
+callable by an agent; `MCP_CLIENT_ENABLED=true` lets it *be* one — reaching
+other people's MCP servers to answer a question or do a job.
+
+```python
+from apps.mcp_client import client_for
+
+result = client_for('example', user=request.user).ask('What changed this week?')
+
+result.text  # what the model said
+result.tool_calls  # which tools ran, with arguments and results
+result.errored_tools  # the ones the server refused
+```
+
+**One file per connection.** A module under `apps/mcp_client/servers/` defines
+a `SERVER = ServerDefinition(...)` and nothing else; the registry finds it by
+walking the package. Adding a connection is adding a file, removing one is
+deleting a file, and there is no table of URLs to keep in step. A server cannot
+become reachable without a file in the repository describing it — which is the
+property that makes the whole set auditable in a diff.
+`servers/example.py` is a worked one, kept as the documentation for that
+directory.
+
+**Transport is per server, not per deployment.**
+
+| | `connector` | `local` |
+|---|---|---|
+| Who reaches the server | Anthropic | this application |
+| Needs | a public HTTPS URL | anything you can reach |
+| Can list tools first | no — discovery happens on Anthropic's side | yes |
+| Async | none needed | bridged inside the transport |
+
+A server behind a VPC is simply not reachable from Anthropic's side, whatever a
+deployment would prefer in general. `clients/base.py` makes the two
+interchangeable at the call site, so switching is one line in one `servers/`
+module and no caller moves. *(The local transport lands in the next PR; the
+factory says so clearly rather than raising an opaque import error.)*
+
+**The base class holds everything that is not "how do I reach it".** Credential
+resolution, the refusal when there is none, the result shape, the audit call,
+the error type. Two transports disagreeing about any of those would be two
+integrations wearing one name.
+
+**Credentials.** A user's own wins over the deployment-wide one, and a server
+marked `requires_user_credential` **refuses rather than falling back** — the
+same confused-deputy reasoning the MCP server side follows by holding no
+credential of its own. Stored tokens are encrypted at rest.
+
+**The connector needs both halves.** `mcp_servers` *and* a matching
+`mcp_toolset` in `tools`; sending one without the other is a validation error,
+not a request that quietly does nothing. They are built together in one place
+and pinned by a test, because it is the mistake this API invites.
+
+**Not available on Bedrock or Vertex.** They route to Claude but not through
+the endpoint that fetches an MCP server. Set `MCP_CLIENT_PROVIDER` and the
+client says so, instead of the provider rejecting the request with an error
+that never mentions MCP.
+
+> **Not verified against the live API.** The request body, the response
+> normalisation, credential resolution and the provider gate are all covered by
+> tests against an injected SDK — no API key was available where this was
+> written, so no real call was made. The beta is isolated in
+> `clients/connector.py` so a change to it is a one-file problem.
+
+### Removing it
+
+```bash
+git rm -r apps/mcp_client
+```
+
+Then drop the `MCP_CLIENT_ENABLED` branches from `template/settings/base.py`,
+`anthropic` from `requirements/base.txt`, and the `MCP_SERVER_CALLED` member
+from `apps/core/audit.py` and `apps/audit/models.py`. The app owns one table,
+so drop it with a migration rather than by hand.
+
+---
+
 ## Theming
 
 Everything visual comes from **`website/src/styles/brand.ts`**. No component

@@ -56,6 +56,9 @@ pyotp>=2.9
 # safe to remove along with apps/mcp_server if the application does not need
 # to be callable by agents.
 mcp>=2.0
+# The MCP connector: Anthropic fetches a remote MCP server on our behalf.
+# Only needed with MCP_CLIENT_ENABLED, and only for the connector transport.
+anthropic>=1.0
 
 # S3 storage for uploads (only used when AWS_STORAGE_BUCKET_NAME is set)
 django-storages[s3]>=1.14
