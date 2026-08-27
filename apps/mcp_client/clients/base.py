@@ -197,6 +197,44 @@ class BaseMCPClient(ABC):
 
     # -- helpers for transports -------------------------------------------
 
+    def _build_anthropic_client(self):
+        """The Anthropic SDK client, with the API key resolved explicitly.
+
+        The SDK reads `ANTHROPIC_API_KEY` from the environment by itself, so
+        passing it is redundant -- and doing it anyway is deliberate, for two
+        reasons.
+
+        It makes the variable *visible*. `scripts/env_vars.py` finds settings
+        by parsing this repository for environment reads, and the tests in
+        apps/core/tests/test_env_documented.py fail when one is undocumented.
+        A variable only a dependency reads is invisible to that machinery, so
+        `ANTHROPIC_API_KEY` was genuinely required and documented nowhere --
+        which is exactly the failure those tests exist to prevent.
+
+        And it fails usefully. Without a key the SDK constructs happily and
+        raises on the first call, somewhere inside a request, naming nothing
+        anyone can act on.
+        """
+        import os
+
+        try:
+            from anthropic import Anthropic
+        except ImportError as exc:
+            raise MCPClientError(
+                'The anthropic package is not installed. It is in '
+                'requirements/base.txt under MCP_CLIENT_ENABLED.'
+            ) from exc
+
+        api_key = os.environ.get('ANTHROPIC_API_KEY', '').strip()
+        if not api_key:
+            raise MCPClientError(
+                'ANTHROPIC_API_KEY is not set, so there is no way to call the '
+                'model. Set it wherever this process gets its environment -- '
+                'see docs/getting-started.md.'
+            )
+
+        return Anthropic(api_key=api_key, timeout=self.timeout)
+
     @property
     def model(self) -> str:
         """The model to call.

@@ -21,6 +21,7 @@ command, with the auth, billing, tooling and CI already wired up.
 
 | | |
 |---|---|
+| [Getting started](docs/getting-started.md) | **Start here.** What to install, the four variables production needs, and which services you must sign up for |
 | [Configuration](docs/configuration.md) | Every environment variable, its default, and what it does. Kept in step with the code by a test |
 | [Architecture](docs/architecture.md) | What is here, how a request moves through it, and why the flags are independent |
 | [Extending](docs/extending.md) | Recipes: a new endpoint, a new feature behind a flag, a page, a task, a locale |
@@ -77,6 +78,11 @@ This renames the package, rewrites every reference, and substitutes the
 display name in the API docs and the UI. Run it on a clean working tree
 (`--dry-run` shows what it would touch), then delete the script — a project
 only gets renamed once.
+
+**Rebuild the frontend afterwards if you had already built it.** The name is
+compiled into `website/dist`, which the script skips as generated output, and
+Django serves that build when it exists — so the nav bar keeps the old name
+until `make fe-build`. The script warns you when it finds one.
 
 ---
 

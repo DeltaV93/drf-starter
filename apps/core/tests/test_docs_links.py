@@ -28,13 +28,21 @@ HEADING = re.compile(r'^#+\s+(.+?)\s*$', re.MULTILINE)
 
 
 def _anchors(text):
-    """GitHub's slugs: lowercase, punctuation dropped, spaces to hyphens."""
+    """GitHub's slugs: lowercase, punctuation dropped, spaces to hyphens.
+
+    Underscores survive, which is easy to get wrong and matters here: the
+    documentation is full of headings named after SNAKE_CASE settings, and
+    `### FRONTEND_URL in detail` anchors as `#frontend_url-in-detail`. Dropping
+    the underscore made this test reject a link that works and accept one that
+    does not -- in the same direction, so nothing looked broken until the first
+    such heading was written.
+    """
     slugs = set()
     for heading in HEADING.findall(text):
         # Inline code and links appear in headings; their markup is not slugged.
         plain = re.sub(r'`([^`]*)`', r'\1', heading)
         plain = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', plain)
-        slugs.add(re.sub(r'[^a-z0-9 -]', '', plain.lower()).replace(' ', '-'))
+        slugs.add(re.sub(r'[^a-z0-9 _-]', '', plain.lower()).replace(' ', '-'))
     return slugs
 
 
