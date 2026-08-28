@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { useTrips, type Trip } from '../../hooks/useTrips';
 import { shape, spacingUnit } from '../../styles/brand';
+import { validateFields } from '../../lib/validation';
 
 export default function TripsPage() {
   const { t } = useTranslation();
@@ -28,6 +29,7 @@ export default function TripsPage() {
   const { trips, loading, loadTrips, createTrip } = useTrips();
   const [openDialog, setOpenDialog] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: '',
     start_address: '',
@@ -42,10 +44,32 @@ export default function TripsPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setFormData({ name: '', start_address: '', end_address: '' });
+    setFormErrors({});
   };
 
   const handleCreateTrip = async () => {
-    if (!formData.name || !formData.start_address || !formData.end_address) {
+    // Validate form
+    const errors = validateFields({
+      tripName: formData.name,
+      address: formData.start_address,
+    });
+
+    const errorMap: Record<string, string> = {};
+    errors.forEach((e) => {
+      if (e.field === 'tripName') {
+        errorMap.name = e.message;
+      } else if (e.field === 'address') {
+        errorMap.start_address = e.message;
+      }
+    });
+
+    const endAddressError = validateFields({ address: formData.end_address }).find((e) => e.field === 'address');
+    if (endAddressError) {
+      errorMap.end_address = endAddressError.message;
+    }
+
+    if (Object.keys(errorMap).length > 0) {
+      setFormErrors(errorMap);
       return;
     }
 
@@ -189,31 +213,46 @@ export default function TripsPage() {
             fullWidth
             label={t('tripName', 'Trip Name')}
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) setFormErrors({ ...formErrors, name: undefined });
+            }}
             margin="normal"
             placeholder="e.g., Downtown Open Houses"
             variant="outlined"
             size="small"
+            error={!!formErrors.name}
+            helperText={formErrors.name}
           />
           <TextField
             fullWidth
             label={t('startAddress', 'Starting Address')}
             value={formData.start_address}
-            onChange={(e) => setFormData({ ...formData, start_address: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, start_address: e.target.value });
+              if (formErrors.start_address) setFormErrors({ ...formErrors, start_address: undefined });
+            }}
             margin="normal"
             placeholder="e.g., 123 Main St, City, State"
             variant="outlined"
             size="small"
+            error={!!formErrors.start_address}
+            helperText={formErrors.start_address}
           />
           <TextField
             fullWidth
             label={t('endAddress', 'Ending Address')}
             value={formData.end_address}
-            onChange={(e) => setFormData({ ...formData, end_address: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, end_address: e.target.value });
+              if (formErrors.end_address) setFormErrors({ ...formErrors, end_address: undefined });
+            }}
             margin="normal"
             placeholder="e.g., 456 Oak Ave, City, State"
             variant="outlined"
             size="small"
+            error={!!formErrors.end_address}
+            helperText={formErrors.end_address}
           />
         </DialogContent>
         <DialogActions sx={{ p: spacingUnit * 1.5 }}>

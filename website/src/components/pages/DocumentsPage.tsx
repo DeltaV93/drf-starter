@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { shape, spacingUnit } from '../../styles/brand';
 import { useDocuments } from '../../hooks/useDocuments';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { validateFields } from '../../lib/validation';
 
 export default function DocumentsPage() {
   const { t } = useTranslation();
@@ -36,6 +37,7 @@ export default function DocumentsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     filename: '',
     category: 'other',
@@ -50,13 +52,30 @@ export default function DocumentsPage() {
     setOpenDialog(false);
     setFormData({ filename: '', category: 'other' });
     setError(null);
+    setFormErrors({});
   };
 
   const handleUploadDocument = async () => {
-    if (!formData.filename) {
-      setError('Please enter a filename');
+    // Validate form
+    const errors = validateFields({
+      fileName: formData.filename,
+      category: formData.category,
+    });
+
+    const errorMap: Record<string, string> = {};
+    errors.forEach((e) => {
+      if (e.field === 'fileName') {
+        errorMap.filename = e.message;
+      } else {
+        errorMap[e.field] = e.message;
+      }
+    });
+
+    if (Object.keys(errorMap).length > 0) {
+      setFormErrors(errorMap);
       return;
     }
+
     setUploading(true);
     setError(null);
     try {
@@ -244,12 +263,16 @@ export default function DocumentsPage() {
             fullWidth
             label="File Name"
             value={formData.filename}
-            onChange={(e) => setFormData({ ...formData, filename: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, filename: e.target.value });
+              if (formErrors.filename) setFormErrors({ ...formErrors, filename: undefined });
+            }}
             margin="normal"
             placeholder="e.g., home_inspection.pdf"
             variant="outlined"
             size="small"
-            error={!!error}
+            error={!!formErrors.filename}
+            helperText={formErrors.filename}
           />
           <FormControl fullWidth margin="normal" size="small">
             <InputLabel>Category</InputLabel>

@@ -26,11 +26,18 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import { useRouteOptimization } from '../../hooks/useRouteOptimization';
 import { useTrips, type TripHome } from '../../hooks/useTrips';
 import { shape, spacingUnit } from '../../styles/brand';
+import { validateTripTimes, validateFields } from '../../lib/validation';
 
 interface AddHomeForm {
   address: string;
   start_time: string;
   end_time: string;
+}
+
+interface FormErrors {
+  address?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 export default function TripDetailPage() {
@@ -42,6 +49,7 @@ export default function TripDetailPage() {
   const trip = useMemo(() => trips.find((t) => t.id === parseInt(id || '0')), [trips, id]);
   const [openDialog, setOpenDialog] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [formData, setFormData] = useState<AddHomeForm>({
     address: '',
     start_time: '',
@@ -81,9 +89,25 @@ export default function TripDetailPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setFormData({ address: '', start_time: '', end_time: '' });
+    setFormErrors({});
   };
 
   const handleSaveHome = async () => {
+    // Validate form
+    const addressError = validateFields({ address: formData.address }).find((e) => e.field === 'address');
+    const timeErrors = validateTripTimes(formData.start_time, formData.end_time);
+
+    const errors: FormErrors = {};
+    if (addressError) errors.address = addressError.message;
+    timeErrors.forEach((e) => {
+      errors[e.field as keyof FormErrors] = e.message;
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
     if (!formData.address || !formData.start_time || !formData.end_time || !trip) {
       return;
     }
@@ -294,33 +318,48 @@ export default function TripDetailPage() {
             fullWidth
             label="Address"
             value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, address: e.target.value });
+              if (formErrors.address) setFormErrors({ ...formErrors, address: undefined });
+            }}
             margin="normal"
             placeholder="e.g., 123 Oak St, City, State"
             variant="outlined"
             size="small"
+            error={!!formErrors.address}
+            helperText={formErrors.address}
           />
           <TextField
             fullWidth
             label="Start Time"
             type="datetime-local"
             value={formData.start_time}
-            onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, start_time: e.target.value });
+              if (formErrors.start_time) setFormErrors({ ...formErrors, start_time: undefined });
+            }}
             margin="normal"
             InputLabelProps={{ shrink: true }}
             variant="outlined"
             size="small"
+            error={!!formErrors.start_time}
+            helperText={formErrors.start_time}
           />
           <TextField
             fullWidth
             label="End Time"
             type="datetime-local"
             value={formData.end_time}
-            onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, end_time: e.target.value });
+              if (formErrors.end_time) setFormErrors({ ...formErrors, end_time: undefined });
+            }}
             margin="normal"
             InputLabelProps={{ shrink: true }}
             variant="outlined"
             size="small"
+            error={!!formErrors.end_time}
+            helperText={formErrors.end_time}
           />
         </DialogContent>
         <DialogActions sx={{ p: spacingUnit * 1.5 }}>
