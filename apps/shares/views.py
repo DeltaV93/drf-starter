@@ -10,7 +10,12 @@ from drf_spectacular.utils import extend_schema
 from utils.api_utils import api_response
 from apps.documents.models import DocumentVault, Document
 from .models import ShareLink, ShareLinkDocument, ShareSession
-from .serializers import ShareLinkSerializer, CreateShareLinkSerializer, ShareLinkDocumentSerializer
+from .serializers import (
+    ShareLinkSerializer,
+    CreateShareLinkSerializer,
+    ShareLinkDocumentSerializer,
+    SharePasswordRequestSerializer,
+)
 
 
 class ShareLinksListView(APIView):
@@ -102,8 +107,8 @@ class ShareAccessView(APIView):
 
     @extend_schema(
         summary='Verify share link password',
-        request={'type': 'object', 'properties': {'password': {'type': 'string'}}},
-        responses=ShareLinkSerializer,
+        request=SharePasswordRequestSerializer,
+        responses={200: ShareLinkSerializer},
     )
     def post(self, request, token):
         now = timezone.now()

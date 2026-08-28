@@ -71,3 +71,24 @@ class UpdateTripSerializer(serializers.ModelSerializer):
                 TripHome.objects.create(trip=instance, visit_order=idx, **home_data)
 
         return instance
+
+
+class GeocodeRequestSerializer(serializers.Serializer):
+    address = serializers.CharField(max_length=500)
+
+
+class GeocodeResponseSerializer(serializers.Serializer):
+    lat = serializers.FloatField()
+    lng = serializers.FloatField()
+
+
+class OptimizeRouteRequestSerializer(serializers.Serializer):
+    homes = CreateTripHomeSerializer(many=True)
+
+
+class OptimizeRouteResponseSerializer(serializers.Serializer):
+    schedule = TripHomeSerializer(many=True)
+    start_coords = serializers.ListField(child=serializers.FloatField())
+    end_coords = serializers.ListField(child=serializers.FloatField())
+    total_distance = serializers.FloatField()
+    skipped_homes = serializers.ListField(child=serializers.CharField())

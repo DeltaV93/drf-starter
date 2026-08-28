@@ -8,7 +8,15 @@ from drf_spectacular.utils import extend_schema
 
 from utils.api_utils import api_response
 from .models import Trip
-from .serializers import TripSerializer, CreateTripSerializer, UpdateTripSerializer
+from .serializers import (
+    TripSerializer,
+    CreateTripSerializer,
+    UpdateTripSerializer,
+    GeocodeRequestSerializer,
+    GeocodeResponseSerializer,
+    OptimizeRouteRequestSerializer,
+    OptimizeRouteResponseSerializer,
+)
 
 
 class TripsListView(APIView):
@@ -81,8 +89,8 @@ class GeocodeView(APIView):
 
     @extend_schema(
         summary='Geocode address',
-        request={'type': 'object', 'properties': {'address': {'type': 'string'}}},
-        responses={'type': 'object'},
+        request=GeocodeRequestSerializer,
+        responses={200: GeocodeResponseSerializer},
     )
     def post(self, request):
         from .utils.geocoding import geocode_address
@@ -110,8 +118,8 @@ class OptimizeRouteView(APIView):
 
     @extend_schema(
         summary='Optimize route',
-        request={'type': 'object'},
-        responses={'type': 'object'},
+        request=OptimizeRouteRequestSerializer,
+        responses={200: OptimizeRouteResponseSerializer},
     )
     def post(self, request):
         from .utils.optimizer import optimize_route

@@ -28,3 +28,7 @@ class ShareSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShareSession
         fields = ['id', 'access_token', 'expires_at', 'created_at']
+
+
+class SharePasswordRequestSerializer(serializers.Serializer):
+    password = serializers.CharField(max_length=255)
