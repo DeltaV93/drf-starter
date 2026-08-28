@@ -37,7 +37,7 @@ export default function DocumentsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string | undefined>>({});
   const [formData, setFormData] = useState({
     filename: '',
     category: 'other',
@@ -250,7 +250,7 @@ export default function DocumentsPage() {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: shape.card } }}
+        slotProps={{ paper: { sx: { borderRadius: shape.card } } }}
       >
         <DialogTitle sx={{ fontWeight: 600 }}>{t('uploadDocument', 'Upload Document')}</DialogTitle>
         <DialogContent sx={{ pt: spacingUnit * 2 }}>
@@ -272,7 +272,7 @@ export default function DocumentsPage() {
             variant="outlined"
             size="small"
             error={!!formErrors.filename}
-            helperText={formErrors.filename}
+            helperText={formErrors.filename ?? ''}
           />
           <FormControl fullWidth margin="normal" size="small">
             <InputLabel>Category</InputLabel>

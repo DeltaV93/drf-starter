@@ -310,7 +310,7 @@ export default function TripDetailPage() {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: shape.card } }}
+        slotProps={{ paper: { sx: { borderRadius: shape.card } } }}
       >
         <DialogTitle sx={{ fontWeight: 600 }}>Add Home to Visit</DialogTitle>
         <DialogContent sx={{ pt: spacingUnit * 2 }}>
@@ -327,7 +327,7 @@ export default function TripDetailPage() {
             variant="outlined"
             size="small"
             error={!!formErrors.address}
-            helperText={formErrors.address}
+            helperText={formErrors.address ?? ''}
           />
           <TextField
             fullWidth
@@ -343,7 +343,7 @@ export default function TripDetailPage() {
             variant="outlined"
             size="small"
             error={!!formErrors.start_time}
-            helperText={formErrors.start_time}
+            helperText={formErrors.start_time ?? ''}
           />
           <TextField
             fullWidth
@@ -359,7 +359,7 @@ export default function TripDetailPage() {
             variant="outlined"
             size="small"
             error={!!formErrors.end_time}
-            helperText={formErrors.end_time}
+            helperText={formErrors.end_time ?? ''}
           />
         </DialogContent>
         <DialogActions sx={{ p: spacingUnit * 1.5 }}>

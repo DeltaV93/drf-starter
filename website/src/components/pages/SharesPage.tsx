@@ -246,7 +246,7 @@ export default function SharesPage() {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: shape.card } }}
+        slotProps={{ paper: { sx: { borderRadius: shape.card } } }}
       >
         <DialogTitle sx={{ fontWeight: 600 }}>{t('createShare', 'Create Share Link')}</DialogTitle>
         <DialogContent sx={{ pt: spacingUnit * 2 }}>

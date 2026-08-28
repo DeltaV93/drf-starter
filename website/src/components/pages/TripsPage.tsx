@@ -29,7 +29,7 @@ export default function TripsPage() {
   const { trips, loading, loadTrips, createTrip } = useTrips();
   const [openDialog, setOpenDialog] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string | undefined>>({});
   const [formData, setFormData] = useState({
     name: '',
     start_address: '',
@@ -203,7 +203,7 @@ export default function TripsPage() {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: shape.card } }}
+        slotProps={{ paper: { sx: { borderRadius: shape.card } } }}
       >
         <DialogTitle sx={{ fontWeight: 600 }}>
           {t('createNewTrip', 'Create New Trip')}
@@ -222,7 +222,7 @@ export default function TripsPage() {
             variant="outlined"
             size="small"
             error={!!formErrors.name}
-            helperText={formErrors.name}
+            helperText={formErrors.name ?? ''}
           />
           <TextField
             fullWidth
@@ -237,7 +237,7 @@ export default function TripsPage() {
             variant="outlined"
             size="small"
             error={!!formErrors.start_address}
-            helperText={formErrors.start_address}
+            helperText={formErrors.start_address ?? ''}
           />
           <TextField
             fullWidth
@@ -252,7 +252,7 @@ export default function TripsPage() {
             variant="outlined"
             size="small"
             error={!!formErrors.end_address}
-            helperText={formErrors.end_address}
+            helperText={formErrors.end_address ?? ''}
           />
         </DialogContent>
         <DialogActions sx={{ p: spacingUnit * 1.5 }}>

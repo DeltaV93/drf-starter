@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { apiCall } from '../lib/api'
+import { apiData } from '../lib/api'
+import { routes } from '../lib/routes'
 
 export interface TripHome {
   id: number
@@ -43,8 +44,8 @@ export function useTrips() {
     setLoading(true)
     setError(null)
     try {
-      const response = await apiCall('/trips/', { method: 'GET' })
-      setTrips(response.data || [])
+      const data = await apiData<Trip[]>({ url: routes.api.trips.list(), method: 'GET' })
+      setTrips(data || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load trips')
     } finally {
@@ -56,12 +57,12 @@ export function useTrips() {
     setLoading(true)
     setError(null)
     try {
-      const response = await apiCall('/trips/', {
+      const newTrip = await apiData<Trip>({
+        url: routes.api.trips.list(),
         method: 'POST',
-        body: JSON.stringify(payload),
+        data: payload,
       })
-      const newTrip = response.data
-      setTrips((prev) => [...prev, newTrip])
+      if (newTrip) setTrips((prev) => [...prev, newTrip])
       return newTrip
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create trip'
@@ -76,12 +77,12 @@ export function useTrips() {
     setLoading(true)
     setError(null)
     try {
-      const response = await apiCall(`/trips/${id}/`, {
+      const updated = await apiData<Trip>({
+        url: routes.api.trips.detail(id),
         method: 'PUT',
-        body: JSON.stringify(payload),
+        data: payload,
       })
-      const updated = response.data
-      setTrips((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      if (updated) setTrips((prev) => prev.map((t) => (t.id === id ? updated : t)))
       return updated
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update trip'
@@ -96,7 +97,10 @@ export function useTrips() {
     setLoading(true)
     setError(null)
     try {
-      await apiCall(`/trips/${id}/`, { method: 'DELETE' })
+      await apiData({
+        url: routes.api.trips.detail(id),
+        method: 'DELETE',
+      })
       setTrips((prev) => prev.filter((t) => t.id !== id))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete trip'

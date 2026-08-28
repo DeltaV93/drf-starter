@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import api from '../lib/api';
+import { apiData } from '../lib/api';
+import { routes } from '../lib/routes';
 
 export interface ShareLink {
   id: number;
@@ -16,7 +17,7 @@ export interface UseSharesReturn {
     document_ids: number[];
     password?: string;
     expires_at?: string;
-  }) => Promise<ShareLink>;
+  }) => Promise<ShareLink | undefined>;
   deleteShare: (id: number) => Promise<void>;
 }
 
@@ -27,8 +28,8 @@ export function useShares(): UseSharesReturn {
   const loadShares = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get('/shares/');
-      setShares(response.data.data || []);
+      const data = await apiData<ShareLink[]>({ url: routes.api.shares.list(), method: 'GET' });
+      setShares(data || []);
     } catch (error) {
       console.error('Failed to load shares:', error);
       setShares([]);
@@ -44,9 +45,12 @@ export function useShares(): UseSharesReturn {
       expires_at?: string;
     }) => {
       try {
-        const response = await api.post('/shares/', data);
-        const newShare = response.data.data;
-        setShares((prev) => [...prev, newShare]);
+        const newShare = await apiData<ShareLink>({
+          url: routes.api.shares.list(),
+          method: 'POST',
+          data,
+        });
+        if (newShare) setShares((prev) => [...prev, newShare]);
         return newShare;
       } catch (error) {
         console.error('Failed to create share:', error);
@@ -58,7 +62,10 @@ export function useShares(): UseSharesReturn {
 
   const deleteShare = useCallback(async (id: number) => {
     try {
-      await api.delete(`/shares/${id}/`);
+      await apiData({
+        url: routes.api.shares.detail(id),
+        method: 'DELETE',
+      });
       setShares((prev) => prev.filter((share) => share.id !== id));
     } catch (error) {
       console.error('Failed to delete share:', error);

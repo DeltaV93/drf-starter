@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import api from '../lib/api';
+import { apiData } from '../lib/api';
+import { routes } from '../lib/routes';
 
 export interface Document {
   id: number;
@@ -27,9 +28,9 @@ export interface UseDocumentsReturn {
     category: string;
     mime_type: string;
     file_size: number;
-  }) => Promise<Document>;
+  }) => Promise<Document | undefined>;
   deleteDocument: (id: number) => Promise<void>;
-  createVault: () => Promise<DocumentVault>;
+  createVault: () => Promise<DocumentVault | undefined>;
 }
 
 export function useDocuments(): UseDocumentsReturn {
@@ -40,8 +41,8 @@ export function useDocuments(): UseDocumentsReturn {
   const loadDocuments = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get('/documents/documents/');
-      setDocuments(response.data.data || []);
+      const data = await apiData<Document[]>({ url: routes.api.documents.list(), method: 'GET' });
+      setDocuments(data || []);
     } catch (error) {
       console.error('Failed to load documents:', error);
       setDocuments([]);
@@ -58,9 +59,12 @@ export function useDocuments(): UseDocumentsReturn {
       file_size: number;
     }) => {
       try {
-        const response = await api.post('/documents/documents/', data);
-        const newDoc = response.data.data;
-        setDocuments((prev) => [...prev, newDoc]);
+        const newDoc = await apiData<Document>({
+          url: routes.api.documents.list(),
+          method: 'POST',
+          data,
+        });
+        if (newDoc) setDocuments((prev) => [...prev, newDoc]);
         return newDoc;
       } catch (error) {
         console.error('Failed to create document:', error);
@@ -72,7 +76,10 @@ export function useDocuments(): UseDocumentsReturn {
 
   const deleteDocument = useCallback(async (id: number) => {
     try {
-      await api.delete(`/documents/documents/${id}/`);
+      await apiData({
+        url: routes.api.documents.detail(id),
+        method: 'DELETE',
+      });
       setDocuments((prev) => prev.filter((doc) => doc.id !== id));
     } catch (error) {
       console.error('Failed to delete document:', error);
@@ -82,13 +89,16 @@ export function useDocuments(): UseDocumentsReturn {
 
   const createVault = useCallback(async () => {
     try {
-      const response = await api.post('/documents/vault/create/', {
-        key_derivation_salt: '',
-        encrypted_master_key: '',
-        master_key_nonce: '',
+      const newVault = await apiData<DocumentVault>({
+        url: routes.api.vault.create(),
+        method: 'POST',
+        data: {
+          key_derivation_salt: '',
+          encrypted_master_key: '',
+          master_key_nonce: '',
+        },
       });
-      const newVault = response.data.data;
-      setVault(newVault);
+      if (newVault) setVault(newVault);
       return newVault;
     } catch (error) {
       console.error('Failed to create vault:', error);

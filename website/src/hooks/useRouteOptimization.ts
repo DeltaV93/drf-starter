@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { apiCall } from '../lib/api'
+import { apiData } from '../lib/api'
+import { routes } from '../lib/routes'
 import type { TripHome } from './useTrips'
 
 export interface OptimizationResult {
@@ -22,14 +23,16 @@ export function useRouteOptimization() {
 
   const geocodeAddress = useCallback(async (address: string): Promise<GeocodeResult> => {
     try {
-      const response = await apiCall('/geocode/', {
+      const result = await apiData<GeocodeResult>({
+        url: routes.api.geocode(),
         method: 'POST',
-        body: JSON.stringify({ address }),
+        data: { address },
       })
-      return response.data
+      if (!result) throw new Error('No geocoding result returned')
+      return result
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to geocode address'
-      throw new Error(message, { cause: err })
+      throw new Error(message)
     }
   }, [])
 
@@ -38,12 +41,13 @@ export function useRouteOptimization() {
       setLoading(true)
       setError(null)
       try {
-        const response = await apiCall('/optimize-route/', {
+        const data = await apiData<OptimizationResult>({
+          url: routes.api.optimizeRoute(),
           method: 'POST',
-          body: JSON.stringify({ homes }),
+          data: { homes },
         })
-        setResult(response.data)
-        return response.data
+        if (data) setResult(data)
+        return data
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to optimize route'
         setError(message)
