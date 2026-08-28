@@ -279,7 +279,7 @@ export default function SharesPage() {
             placeholder="Leave blank to never expire"
             variant="outlined"
             size="small"
-            inputProps={{ min: 1 }}
+            slotProps={{ input: { min: 1 } as any }}
           />
         </DialogContent>
         <DialogActions sx={{ p: spacingUnit * 1.5 }}>

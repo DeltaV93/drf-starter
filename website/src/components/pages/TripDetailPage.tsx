@@ -198,7 +198,9 @@ export default function TripDetailPage() {
         </Box>
 
         <Grid container spacing={spacingUnit}>
-          <Grid item xs={12} md={6}>
+          <Grid
+            {...({ item: true, xs: 12, md: 6 } as any)}
+          >
             <Card sx={{ height: '100%', borderRadius: shape.card }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: spacingUnit * 1.5 }}>
@@ -250,7 +252,9 @@ export default function TripDetailPage() {
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid
+            {...({ item: true, xs: 12, md: 6 } as any)}
+          >
             <Card sx={{ height: '100%', borderRadius: shape.card }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -339,7 +343,7 @@ export default function TripDetailPage() {
               if (formErrors.start_time) setFormErrors({ ...formErrors, start_time: undefined });
             }}
             margin="normal"
-            InputLabelProps={{ shrink: true }}
+            slotProps={{ inputLabel: { shrink: true } }}
             variant="outlined"
             size="small"
             error={!!formErrors.start_time}
@@ -355,7 +359,7 @@ export default function TripDetailPage() {
               if (formErrors.end_time) setFormErrors({ ...formErrors, end_time: undefined });
             }}
             margin="normal"
-            InputLabelProps={{ shrink: true }}
+            slotProps={{ inputLabel: { shrink: true } }}
             variant="outlined"
             size="small"
             error={!!formErrors.end_time}

@@ -139,7 +139,10 @@ export default function TripsPage() {
         ) : (
           <Grid container spacing={spacingUnit}>
             {trips.map((trip) => (
-              <Grid item xs={12} sm={6} md={4} key={trip.id}>
+              <Grid
+                {...({ item: true, xs: 12, sm: 6, md: 4 } as any)}
+                key={trip.id}
+              >
                 <Card
                   sx={{
                     height: '100%',
