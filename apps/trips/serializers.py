@@ -57,6 +57,11 @@ class UpdateTripSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = ['name', 'start_address', 'end_address', 'homes']
+        extra_kwargs = {
+            'name': {'required': False},
+            'start_address': {'required': False},
+            'end_address': {'required': False},
+        }
 
     def update(self, instance, validated_data):
         homes_data = validated_data.pop('homes', None)
