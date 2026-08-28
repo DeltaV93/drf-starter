@@ -54,7 +54,7 @@ and must keep the ordering. `apps/core/tests/test_health_probes.py` pins the
 behaviour and the ordering in every environment.
 
 **The container serves ASGI, and `template/asgi.py` is what it names.**
-`gunicorn template.asgi:application -k uvicorn.workers.UvicornWorker` — because
+`gunicorn clearpath.asgi:application -k uvicorn.workers.UvicornWorker` — because
 the MCP transport is ASGI-only. Django is unaffected: every middleware is sync,
 so the chain is adapted once. Two things follow. `apps/core/tests/test_asgi.py`
 must keep passing, because the ordinary test client drives WSGI and would not
@@ -126,7 +126,7 @@ runs on `pull_request` events only, and a direct push is never scanned.
 
 Split by environment under `template/settings/`, selected by
 `DJANGO_ENVIRONMENT`. `template/settings/__init__.py` only acts as a loader
-when it *is* the settings module — importing `template.settings.testing`
+when it *is* the settings module — importing `clearpath.settings.testing`
 directly must not pull in the development environment as a side effect.
 
 Anything that varies between deployments comes from the environment via

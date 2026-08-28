@@ -64,7 +64,7 @@ services:
       context: .
       args:
         REQUIREMENTS: requirements/dev.txt
-    command: celery -A template worker -l info
+    command: celery -A clearpath worker -l info
     environment:
       DJANGO_ENVIRONMENT: ${DJANGO_ENVIRONMENT:-development}
       DB_HOST: db

@@ -64,7 +64,7 @@ export interface BrandPalette {
 // ---------------------------------------------------------------------------
 
 export const identity = {
-  name: 'DRF Starter',
+  name: 'Clearpath',
   /** Used as the browser tab title and the meta description. */
   tagline: 'A Django REST Framework and React starter',
 } as const;

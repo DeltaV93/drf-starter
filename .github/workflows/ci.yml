@@ -27,7 +27,7 @@ jobs:
       - name: No source file is gitignored
         run: |
           untracked=$(git ls-files --others --ignored --exclude-standard \
-            -- 'apps/**/*.py' 'utils/**/*.py' 'template/**/*.py' 'scripts/**/*.py' \
+            -- 'apps/**/*.py' 'utils/**/*.py' 'clearpath/**/*.py' 'scripts/**/*.py' \
                'website/src/**/*.ts' 'website/src/**/*.tsx')
           if [ -n "$untracked" ]; then
             echo "::error::These source files are ignored by .gitignore and are not in the repo:"
@@ -55,7 +55,7 @@ jobs:
           --health-retries 10
 
     env:
-      DJANGO_SETTINGS_MODULE: template.settings.testing
+      DJANGO_SETTINGS_MODULE: clearpath.settings.testing
       DB_ENGINE: postgres
       DB_NAME: test_app
       DB_USER: postgres
@@ -140,7 +140,7 @@ jobs:
 
       - name: Production deployment checklist
         env:
-          DJANGO_SETTINGS_MODULE: template.settings.production
+          DJANGO_SETTINGS_MODULE: clearpath.settings.production
           SECRET_KEY: ci-only-key-long-enough-to-satisfy-the-deploy-check-000000
           ALLOWED_HOSTS: example.com
           # Production refuses to fall back to a localhost database, so the
@@ -257,7 +257,7 @@ jobs:
             -e FRONTEND_URL=https://example.com \
             -e SECURE_SSL_REDIRECT=false \
             --entrypoint sh drf-starter:ci \
-            -c 'gunicorn template.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 1 --access-logfile -'
+            -c 'gunicorn clearpath.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 1 --access-logfile -'
 
           for i in $(seq 1 30); do
             curl -fsS -o /dev/null http://localhost:8000/api/v1/health/ && break

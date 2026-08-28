@@ -32,7 +32,7 @@ in the request and nothing needs draining.
 
 ### Why ASGI
 
-The container runs `gunicorn template.asgi:application -k
+The container runs `gunicorn clearpath.asgi:application -k
 uvicorn.workers.UvicornWorker`. gunicorn still supervises, so `WEB_CONCURRENCY`
 and the process model are unchanged; uvicorn's worker class is what speaks
 ASGI.
@@ -209,7 +209,7 @@ base.py         everything shared; reads the environment through
 ```
 
 `template/settings/__init__.py` acts as a loader only when it *is* the settings
-module — importing `template.settings.testing` directly must not drag in the
+module — importing `clearpath.settings.testing` directly must not drag in the
 development environment as a side effect.
 
 Three behaviours worth knowing:

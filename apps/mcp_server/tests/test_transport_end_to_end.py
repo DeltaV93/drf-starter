@@ -75,10 +75,10 @@ def _application():
     """The served application, built the way template/asgi.py builds it."""
     import importlib
 
-    import template.asgi
+    import clearpath.asgi
 
-    importlib.reload(template.asgi)
-    return template.asgi.application
+    importlib.reload(clearpath.asgi)
+    return clearpath.asgi.application
 
 
 async def _connect(app, url):

@@ -39,7 +39,7 @@ shell: ## Django shell
 	$(BIN)/python manage.py shell
 
 worker: ## Run a Celery worker
-	$(BIN)/celery -A template worker -l info
+	$(BIN)/celery -A clearpath worker -l info
 
 # ---------------------------------------------------------------------------
 # Docker
@@ -87,12 +87,12 @@ check: ## Django checks, including the production deploy checklist
 	FRONTEND_URL=https://example.com \
 	STRIPE_ENABLED=true \
 	$(BIN)/python manage.py check --deploy --fail-level WARNING
-	DJANGO_SETTINGS_MODULE=template.settings.testing \
+	DJANGO_SETTINGS_MODULE=clearpath.settings.testing \
 		$(BIN)/python manage.py makemigrations --check --dry-run
 	@# CI fails the build on a schema warning, so run the same check here --
 	@# a view added without a declared request or response passes every other
 	@# target and only turns red on the pull request.
-	DJANGO_SETTINGS_MODULE=template.settings.testing \
+	DJANGO_SETTINGS_MODULE=clearpath.settings.testing \
 		$(BIN)/python manage.py spectacular --fail-on-warn --file /dev/null
 
 schema: ## Write the OpenAPI schema to schema.yml

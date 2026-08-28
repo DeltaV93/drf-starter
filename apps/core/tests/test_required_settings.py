@@ -45,7 +45,7 @@ def _check(environment):
         'PATH': os.environ.get('PATH', ''),
         'HOME': os.environ.get('HOME', '/tmp'),
         'PYTHONPATH': str(BASE_DIR),
-        'DJANGO_SETTINGS_MODULE': 'template.settings',
+        'DJANGO_SETTINGS_MODULE': 'clearpath.settings',
         'DJANGO_ENVIRONMENT': 'production',
         **REQUIRED_IN_PRODUCTION,
         **environment,
@@ -71,7 +71,7 @@ def _boot(environment):
         'PATH': os.environ.get('PATH', ''),
         'HOME': os.environ.get('HOME', '/tmp'),
         'PYTHONPATH': str(BASE_DIR),
-        'DJANGO_SETTINGS_MODULE': 'template.settings',
+        'DJANGO_SETTINGS_MODULE': 'clearpath.settings',
         **environment,
     }
     result = subprocess.run(
@@ -197,7 +197,7 @@ def _database(environment):
         'PATH': os.environ.get('PATH', ''),
         'HOME': os.environ.get('HOME', '/tmp'),
         'PYTHONPATH': str(BASE_DIR),
-        'DJANGO_SETTINGS_MODULE': 'template.settings',
+        'DJANGO_SETTINGS_MODULE': 'clearpath.settings',
         'DJANGO_ENVIRONMENT': 'production',
         'SECRET_KEY': REQUIRED_IN_PRODUCTION['SECRET_KEY'],
         'ALLOWED_HOSTS': REQUIRED_IN_PRODUCTION['ALLOWED_HOSTS'],

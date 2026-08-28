@@ -40,13 +40,13 @@ ignore = [
 "apps/*/tests/*.py" = ["S101"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["apps", "template", "utils"]
+known-first-party = ["apps", "clearpath", "utils"]
 
 [tool.ruff.format]
 quote-style = "single"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "template.settings.testing"
+DJANGO_SETTINGS_MODULE = "clearpath.settings.testing"
 python_files = ["test_*.py", "tests.py"]
 testpaths = ["apps", "utils"]
 addopts = [
@@ -65,7 +65,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["apps", "utils", "template"]
+source = ["apps", "utils", "clearpath"]
 omit = [
     "*/migrations/*",
     "*/tests/*",

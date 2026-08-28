@@ -1,6 +1,6 @@
 """ASGI config — what the container serves.
 
-`gunicorn template.asgi:application -k uvicorn.workers.UvicornWorker`.
+`gunicorn clearpath.asgi:application -k uvicorn.workers.UvicornWorker`.
 
 Two applications live behind one port. Requests under `MCP_MOUNT_PATH` go to
 the MCP endpoint; everything else goes to Django. The MCP transport is
@@ -22,7 +22,7 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'template.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clearpath.settings')
 
 django_application = get_asgi_application()
 

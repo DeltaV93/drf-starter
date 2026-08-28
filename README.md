@@ -1,4 +1,4 @@
-# DRF Starter
+# Clearpath
 
 A Django REST Framework + React starter you can clone and have running in one
 command, with the auth, billing, tooling and CI already wired up.
@@ -117,8 +117,8 @@ code actually reads.
 
 Settings are split by environment and selected with `DJANGO_ENVIRONMENT`
 (`development`, `production`, `testing`); `DJANGO_SETTINGS_MODULE` stays
-`template.settings`. You can also point `DJANGO_SETTINGS_MODULE` straight at
-`template.settings.production`, which is what CI does.
+`clearpath.settings`. You can also point `DJANGO_SETTINGS_MODULE` straight at
+`clearpath.settings.production`, which is what CI does.
 
 Two things are worth knowing up front:
 
@@ -1053,7 +1053,7 @@ which means a slow SMTP round trip shows up directly in response times. Set
 `EMAIL_ASYNC=true` and delivery moves onto Celery instead — you need a worker:
 
 ```bash
-celery -A template worker --loglevel=info
+celery -A clearpath worker --loglevel=info
 ```
 
 Templates are still rendered in the request either way. Only delivery moves, so

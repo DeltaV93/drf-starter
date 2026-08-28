@@ -76,7 +76,7 @@ FROM python:3.14-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \
-    DJANGO_SETTINGS_MODULE=template.settings
+    DJANGO_SETTINGS_MODULE=clearpath.settings
 
 # libpq is needed at runtime; the -dev headers and compilers are not.
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -117,4 +117,4 @@ EXPOSE 8000
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Shell form so ${PORT} expands: managed hosts assign the port and route to it.
-CMD ["sh", "-c", "gunicorn template.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-3} --access-logfile - --error-logfile -"]
+CMD ["sh", "-c", "gunicorn clearpath.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-3} --access-logfile - --error-logfile -"]

@@ -1,6 +1,6 @@
 # Frontend
 
-React + TypeScript + Vite SPA for the DRF Starter backend.
+React + TypeScript + Vite SPA for the Clearpath backend.
 
 See the [root README](../README.md) for the full setup. Quick start:
 

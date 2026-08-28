@@ -42,8 +42,8 @@ production default.
 | `FRONTEND_URL` | `http://localhost:3000` | Where the SPA is served from. Used for CORS and CSRF defaults, and to build the links in verification and password-reset email. **Include the scheme** — a bare domain fails Django's checks with `corsheaders.E013`. |
 | `LOG_LEVEL` | `INFO` | Application log level. Logging goes to stdout; there is no file handler in any settings module. |
 | `DJANGO_LOG_LEVEL` | *(follows `LOG_LEVEL`)* | Django's own loggers, separately, when you want your app chatty and the framework quiet. |
-| `API_TITLE` | `DRF Starter API` | Title in the generated OpenAPI schema and the docs UI. |
-| `API_DESCRIPTION` | `API for DRF Starter` | Description in the same. |
+| `API_TITLE` | `Clearpath API` | Title in the generated OpenAPI schema and the docs UI. |
+| `API_DESCRIPTION` | `API for Clearpath` | Description in the same. |
 
 ## Database
 

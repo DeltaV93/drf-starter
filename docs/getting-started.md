@@ -396,7 +396,7 @@ their own accounts. Set it separately, once, before anyone enrols.
 The container serves ASGI:
 
 ```
-gunicorn template.asgi:application -k uvicorn.workers.UvicornWorker
+gunicorn clearpath.asgi:application -k uvicorn.workers.UvicornWorker
 ```
 
 Uvicorn rather than a plain WSGI worker because the MCP transport is ASGI-only.
@@ -466,7 +466,7 @@ tab. They cannot disagree. If any of them still shows the template's name
 after a rename, the source is fine and you are looking at a build.
 
 ```bash
-grep -rl "DRF Starter" website/dist website/src 2>/dev/null
+grep -rl "Clearpath" website/dist website/src 2>/dev/null
 ```
 
 - **Only `website/dist` listed** → a stale build. `make fe-build`.

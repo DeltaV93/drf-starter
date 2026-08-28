@@ -13,7 +13,7 @@ import pytest
 
 
 def _load_base(monkeypatch, env):
-    """Import template.settings.base fresh with exactly `env` applied."""
+    """Import clearpath.settings.base fresh with exactly `env` applied."""
     for key in (
         'DATABASE_URL',
         'DB_NAME',
@@ -27,18 +27,18 @@ def _load_base(monkeypatch, env):
     for key, value in env.items():
         monkeypatch.setenv(key, value)
 
-    monkeypatch.setitem(sys.modules, 'template.settings.base', None)
-    del sys.modules['template.settings.base']
-    module = importlib.import_module('template.settings.base')
+    monkeypatch.setitem(sys.modules, 'clearpath.settings.base', None)
+    del sys.modules['clearpath.settings.base']
+    module = importlib.import_module('clearpath.settings.base')
     return module
 
 
 @pytest.fixture(autouse=True)
 def _restore_base():
-    original = sys.modules.get('template.settings.base')
+    original = sys.modules.get('clearpath.settings.base')
     yield
     if original is not None:
-        sys.modules['template.settings.base'] = original
+        sys.modules['clearpath.settings.base'] = original
 
 
 def test_database_url_wins_when_present(monkeypatch):

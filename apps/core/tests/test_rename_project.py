@@ -26,7 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 NEW_PACKAGE = 'acme'
 NEW_DISPLAY_NAME = 'Acme Cloud'
-OLD_DISPLAY_NAME = 'DRF Starter'
+OLD_DISPLAY_NAME = 'Clearpath'
 
 # Copying the whole repository would mean the virtualenv and node_modules.
 IGNORED = shutil.ignore_patterns(
@@ -176,16 +176,16 @@ def test_no_source_file_still_carries_the_old_display_name(renamed):
 
 def test_the_package_directory_is_moved(renamed):
     assert (renamed / NEW_PACKAGE / 'settings').is_dir()
-    assert not (renamed / 'template').exists()
+    assert not (renamed / 'clearpath').exists()
 
 
 def test_the_dotted_references_follow_the_package(renamed):
-    """`template.settings` in manage.py or the Dockerfile would leave a
+    """`clearpath.settings` in manage.py or the Dockerfile would leave a
     project that renames cleanly and then cannot start."""
     manage = (renamed / 'manage.py').read_text()
 
     assert f'{NEW_PACKAGE}.settings' in manage
-    assert 'template.settings' not in manage
+    assert 'clearpath.settings' not in manage
 
 
 def test_the_asgi_entry_point_the_container_names_is_renamed(renamed):
@@ -194,7 +194,7 @@ def test_the_asgi_entry_point_the_container_names_is_renamed(renamed):
     dockerfile = (renamed / 'Dockerfile').read_text()
 
     assert f'{NEW_PACKAGE}.asgi:application' in dockerfile
-    assert 'template.asgi' not in dockerfile
+    assert 'clearpath.asgi' not in dockerfile
 
 
 # ---------------------------------------------------------------------------
