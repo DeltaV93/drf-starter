@@ -100,6 +100,9 @@ API with no way to reach it.
 | `AUDIT_LOG_ENABLED` | `false` | An append-only record of security-relevant actions. |
 | `TWO_FACTOR_ENABLED` | `false` | TOTP second factor, with recovery codes. |
 | `UPLOADS_ENABLED` | `false` | Avatars and a reusable attachment model. |
+| `TRIPS_ENABLED` | `true` | ClearPath route optimization: trips, homes, geocoding, and route optimization. |
+| `DOCUMENTS_ENABLED` | `true` | ClearPath document vault: secure document storage and versioning. |
+| `SHARES_ENABLED` | `true` | ClearPath document sharing: secure share links with password protection and expiration. |
 
 The GDPR data export has no flag: portability is the other half of the erasure
 the template already implements.
@@ -394,6 +397,9 @@ one on a deployed container does nothing until the image is rebuilt.
 | `VITE_TWO_FACTOR_ENABLED` | `false` | Must match `TWO_FACTOR_ENABLED`. |
 | `VITE_UPLOADS_ENABLED` | `false` | Must match `UPLOADS_ENABLED`. |
 | `VITE_MCP_CLIENT_ENABLED` | `false` | Must match `MCP_CLIENT_ENABLED`. Mounts `/connections`, where a user authorises outbound MCP servers. There is no twin for `MCP_SERVER_ENABLED` or `MCP_OAUTH_ENABLED` — neither gates any UI. |
+| `VITE_TRIPS_ENABLED` | `true` | Must match `TRIPS_ENABLED`. ClearPath route optimization feature. |
+| `VITE_DOCUMENTS_ENABLED` | `true` | Must match `DOCUMENTS_ENABLED`. ClearPath document vault feature. |
+| `VITE_SHARES_ENABLED` | `true` | Must match `SHARES_ENABLED`. ClearPath document sharing feature. |
 
 **Not an environment variable:** the product name, colours, type and shape come
 from `website/src/styles/brand.ts`. See [Theming](../README.md#theming).
