@@ -23,8 +23,9 @@ import { useTrips, type Trip } from '../../hooks/useTrips';
 export default function TripsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { trips, loading, createTrip } = useTrips();
+  const { trips, loading, loadTrips, createTrip } = useTrips();
   const [openDialog, setOpenDialog] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     start_address: '',
@@ -32,8 +33,8 @@ export default function TripsPage() {
   });
 
   useEffect(() => {
-    // Load trips on component mount
-  }, []);
+    loadTrips();
+  }, [loadTrips]);
 
   const handleOpenDialog = () => setOpenDialog(true);
   const handleCloseDialog = () => {
@@ -46,14 +47,18 @@ export default function TripsPage() {
       return;
     }
 
+    setCreateLoading(true);
     try {
       await createTrip({
         ...formData,
         homes: [],
       });
       handleCloseDialog();
+      setFormData({ name: '', start_address: '', end_address: '' });
     } catch (error) {
       console.error('Failed to create trip:', error);
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -150,9 +155,11 @@ export default function TripsPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>{t('cancel', 'Cancel')}</Button>
-          <Button onClick={handleCreateTrip} variant="contained">
-            {t('create', 'Create')}
+          <Button onClick={handleCloseDialog} disabled={createLoading}>
+            {t('cancel', 'Cancel')}
+          </Button>
+          <Button onClick={handleCreateTrip} variant="contained" disabled={createLoading}>
+            {createLoading ? 'Creating...' : t('create', 'Create')}
           </Button>
         </DialogActions>
       </Dialog>

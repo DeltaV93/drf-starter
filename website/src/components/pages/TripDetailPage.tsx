@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -31,11 +31,12 @@ interface AddHomeForm {
 export default function TripDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { trips, loading: tripsLoading, updateTrip } = useTrips();
+  const { trips, loading: tripsLoading, loadTrips, updateTrip } = useTrips();
   const { optimizeRoute, loading: optimizing } = useRouteOptimization();
 
   const trip = useMemo(() => trips.find((t) => t.id === parseInt(id || '0')), [trips, id]);
   const [openDialog, setOpenDialog] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
   const [formData, setFormData] = useState<AddHomeForm>({
     address: '',
     start_time: '',
@@ -43,8 +44,29 @@ export default function TripDetailPage() {
   });
   const [optimizedHomes, setOptimizedHomes] = useState<TripHome[]>(trip?.homes || []);
 
-  if (tripsLoading || !trip) {
-    return <LoadingSpinner />;
+  // Load trips on mount if not already loaded
+  useEffect(() => {
+    if (trips.length === 0) {
+      loadTrips();
+    }
+  }, [trips.length, loadTrips]);
+
+  if (!trip) {
+    if (tripsLoading) {
+      return <LoadingSpinner />;
+    }
+    return (
+      <Container maxWidth="lg">
+        <Box sx={{ py: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="error">
+            Trip not found
+          </Typography>
+          <Button onClick={() => navigate('/trips')} sx={{ mt: 2 }}>
+            Back to Trips
+          </Button>
+        </Box>
+      </Container>
+    );
   }
 
   const handleAddHome = () => {
@@ -57,38 +79,42 @@ export default function TripDetailPage() {
   };
 
   const handleSaveHome = async () => {
-    if (!formData.address || !formData.start_time || !formData.end_time) {
+    if (!formData.address || !formData.start_time || !formData.end_time || !trip) {
       return;
     }
 
-    // For now, just add to the list locally
-    // In a real app, you'd send to the backend
-    const newHome: Omit<TripHome, 'id' | 'created_at' | 'visit_order'> = {
-      address: formData.address,
-      start_time: formData.start_time,
-      end_time: formData.end_time,
-      lat: 0,
-      lng: 0,
-    };
+    setAddLoading(true);
+    try {
+      const newHome: Omit<TripHome, 'id' | 'created_at' | 'visit_order'> = {
+        address: formData.address,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        lat: 0,
+        lng: 0,
+      };
 
-    const updatedTrip = {
-      ...trip,
-      homes: [...trip.homes, newHome as TripHome],
-    };
+      const updatedHomes = [...trip.homes, newHome as TripHome];
+      const updatedTrip = await updateTrip(trip.id, {
+        name: trip.name,
+        start_address: trip.start_address,
+        end_address: trip.end_address,
+        homes: updatedHomes,
+      });
 
-    await updateTrip(trip.id, {
-      name: trip.name,
-      start_address: trip.start_address,
-      end_address: trip.end_address,
-      homes: updatedTrip.homes,
-    });
-
-    setOptimizedHomes(updatedTrip.homes);
-    handleCloseDialog();
+      if (updatedTrip) {
+        setOptimizedHomes(updatedTrip.homes);
+      }
+      handleCloseDialog();
+      setFormData({ address: '', start_time: '', end_time: '' });
+    } catch (error) {
+      console.error('Failed to add home:', error);
+    } finally {
+      setAddLoading(false);
+    }
   };
 
   const handleOptimizeRoute = async () => {
-    if (trip.homes.length === 0) {
+    if (!trip || trip.homes.length === 0) {
       return;
     }
 
@@ -103,7 +129,7 @@ export default function TripDetailPage() {
         }))
       );
 
-      if (result) {
+      if (result?.schedule) {
         setOptimizedHomes(result.schedule);
       }
     } catch (error) {
@@ -230,9 +256,11 @@ export default function TripDetailPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSaveHome} variant="contained">
-            Add Home
+          <Button onClick={handleCloseDialog} disabled={addLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveHome} variant="contained" disabled={addLoading}>
+            {addLoading ? 'Adding...' : 'Add Home'}
           </Button>
         </DialogActions>
       </Dialog>
