@@ -19,49 +19,71 @@ import {
   Typography,
   IconButton,
   Divider,
+  Alert,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { shape, spacingUnit } from '../../styles/brand';
-
-interface Document {
-  id: number;
-  filename: string;
-  category: string;
-  created_at: string;
-  file_size: number;
-}
+import { useDocuments } from '../../hooks/useDocuments';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function DocumentsPage() {
   const { t } = useTranslation();
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const { documents, loading, loadDocuments, createDocument, deleteDocument } = useDocuments();
   const [openDialog, setOpenDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     filename: '',
     category: 'other',
   });
 
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
+
   const handleOpenDialog = () => setOpenDialog(true);
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setFormData({ filename: '', category: 'other' });
+    setError(null);
   };
 
   const handleUploadDocument = async () => {
-    if (!formData.filename) return;
+    if (!formData.filename) {
+      setError('Please enter a filename');
+      return;
+    }
     setUploading(true);
-    // TODO: Implement API call to upload document
-    setUploading(false);
-    handleCloseDialog();
+    setError(null);
+    try {
+      await createDocument({
+        filename: formData.filename,
+        category: formData.category,
+        mime_type: 'application/pdf',
+        file_size: 0,
+      });
+      handleCloseDialog();
+    } catch (err) {
+      setError('Failed to upload document. Please try again.');
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDeleteDocument = async (id: number) => {
-    // TODO: Implement API call to delete document
-    setDocuments(documents.filter((doc) => doc.id !== id));
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await deleteDocument(id);
+      } catch (err) {
+        setError('Failed to delete document');
+        console.error(err);
+      }
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -81,6 +103,10 @@ export default function DocumentsPage() {
     { value: 'title', label: 'Title' },
     { value: 'other', label: 'Other' },
   ];
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Container maxWidth="lg">
@@ -112,6 +138,16 @@ export default function DocumentsPage() {
             {t('uploadDocument', 'Upload')}
           </Button>
         </Box>
+
+        {error && (
+          <Alert
+            severity="error"
+            onClose={() => setError(null)}
+            sx={{ mb: spacingUnit * 2 }}
+          >
+            {error}
+          </Alert>
+        )}
 
         {documents.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: spacingUnit * 4 }}>
@@ -199,6 +235,11 @@ export default function DocumentsPage() {
       >
         <DialogTitle sx={{ fontWeight: 600 }}>{t('uploadDocument', 'Upload Document')}</DialogTitle>
         <DialogContent sx={{ pt: spacingUnit * 2 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: spacingUnit }}>
+              {error}
+            </Alert>
+          )}
           <TextField
             fullWidth
             label="File Name"
@@ -208,6 +249,7 @@ export default function DocumentsPage() {
             placeholder="e.g., home_inspection.pdf"
             variant="outlined"
             size="small"
+            error={!!error}
           />
           <FormControl fullWidth margin="normal" size="small">
             <InputLabel>Category</InputLabel>

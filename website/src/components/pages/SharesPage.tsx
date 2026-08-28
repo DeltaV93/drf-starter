@@ -8,61 +8,83 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
   IconButton,
   List,
   ListItem,
   ListItemText,
-  Switch,
   TextField,
   Typography,
   Divider,
   Chip,
   Tooltip,
+  Alert,
 } from '@mui/material';
 import LinkIcon from '@mui/icons-material/Link';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { shape, spacingUnit } from '../../styles/brand';
-
-interface ShareLink {
-  id: number;
-  token: string;
-  expires_at: string | null;
-  created_at: string;
-  document_count: number;
-  has_password: boolean;
-}
+import { useShares } from '../../hooks/useShares';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function SharesPage() {
   const { t } = useTranslation();
-  const [shares, setShares] = useState<ShareLink[]>([]);
+  const { shares, loading, loadShares, createShare, deleteShare } = useShares();
   const [openDialog, setOpenDialog] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     documents: [] as number[],
     password: '',
     expires_in_days: '',
   });
 
+  useEffect(() => {
+    loadShares();
+  }, [loadShares]);
+
   const handleOpenDialog = () => setOpenDialog(true);
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setFormData({ documents: [], password: '', expires_in_days: '' });
+    setError(null);
   };
 
   const handleCreateShare = async () => {
+    if (formData.documents.length === 0) {
+      setError('Please select at least one document to share');
+      return;
+    }
     setCreating(true);
-    // TODO: Implement API call to create share link
-    setCreating(false);
-    handleCloseDialog();
+    setError(null);
+    try {
+      const expiresAt = formData.expires_in_days
+        ? new Date(Date.now() + parseInt(formData.expires_in_days) * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
+      await createShare({
+        document_ids: formData.documents,
+        password: formData.password || undefined,
+        expires_at: expiresAt,
+      });
+      handleCloseDialog();
+    } catch (err) {
+      setError('Failed to create share link. Please try again.');
+      console.error(err);
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleDeleteShare = async (id: number) => {
-    // TODO: Implement API call to delete share link
-    setShares(shares.filter((share) => share.id !== id));
+    if (window.confirm('Are you sure you want to delete this share link?')) {
+      try {
+        await deleteShare(id);
+      } catch (err) {
+        setError('Failed to delete share link');
+        console.error(err);
+      }
+    }
   };
 
   const handleCopyLink = (token: string) => {
@@ -84,6 +106,10 @@ export default function SharesPage() {
     if (days === 1) return 'Expires tomorrow';
     return `Expires in ${days} days`;
   };
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Container maxWidth="lg">
@@ -115,6 +141,16 @@ export default function SharesPage() {
             {t('createShare', 'Create Share Link')}
           </Button>
         </Box>
+
+        {error && (
+          <Alert
+            severity="error"
+            onClose={() => setError(null)}
+            sx={{ mb: spacingUnit * 2 }}
+          >
+            {error}
+          </Alert>
+        )}
 
         {shares.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: spacingUnit * 4 }}>
@@ -162,9 +198,6 @@ export default function SharesPage() {
                               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                 Share Link
                               </Typography>
-                              {share.has_password && (
-                                <Chip label="Password Protected" size="small" color="primary" variant="outlined" />
-                              )}
                               {isLinkExpired(share.expires_at) && (
                                 <Chip label="Expired" size="small" color="error" variant="outlined" />
                               )}
@@ -173,8 +206,7 @@ export default function SharesPage() {
                           secondary={
                             <Box sx={{ mt: spacingUnit * 0.5 }}>
                               <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
-                                {share.document_count} document{share.document_count !== 1 ? 's' : ''} • Created{' '}
-                                {new Date(share.created_at).toLocaleDateString()}
+                                Created {new Date(share.created_at).toLocaleDateString()}
                               </Typography>
                               <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
                                 {getExpirationText(share.expires_at)}
@@ -218,6 +250,14 @@ export default function SharesPage() {
       >
         <DialogTitle sx={{ fontWeight: 600 }}>{t('createShare', 'Create Share Link')}</DialogTitle>
         <DialogContent sx={{ pt: spacingUnit * 2 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: spacingUnit }}>
+              {error}
+            </Alert>
+          )}
+          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: spacingUnit }}>
+            Configure the share settings below
+          </Typography>
           <TextField
             fullWidth
             label="Password (Optional)"
@@ -239,11 +279,7 @@ export default function SharesPage() {
             placeholder="Leave blank to never expire"
             variant="outlined"
             size="small"
-          />
-          <FormControlLabel
-            control={<Switch />}
-            label="Allow recipients to download"
-            sx={{ mt: spacingUnit }}
+            inputProps={{ min: 1 }}
           />
         </DialogContent>
         <DialogActions sx={{ p: spacingUnit * 1.5 }}>
@@ -253,7 +289,7 @@ export default function SharesPage() {
           <Button
             onClick={handleCreateShare}
             variant="contained"
-            disabled={creating}
+            disabled={creating || formData.documents.length === 0}
             sx={{ borderRadius: shape.button }}
           >
             {creating ? 'Creating...' : 'Create Link'}
