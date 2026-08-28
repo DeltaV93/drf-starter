@@ -29,7 +29,7 @@ export function useRouteOptimization() {
       return response.data
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to geocode address'
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 
