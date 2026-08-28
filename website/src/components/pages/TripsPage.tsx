@@ -140,6 +140,7 @@ export default function TripsPage() {
           <Grid container spacing={spacingUnit}>
             {trips.map((trip) => (
               <Grid
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 {...({ item: true, xs: 12, sm: 6, md: 4 } as any)}
                 key={trip.id}
               >

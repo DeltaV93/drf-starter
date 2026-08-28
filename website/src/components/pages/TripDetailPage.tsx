@@ -199,6 +199,7 @@ export default function TripDetailPage() {
 
         <Grid container spacing={spacingUnit}>
           <Grid
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {...({ item: true, xs: 12, md: 6 } as any)}
           >
             <Card sx={{ height: '100%', borderRadius: shape.card }}>
@@ -253,6 +254,7 @@ export default function TripDetailPage() {
           </Grid>
 
           <Grid
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {...({ item: true, xs: 12, md: 6 } as any)}
           >
             <Card sx={{ height: '100%', borderRadius: shape.card }}>

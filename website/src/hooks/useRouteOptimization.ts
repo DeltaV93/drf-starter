@@ -31,8 +31,7 @@ export function useRouteOptimization() {
       if (!result) throw new Error('No geocoding result returned')
       return result
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to geocode address'
-      throw new Error(message)
+      throw err instanceof Error ? err : new Error('Failed to geocode address')
     }
   }, [])
 

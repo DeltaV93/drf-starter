@@ -279,6 +279,7 @@ export default function SharesPage() {
             placeholder="Leave blank to never expire"
             variant="outlined"
             size="small"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             slotProps={{ input: { min: 1 } as any }}
           />
         </DialogContent>
