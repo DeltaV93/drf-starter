@@ -14,13 +14,18 @@ import {
   ListItemText,
   TextField,
   Typography,
+  Divider,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AddIcon from '@mui/icons-material/Add';
+import OptimizeIcon from '@mui/icons-material/Tune';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import LoadingSpinner from '../common/LoadingSpinner';
 import { useRouteOptimization } from '../../hooks/useRouteOptimization';
 import { useTrips, type TripHome } from '../../hooks/useTrips';
+import { shape, spacingUnit } from '../../styles/brand';
 
 interface AddHomeForm {
   address: string;
@@ -139,47 +144,81 @@ export default function TripDetailPage() {
 
   return (
     <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
-        <Button onClick={() => navigate('/trips')} sx={{ mb: 2 }}>
-          ← Back to Trips
+      <Box sx={{ py: spacingUnit * 2 }}>
+        <Button
+          onClick={() => navigate('/trips')}
+          sx={{ mb: spacingUnit * 2 }}
+          startIcon={<ArrowBackIcon />}
+        >
+          Back to Trips
         </Button>
 
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: spacingUnit * 3, pb: spacingUnit * 2, borderBottom: '1px solid', borderColor: 'divider' }}>
           <Typography variant="h3" component="h1" gutterBottom>
             {trip.name}
           </Typography>
-          <Typography variant="body1" color="textSecondary" gutterBottom>
-            <strong>From:</strong> {trip.start_address}
-          </Typography>
-          <Typography variant="body1" color="textSecondary" gutterBottom>
-            <strong>To:</strong> {trip.end_address}
-          </Typography>
+          <Box sx={{ mt: spacingUnit * 1.5 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: spacingUnit }}>
+              <strong>From:</strong>
+            </Typography>
+            <Typography variant="body1" sx={{ mb: spacingUnit * 2, pl: spacingUnit }}>
+              {trip.start_address}
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: spacingUnit }}>
+              <strong>To:</strong>
+            </Typography>
+            <Typography variant="body1" sx={{ pl: spacingUnit }}>
+              {trip.end_address}
+            </Typography>
+          </Box>
         </Box>
 
-        <Grid container spacing={3}>
+        <Grid container spacing={spacingUnit}>
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={{ height: '100%', borderRadius: shape.card }}>
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: spacingUnit * 1.5 }}>
                   <Typography variant="h6">Homes to Visit</Typography>
-                  <Button size="small" variant="contained" onClick={handleAddHome}>
-                    Add Home
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={handleAddHome}
+                    startIcon={<AddIcon />}
+                    sx={{ borderRadius: shape.button }}
+                  >
+                    Add
                   </Button>
                 </Box>
 
                 {trip.homes.length === 0 ? (
-                  <Typography variant="body2" color="textSecondary">
-                    No homes added yet. Add some to get started.
-                  </Typography>
+                  <Box sx={{ py: spacingUnit * 2, textAlign: 'center' }}>
+                    <Typography variant="body2" color="textSecondary">
+                      No homes added yet.
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      Start by adding the first home you want to visit.
+                    </Typography>
+                  </Box>
                 ) : (
-                  <List>
+                  <List sx={{ p: 0 }}>
                     {trip.homes.map((home, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={`${index + 1}. ${home.address}`}
-                          secondary={`${home.start_time} - ${home.end_time}`}
-                        />
-                      </ListItem>
+                      <Box key={index}>
+                        <ListItem sx={{ px: 0, py: spacingUnit * 1.25 }}>
+                          <ListItemText
+                            primary={
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {index + 1}. {home.address}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="textSecondary">
+                                {new Date(home.start_time).toLocaleTimeString()} - {new Date(home.end_time).toLocaleTimeString()}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                        {index < trip.homes.length - 1 && <Divider sx={{ my: 0 }} />}
+                      </Box>
                     ))}
                   </List>
                 )}
@@ -188,7 +227,7 @@ export default function TripDetailPage() {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={{ height: '100%', borderRadius: shape.card }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Optimized Route
@@ -198,24 +237,41 @@ export default function TripDetailPage() {
                   variant="contained"
                   onClick={handleOptimizeRoute}
                   disabled={trip.homes.length === 0 || optimizing}
-                  sx={{ mb: 2 }}
+                  startIcon={<OptimizeIcon />}
+                  sx={{ mb: spacingUnit * 2, borderRadius: shape.button }}
                 >
                   {optimizing ? 'Optimizing...' : 'Optimize Route'}
                 </Button>
 
                 {optimizedHomes.length === 0 ? (
-                  <Typography variant="body2" color="textSecondary">
-                    Optimize your route to see the recommended order.
-                  </Typography>
+                  <Box sx={{ py: spacingUnit * 2, textAlign: 'center' }}>
+                    <Typography variant="body2" color="textSecondary">
+                      Optimize your route
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      to see the recommended visiting order.
+                    </Typography>
+                  </Box>
                 ) : (
-                  <List>
+                  <List sx={{ p: 0 }}>
                     {optimizedHomes.map((home, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={`Stop ${index + 1}: ${home.address}`}
-                          secondary={`${home.start_time} - ${home.end_time}`}
-                        />
-                      </ListItem>
+                      <Box key={index}>
+                        <ListItem sx={{ px: 0, py: spacingUnit * 1.25 }}>
+                          <ListItemText
+                            primary={
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                Stop {index + 1}: {home.address}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="textSecondary">
+                                {new Date(home.start_time).toLocaleTimeString()} - {new Date(home.end_time).toLocaleTimeString()}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                        {index < optimizedHomes.length - 1 && <Divider sx={{ my: 0 }} />}
+                      </Box>
                     ))}
                   </List>
                 )}
@@ -225,9 +281,15 @@ export default function TripDetailPage() {
         </Grid>
       </Box>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Home to Visit</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: shape.card } }}
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>Add Home to Visit</DialogTitle>
+        <DialogContent sx={{ pt: spacingUnit * 2 }}>
           <TextField
             fullWidth
             label="Address"
@@ -235,6 +297,8 @@ export default function TripDetailPage() {
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
             margin="normal"
             placeholder="e.g., 123 Oak St, City, State"
+            variant="outlined"
+            size="small"
           />
           <TextField
             fullWidth
@@ -244,6 +308,8 @@ export default function TripDetailPage() {
             onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
             margin="normal"
             InputLabelProps={{ shrink: true }}
+            variant="outlined"
+            size="small"
           />
           <TextField
             fullWidth
@@ -253,13 +319,20 @@ export default function TripDetailPage() {
             onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
             margin="normal"
             InputLabelProps={{ shrink: true }}
+            variant="outlined"
+            size="small"
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: spacingUnit * 1.5 }}>
           <Button onClick={handleCloseDialog} disabled={addLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSaveHome} variant="contained" disabled={addLoading}>
+          <Button
+            onClick={handleSaveHome}
+            variant="contained"
+            disabled={addLoading}
+            sx={{ borderRadius: shape.button }}
+          >
             {addLoading ? 'Adding...' : 'Add Home'}
           </Button>
         </DialogActions>
