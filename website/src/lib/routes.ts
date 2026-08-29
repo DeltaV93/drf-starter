@@ -91,6 +91,26 @@ export const routes = {
       addAddon: (addonId: number) => join(BASE_URL, `billing/add-addon/${addonId}/`),
       cancel: () => join(BASE_URL, 'billing/cancel/'),
     },
+    // ClearPath routes
+    trips: {
+      list: () => join(BASE_URL, 'trips/'),
+      detail: (id: number) => join(BASE_URL, `trips/${id}/`),
+    },
+    geocode: () => join(BASE_URL, 'geocode/'),
+    optimizeRoute: () => join(BASE_URL, 'optimize-route/'),
+    vault: {
+      create: () => join(BASE_URL, 'vault/create/'),
+      detail: () => join(BASE_URL, 'vault/'),
+    },
+    documents: {
+      list: () => join(BASE_URL, 'documents/'),
+      detail: (id: number) => join(BASE_URL, `documents/${id}/`),
+    },
+    shares: {
+      list: () => join(BASE_URL, 'shares/'),
+      detail: (id: number) => join(BASE_URL, `shares/${id}/`),
+      access: (token: string) => join(BASE_URL, `share-access/${token}/`),
+    },
   },
   app: {
     home: '/',
@@ -105,5 +125,10 @@ export const routes = {
     passwordReset: '/reset-password',
     confirmPassword: (uid = ':uid', token = ':token') => `/confirm-password/${uid}/${token}`,
     verifyEmail: (uid = ':uid', token = ':token') => `/verify-email/${uid}/${token}`,
+    // ClearPath routes
+    trips: '/trips',
+    tripDetail: (id: number) => `/trips/${id}`,
+    documents: '/documents',
+    shares: '/shares',
   },
 } as const;

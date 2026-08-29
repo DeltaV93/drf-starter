@@ -31,7 +31,7 @@ SENTRY_ENV_KEYS = (
 @pytest.fixture
 def load_base(monkeypatch):
     """Re-import base.py under `env`, returning the captured sentry_sdk.init mock."""
-    original = sys.modules.get('template.settings.base')
+    original = sys.modules.get('clearpath.settings.base')
 
     def _load(env):
         for key in SENTRY_ENV_KEYS:
@@ -42,16 +42,16 @@ def load_base(monkeypatch):
         for key, value in env.items():
             monkeypatch.setenv(key, value)
 
-        sys.modules.pop('template.settings.base', None)
+        sys.modules.pop('clearpath.settings.base', None)
         with patch('sentry_sdk.init') as init:
-            importlib.import_module('template.settings.base')
+            importlib.import_module('clearpath.settings.base')
         return init
 
     yield _load
 
-    sys.modules.pop('template.settings.base', None)
+    sys.modules.pop('clearpath.settings.base', None)
     if original is not None:
-        sys.modules['template.settings.base'] = original
+        sys.modules['clearpath.settings.base'] = original
 
 
 def test_the_settings_module_reports_the_testing_environment():

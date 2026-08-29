@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-SETTINGS_MODULES = ('template.settings.base', 'template.settings.testing')
+SETTINGS_MODULES = ('clearpath.settings.base', 'clearpath.settings.testing')
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def load_settings(monkeypatch):
             monkeypatch.setenv(key, value)
         for name in SETTINGS_MODULES:
             sys.modules.pop(name, None)
-        return importlib.import_module('template.settings.base')
+        return importlib.import_module('clearpath.settings.base')
 
     yield _load
 

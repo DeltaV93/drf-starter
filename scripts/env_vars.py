@@ -31,7 +31,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Where project Python lives. Deliberately not the whole tree: site-packages
 # reads hundreds of variables that are nothing to do with this application.
-PYTHON_ROOTS = ('apps', 'utils', 'template', 'scripts')
+PYTHON_ROOTS = ('apps', 'utils', 'clearpath', 'scripts')
 PYTHON_FILES = ('manage.py',)
 
 # Shell and compose files, which read variables Python never sees.

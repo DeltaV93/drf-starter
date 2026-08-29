@@ -34,6 +34,15 @@ if settings.UPLOADS_ENABLED:
 if settings.MCP_CLIENT_ENABLED:
     api_v1_patterns.append(path('', include('apps.mcp_client.urls')))
 
+if settings.TRIPS_ENABLED:
+    api_v1_patterns.append(path('', include('apps.trips.urls')))
+
+if settings.DOCUMENTS_ENABLED:
+    api_v1_patterns.append(path('', include('apps.documents.urls')))
+
+if settings.SHARES_ENABLED:
+    api_v1_patterns.append(path('', include('apps.shares.urls')))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),

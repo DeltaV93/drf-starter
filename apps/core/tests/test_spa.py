@@ -5,7 +5,7 @@ not client routes -- the API, the admin, or a JavaScript bundle. The last of
 those is the nastiest: the browser asks for a script, gets HTML, refuses to
 execute it, and renders a blank page with no server-side error anywhere.
 
-The pattern pieces are imported from template.urls rather than copied. An
+The pattern pieces are imported from clearpath.urls rather than copied. An
 earlier version of this module spelled the regex out again, so the copy here
 stayed green while the real one drifted -- which is how `assets/` and a bare
 `/admin` came to be swallowed in production.
@@ -21,7 +21,7 @@ from django.test import override_settings
 from django.urls import include, path, re_path
 
 from apps.core.views import SPAView
-from template.urls import SPA_EXCLUDED_PREFIXES, SPA_FILE_LIKE_PATH
+from clearpath.urls import SPA_EXCLUDED_PREFIXES, SPA_FILE_LIKE_PATH
 
 SPA_MARKER = '<!doctype html><title>spa</title>'
 

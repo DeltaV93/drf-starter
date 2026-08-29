@@ -100,10 +100,10 @@ def test_the_probe_paths_match_the_urlconf():
 @pytest.mark.parametrize(
     'settings_module',
     [
-        'template.settings.base',
-        'template.settings.development',
-        'template.settings.production',
-        'template.settings.testing',
+        'clearpath.settings.base',
+        'clearpath.settings.development',
+        'clearpath.settings.production',
+        'clearpath.settings.testing',
     ],
 )
 def test_the_probe_middleware_runs_before_the_security_middleware(settings_module):

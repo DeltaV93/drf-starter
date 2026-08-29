@@ -3,7 +3,7 @@ Settings shared by every environment.
 
 Environment-specific modules (development.py, production.py, testing.py)
 import everything from here and override what differs. Never import this
-module directly as DJANGO_SETTINGS_MODULE -- use `template.settings`, which
+module directly as DJANGO_SETTINGS_MODULE -- use `clearpath.settings`, which
 picks the right environment based on DJANGO_ENVIRONMENT.
 
 Every value that differs between deployments is read from the environment.
@@ -141,6 +141,10 @@ MCP_OAUTH_ENABLED = env_bool('MCP_OAUTH_ENABLED', default=False)
 # can be agent-callable without itself being an agent, and the other way
 # round.
 MCP_CLIENT_ENABLED = env_bool('MCP_CLIENT_ENABLED', default=False)
+# ClearPath features
+TRIPS_ENABLED = env_bool('TRIPS_ENABLED', default=True)
+DOCUMENTS_ENABLED = env_bool('DOCUMENTS_ENABLED', default=True)
+SHARES_ENABLED = env_bool('SHARES_ENABLED', default=True)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -189,6 +193,19 @@ if MCP_OAUTH_ENABLED:
 if MCP_CLIENT_ENABLED:
     INSTALLED_APPS.append('apps.mcp_client')
 
+if TRIPS_ENABLED:
+    INSTALLED_APPS.append('apps.trips')
+
+if DOCUMENTS_ENABLED:
+    INSTALLED_APPS.append('apps.documents')
+
+if SHARES_ENABLED:
+    INSTALLED_APPS.append('apps.shares')
+
+# Vault is always installed with documents
+if DOCUMENTS_ENABLED:
+    INSTALLED_APPS.append('apps.vault')
+
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
     # redirect and before ALLOWED_HOSTS validation, because platforms probe
@@ -208,7 +225,7 @@ MIDDLEWARE = [
 if STRIPE_ENABLED:
     MIDDLEWARE.append('apps.subscriptions.middleware.SubscriptionMiddleware')
 
-ROOT_URLCONF = 'template.urls'
+ROOT_URLCONF = 'clearpath.urls'
 
 # --------------------------------------------------------------------------
 # Single-page app
@@ -246,8 +263,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'template.wsgi.application'
-ASGI_APPLICATION = 'template.asgi.application'
+WSGI_APPLICATION = 'clearpath.wsgi.application'
+ASGI_APPLICATION = 'clearpath.asgi.application'
 
 # Managed hosts (Railway, Render, Heroku, Fly) hand you a single DATABASE_URL
 # rather than separate parts, so it wins when present. The individual DB_*
@@ -442,8 +459,8 @@ if MCP_OAUTH_ENABLED:
     ]
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': os.environ.get('API_TITLE', 'DRF Starter API'),
-    'DESCRIPTION': os.environ.get('API_DESCRIPTION', 'API for DRF Starter'),
+    'TITLE': os.environ.get('API_TITLE', 'Clearpath API'),
+    'DESCRIPTION': os.environ.get('API_DESCRIPTION', 'API for Clearpath'),
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
@@ -477,7 +494,7 @@ if ORGANIZATIONS_ENABLED:
 # value API_TITLE uses -- read from the environment rather than from that
 # name, which is only ever a literal inside SPECTACULAR_SETTINGS.
 MCP_SERVER_NAME = os.environ.get(
-    'MCP_SERVER_NAME', os.environ.get('API_TITLE', 'DRF Starter API')
+    'MCP_SERVER_NAME', os.environ.get('API_TITLE', 'Clearpath API')
 )
 
 # Where the endpoint is mounted. Changing it means changing what every

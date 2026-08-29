@@ -1,6 +1,6 @@
 """The application under ASGI.
 
-The container serves `template.asgi:application` through uvicorn's worker
+The container serves `clearpath.asgi:application` through uvicorn's worker
 class. Django's ordinary test `Client` does not go near that path -- it drives
 the WSGI handler -- so the rest of the suite could stay green while the thing
 actually deployed behaved differently.
@@ -39,7 +39,7 @@ def _prod(**extra):
 
 def test_the_asgi_application_is_importable_and_callable():
     """What the Dockerfile names. A typo here is a container that never boots."""
-    from template.asgi import application
+    from clearpath.asgi import application
 
     assert callable(application)
 

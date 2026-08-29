@@ -30,13 +30,13 @@ def _scope(path):
 def _routed_to(path):
     """Which application the *real* router hands `path` to.
 
-    Drives `template.asgi._with_mcp` itself with a stub Django app. Rebuilding
+    Drives `clearpath.asgi._with_mcp` itself with a stub Django app. Rebuilding
     the dispatch rule here instead would only prove that a copy of the rule
     agrees with itself.
     """
     import asyncio
 
-    from template.asgi import _with_mcp
+    from clearpath.asgi import _with_mcp
 
     reached_django = False
 
@@ -100,7 +100,7 @@ def test_the_router_is_absent_when_the_flag_is_off():
     exactly what it was before MCP existed."""
     import importlib
 
-    import template.asgi as asgi
+    import clearpath.asgi as asgi
 
     with override_settings(MCP_SERVER_ENABLED=False):
         reloaded = importlib.reload(asgi)

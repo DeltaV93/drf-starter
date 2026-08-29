@@ -24,7 +24,7 @@ import django
 
 # Same default as manage.py, so this runs from a plain shell as well as from
 # the container, where the Dockerfile already exports it.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'template.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clearpath.settings')
 
 django.setup()
 

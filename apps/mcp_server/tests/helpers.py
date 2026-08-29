@@ -13,10 +13,10 @@ import importlib
 
 def build_application():
     """The served application, built the way template/asgi.py builds it."""
-    import template.asgi
+    import clearpath.asgi
 
-    importlib.reload(template.asgi)
-    return template.asgi.application
+    importlib.reload(clearpath.asgi)
+    return clearpath.asgi.application
 
 
 @contextlib.asynccontextmanager

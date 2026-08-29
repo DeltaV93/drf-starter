@@ -49,7 +49,7 @@ repos:
         pass_filenames: false
         files: models\.py$
         env:
-          DJANGO_SETTINGS_MODULE: template.settings.testing
+          DJANGO_SETTINGS_MODULE: clearpath.settings.testing
 
       - id: frontend-lint
         name: eslint

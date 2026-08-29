@@ -43,7 +43,7 @@ CLEARED = (
 def load_production(monkeypatch):
     originals = {
         name: sys.modules.get(name)
-        for name in ('template.settings.base', 'template.settings.production')
+        for name in ('clearpath.settings.base', 'clearpath.settings.production')
     }
 
     def _load(env):
@@ -56,9 +56,9 @@ def load_production(monkeypatch):
                 monkeypatch.delenv(key, raising=False)
             else:
                 monkeypatch.setenv(key, value)
-        for name in ('template.settings.base', 'template.settings.production'):
+        for name in ('clearpath.settings.base', 'clearpath.settings.production'):
             sys.modules.pop(name, None)
-        return importlib.import_module('template.settings.production')
+        return importlib.import_module('clearpath.settings.production')
 
     yield _load
 

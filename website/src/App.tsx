@@ -21,6 +21,10 @@ const AcceptInvitationPage = lazy(() => import('./components/pages/AcceptInvitat
 const SecurityPage = lazy(() => import('./components/pages/SecurityPage'));
 const FilesPage = lazy(() => import('./components/pages/FilesPage'));
 const ConnectionsPage = lazy(() => import('./components/pages/ConnectionsPage'));
+const TripsPage = lazy(() => import('./components/pages/TripsPage'));
+const TripDetailPage = lazy(() => import('./components/pages/TripDetailPage'));
+const DocumentsPage = lazy(() => import('./components/pages/DocumentsPage'));
+const SharesPage = lazy(() => import('./components/pages/SharesPage'));
 
 // Billing is optional on the backend too (STRIPE_ENABLED). Keep the two in
 // step, or the plans page will 404 against the API.
@@ -33,6 +37,11 @@ const UPLOADS_ENABLED = import.meta.env.VITE_UPLOADS_ENABLED === 'true';
 // Outbound MCP connections. Must match MCP_CLIENT_ENABLED, or the page
 // renders a list it can never load.
 const MCP_CLIENT_ENABLED = import.meta.env.VITE_MCP_CLIENT_ENABLED === 'true';
+
+// ClearPath features: trips, documents, and shares
+const TRIPS_ENABLED = import.meta.env.VITE_TRIPS_ENABLED === 'true';
+const DOCUMENTS_ENABLED = import.meta.env.VITE_DOCUMENTS_ENABLED === 'true';
+const SHARES_ENABLED = import.meta.env.VITE_SHARES_ENABLED === 'true';
 
 function PageFallback() {
   return (
@@ -119,6 +128,46 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <ConnectionsPage />
+                  </ProtectedRoute>
+                }
+              />
+            )}
+            {TRIPS_ENABLED && (
+              <>
+                <Route
+                  path="/trips"
+                  element={
+                    <ProtectedRoute>
+                      <TripsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/trips/:id"
+                  element={
+                    <ProtectedRoute>
+                      <TripDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+              </>
+            )}
+            {DOCUMENTS_ENABLED && (
+              <Route
+                path="/documents"
+                element={
+                  <ProtectedRoute>
+                    <DocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+            )}
+            {SHARES_ENABLED && (
+              <Route
+                path="/shares"
+                element={
+                  <ProtectedRoute>
+                    <SharesPage />
                   </ProtectedRoute>
                 }
               />

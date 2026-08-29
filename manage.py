@@ -6,7 +6,7 @@ import sys
 
 
 def main():
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'template.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clearpath.settings')
 
     # Opt-in remote debugging. Set DEBUGPY=1 to have the process wait for a
     # debugger to attach on DEBUGPY_PORT (default 5678). Off by default so
