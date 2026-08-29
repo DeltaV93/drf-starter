@@ -15,8 +15,17 @@ htmlcov
 .env
 .env.*
 !.env.example
+# One workspace, so node_modules is at the root as well as under each app.
+node_modules
 website/node_modules
+packages/shared/node_modules
+mobile/node_modules
 website/dist
+# Expo's caches and any generated native projects.
+mobile/.expo
+mobile/dist
+mobile/ios
+mobile/android
 staticfiles
 media
 locale/**/*.mo

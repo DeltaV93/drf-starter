@@ -170,16 +170,39 @@ def read_in_spa() -> set[str]:
     return found
 
 
+def read_in_mobile() -> set[str]:
+    """EXPO_PUBLIC_ variables the mobile app reads as `process.env.NAME`.
+
+    Expo inlines only this prefix, and only through `process.env` -- a
+    variable read any other way is `undefined` in a release build, which is
+    the mobile version of the drift these functions exist to catch.
+    """
+    src = BASE_DIR / 'mobile'
+    if not src.exists():
+        return set()
+    pattern = re.compile(r'process\.env\.(EXPO_PUBLIC_[A-Z0-9_]+)')
+    found: set[str] = set()
+    for path in [*src.rglob('*.ts'), *src.rglob('*.tsx')]:
+        if 'node_modules' in path.parts or path.name.endswith('.d.ts'):
+            continue
+        found |= set(pattern.findall(path.read_text()))
+    return found
+
+
 def settings_read() -> set[str]:
     """Everything a person could reasonably put in a .env file."""
     return (
-        read_in_python() | read_in_shell() | read_in_vite_config() | read_in_spa()
+        read_in_python()
+        | read_in_shell()
+        | read_in_vite_config()
+        | read_in_spa()
+        | read_in_mobile()
     ) - NOT_SETTINGS
 
 
 def backend_settings() -> set[str]:
     """Read by Django, the entrypoint or compose. Belongs in `.env.example`."""
-    return {name for name in settings_read() if not name.startswith('VITE_')}
+    return {name for name in settings_read() if not name.startswith(('VITE_', 'EXPO_PUBLIC_'))}
 
 
 def frontend_settings() -> set[str]:
@@ -193,6 +216,17 @@ def frontend_settings() -> set[str]:
     return {name for name in settings_read() if name.startswith('VITE_')}
 
 
+def mobile_settings() -> set[str]:
+    """Inlined by Expo at build time. Belongs in `mobile/.env.example`.
+
+    Its own file rather than the website's, for the reason those two are
+    separate from the backend's: they are consumed at different moments by
+    different builds, and a phone cannot reach `localhost` the way a browser
+    on the same machine can, so even the values that look shared are not.
+    """
+    return {name for name in settings_read() if name.startswith('EXPO_PUBLIC_')}
+
+
 def _names_in_env_file(path: Path) -> set[str]:
     if not path.exists():
         return set()
@@ -200,9 +234,11 @@ def _names_in_env_file(path: Path) -> set[str]:
 
 
 def documented_in_env_example() -> set[str]:
-    """Names either .env.example mentions, commented out or not."""
-    return _names_in_env_file(BASE_DIR / '.env.example') | _names_in_env_file(
-        BASE_DIR / 'website' / '.env.example'
+    """Names any .env.example mentions, commented out or not."""
+    return (
+        _names_in_env_file(BASE_DIR / '.env.example')
+        | _names_in_env_file(BASE_DIR / 'website' / '.env.example')
+        | _names_in_env_file(BASE_DIR / 'mobile' / '.env.example')
     )
 
 
@@ -230,7 +266,7 @@ if __name__ == '__main__':
 
     print(
         f'{len(read)} settings read: {len(backend_settings())} backend, '
-        f'{len(frontend_settings())} frontend\n'
+        f'{len(frontend_settings())} website, {len(mobile_settings())} mobile\n'
     )
     for group, missing in (
         ('the .env.example files', read - env_example),

@@ -30,7 +30,7 @@ import {
   shape,
   spacingUnit,
   typography,
-} from './brand';
+} from '@app/shared/brand';
 
 /**
  * Tells TypeScript that `cssVariables` below is on.

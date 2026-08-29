@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { apiCall, apiData } from '../lib/api';
 import { routes } from '../lib/routes';
-import type { Organization, OrganizationList } from '../lib/types';
+import type { Organization, OrganizationList } from '@app/shared/types';
 
 export const ORGANIZATIONS_ENABLED = import.meta.env.VITE_ORGANIZATIONS_ENABLED === 'true';
 

@@ -28,7 +28,8 @@ jobs:
         run: |
           untracked=$(git ls-files --others --ignored --exclude-standard \
             -- 'apps/**/*.py' 'utils/**/*.py' 'template/**/*.py' 'scripts/**/*.py' \
-               'website/src/**/*.ts' 'website/src/**/*.tsx')
+               'website/src/**/*.ts' 'website/src/**/*.tsx' \
+               'packages/**/src/**/*.ts' 'mobile/src/**/*.ts' 'mobile/src/**/*.tsx')
           if [ -n "$untracked" ]; then
             echo "::error::These source files are ignored by .gitignore and are not in the repo:"
             echo "$untracked"
@@ -105,7 +106,7 @@ jobs:
       - name: Flag combinations
         run: |
           set -uo pipefail
-          FLAGS="STRIPE_ENABLED SOCIAL_AUTH_ENABLED EMAIL_ASYNC ORGANIZATIONS_ENABLED API_KEYS_ENABLED AUDIT_LOG_ENABLED TWO_FACTOR_ENABLED UPLOADS_ENABLED MCP_SERVER_ENABLED MCP_OAUTH_ENABLED MCP_CLIENT_ENABLED"
+          FLAGS="STRIPE_ENABLED SOCIAL_AUTH_ENABLED EMAIL_ASYNC ORGANIZATIONS_ENABLED API_KEYS_ENABLED AUDIT_LOG_ENABLED TWO_FACTOR_ENABLED UPLOADS_ENABLED MCP_SERVER_ENABLED MCP_OAUTH_ENABLED MCP_CLIENT_ENABLED PUSH_ENABLED"
 
           run_with() {
             local label="$1"; shift
@@ -161,11 +162,8 @@ jobs:
           if-no-files-found: ignore
 
   frontend:
-    name: Frontend
+    name: Website
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: website
 
     steps:
       - uses: actions/checkout@v7
@@ -174,21 +172,61 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: website/package-lock.json
+          # One lockfile at the root: website, mobile and packages/shared are
+          # npm workspaces. Installing inside one of them would produce a
+          # second lockfile and a second copy of React.
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
+      # packages/shared has no lint of its own, so its typecheck runs here --
+      # it is the website's dependency, and a break in it breaks this build.
+      - name: Typecheck the shared package
+        run: npm run typecheck --workspace @app/shared
+
+      - name: Lint
+        run: npm run lint --workspace website
+
+      - name: Typecheck
+        run: npm run typecheck --workspace website
+
+      - name: Test
+        run: npm run test --workspace website
+
+      - name: Build
+        run: npm run build --workspace website
+
+  mobile:
+    name: Mobile
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint --workspace mobile
 
       - name: Typecheck
-        run: npm run typecheck
+        run: npm run typecheck --workspace mobile
 
       - name: Test
-        run: npm run test
+        run: npm run test --workspace mobile
 
-      - name: Build
-        run: npm run build
+      # Not a build: an app binary needs EAS and signing material, which a
+      # pull request has no business holding. This is the equivalent check --
+      # it resolves every import and every asset through Metro, which is what
+      # catches a module that only exists on someone's laptop.
+      - name: Bundle with Metro
+        working-directory: mobile
+        run: npx expo export --platform ios --output-dir /tmp/expo-export
 
   docker:
     name: Docker image

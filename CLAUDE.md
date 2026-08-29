@@ -11,14 +11,22 @@ undo by accident.
   Renamed by `scripts/rename_project.py` when someone adopts the template.
 - `utils/` — helpers not tied to one app: the response envelope, email,
   logging, GDPR anonymization.
+- `packages/shared/` — what both clients import: brand tokens, the backend
+  route table, the API types, the response envelope and the password rules.
 - `website/` — the React SPA.
+- `mobile/` — the Expo app. See `docs/mobile.md`.
+
+`packages/shared`, `website` and `mobile` are npm workspaces with **one
+lockfile at the repository root**. Install with `npm install` there, never
+inside one of them — a second lockfile means a second copy of React, and the
+error that produces talks about hooks rather than about paths.
 
 ## Commands
 
 ```bash
-make test     # pytest + vitest
-make lint     # ruff check + ruff format --check + eslint + tsc
-make format   # auto-fix both
+make test     # pytest + vitest + jest
+make lint     # ruff check + ruff format --check + eslint + tsc, every workspace
+make format   # auto-fix all of them
 make check    # django checks + production deploy checklist + missing migrations
 ```
 
@@ -71,13 +79,19 @@ answering with `index.html` and a 200, which nothing else would catch.
 whether `website/dist` exists, which would make the test URLconf depend on
 whether someone had run a frontend build.
 
-**Visual values live in `website/src/styles/brand.ts`, nowhere else.** No
+**Visual values live in `packages/shared/src/brand.ts`, nowhere else.** No
 component hardcodes a colour, radius or font, which is what makes a re-brand
-one file. `styles/theme.ts` derives the MUI theme and has no literals of its
-own. The two exceptions cannot read a token and say so where they live:
-`public/favicon.svg`, fetched before any JavaScript runs, and `index.html`,
-which gets its title and theme colours substituted at build time by the
-`brandHtml()` plugin in `vite.config.ts`.
+one file *for both clients*. `website/src/styles/theme.ts` derives the MUI
+theme and `mobile/src/theme/paper.ts` the Paper one; neither has a literal of
+its own, and each has a test that fails if one appears. The exceptions cannot
+read a token and say so where they live: `website/public/favicon.svg`, fetched
+before any JavaScript runs, and `website/index.html`, which gets its title and
+theme colours substituted at build time by the `brandHtml()` plugin in
+`vite.config.ts`.
+
+The file moved out of `website/src/styles/` when the mobile app arrived, and
+`apps/core/tests/test_rename_project.py` pins its new location -- the rename
+script reaches it by walking the tree, so nothing else would notice a move.
 
 **The colour-scheme attribute is named in two places and must match.** The
 inline script in `index.html` sets `data-mui-color-scheme` on `<html>` before
@@ -104,6 +118,61 @@ carry meaning.
 **`manage.py` does not attach a debugger by default.** It used to call
 `pydevd_pycharm.settrace()` unconditionally, which hung every `runserver`.
 Remote debugging is opt-in via `DEBUGPY=1`.
+
+**Bearer tokens are added to the authentication classes, never substituted
+for them.** The mobile app authenticates with a header; the browser keeps its
+session cookie, and `apps/authentication/tests/test_csrf.py` still pins that.
+
+`MobileJWTAuthentication` sits **first** in the list and that position is
+load-bearing in two directions. It has to come before `apps.mcp_oauth`'s
+bearer class, because that one *raises* on a token it cannot validate rather
+than declining it -- so anything after it never runs. And because DRF builds
+`WWW-Authenticate` from `authenticators[0]` alone, this class is now
+responsible for the RFC 9728 `resource_metadata` hint that position used to
+carry; it delegates back to `apps.mcp_oauth` when that flag is on. Reorder
+these and either the mobile app cannot sign in, or MCP discovery stops
+working -- each only in the deployments that turned the other feature on.
+
+**The two association documents 404 until they are configured, and that is
+the correct answer.** `/.well-known/apple-app-site-association` and
+`/.well-known/assetlinks.json` are served from settings. Publishing an empty
+`applinks` document tells iOS the association was checked and *refused*, and
+that answer is cached -- so an unconfigured deployment must serve nothing at
+all rather than something harmless-looking. `apps/core/tests/test_deep_links.py`
+pins both, including their exact paths.
+
+**A deep link works only while three things agree**, and none of them import
+each other: `appRoutes` in `packages/shared`, `MOBILE_DEEP_LINK_PATHS` on the
+backend, and the filenames under `mobile/src/app/`. Rename any one and the
+link still opens the app, which then shows the home screen with no
+explanation, days later, from an email.
+`mobile/src/lib/__tests__/deepLinks.test.ts` is the only thing that fails.
+
+**The active organization has two sources, and both are checked against
+membership.** The browser's choice lives in its session; a token client has no
+session, so it names the organization per request with `X-Organization`. That
+is a preference, not an authorization: `apps/organizations/context.py`
+resolves either source against the caller's own memberships, which is why it
+stays the only place either is read. Do not let a view take an organization
+id from a request body.
+
+**React's compiler rules are on in the mobile app too, and are not to be
+disabled.** `set-state-in-effect` in particular: calling a state-setting
+function from an effect's synchronous body renders twice before the first
+paint, which on a phone is a visible stutter every time a screen opens.
+`mobile/src/lib/useResource.ts` is the shape to copy -- the fetch inside the
+effect, every write after the await.
+
+**The mobile refresh is single-flight.** An app coming out of the background
+fires several requests at once, all with the same expired token. Refreshing
+per 401 spends the rotating refresh token more than once, so all but the first
+fail and the user is signed out for no visible reason.
+`mobile/src/lib/__tests__/api.test.ts` pins it.
+
+**Billing is read-only in the app.** Apple requires digital goods consumed in
+an app to be sold through in-app purchase, and a Stripe checkout reached from
+the app is grounds for rejection. `docs/mobile.md` records the cases where a
+purchase flow would be legitimate; adding one is a decision, not a fix.
 
 ## Merging
 

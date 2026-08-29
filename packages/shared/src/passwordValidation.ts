@@ -7,7 +7,7 @@ export interface PasswordValidation {
 }
 
 /**
- * Client-side password checks.
+ * Client-side password checks, for both clients.
  *
  * These mirror Django's default AUTH_PASSWORD_VALIDATORS: at least 8
  * characters and not entirely numeric. Deliberately no uppercase/symbol
@@ -16,6 +16,11 @@ export interface PasswordValidation {
  *
  * If you tighten AUTH_PASSWORD_VALIDATORS on the backend, tighten this to
  * match. The server remains the authority either way.
+ *
+ * Shared rather than per-client for that same reason: two copies of a rule
+ * that is already only an approximation of the server's would drift, and the
+ * symptom -- one client rejecting a password the other accepts -- looks like
+ * a backend bug from either end.
  */
 export function usePasswordValidation(
   password: string,

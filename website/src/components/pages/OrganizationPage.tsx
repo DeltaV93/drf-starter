@@ -33,7 +33,7 @@ import type {
   OrganizationInvitation,
   OrganizationMember,
   OrganizationRole,
-} from '../../lib/types';
+} from '@app/shared/types';
 import { useOrganizations } from '../../store/organization';
 import { useToast } from '../../store/toast';
 

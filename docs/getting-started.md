@@ -461,7 +461,7 @@ will not appear in any of these lists.
 ### Telling a stale build from a real problem
 
 Both halves of the page chrome — the nav bar and the footer — render
-`identity.name` from `website/src/styles/brand.ts`, and so does the browser
+`identity.name` from `packages/shared/src/brand.ts`, and so does the browser
 tab. They cannot disagree. If any of them still shows the template's name
 after a rename, the source is fine and you are looking at a build.
 

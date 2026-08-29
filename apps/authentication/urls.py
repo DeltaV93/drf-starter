@@ -13,6 +13,7 @@ from .views import (
     RegisterView,
     ResendVerificationView,
 )
+from .views_token import TokenObtainView, TokenRefreshView, TokenRevokeView
 
 urlpatterns = [
     path('auth/csrf/', CSRFTokenView.as_view(), name='csrf_token'),
@@ -41,6 +42,12 @@ urlpatterns = [
         name='resend_verification',
     ),
     path('auth/delete-account/', AccountDeletionView.as_view(), name='account_deletion'),
+    # Bearer tokens, for the mobile client. Registered unconditionally: the
+    # browser simply never calls them, and a flag here would mean a template
+    # whose mobile app cannot sign in until someone finds the switch.
+    path('auth/token/', TokenObtainView.as_view(), name='token_obtain'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/token/revoke/', TokenRevokeView.as_view(), name='token_revoke'),
 ]
 
 if settings.TWO_FACTOR_ENABLED:
@@ -65,6 +72,19 @@ if settings.TWO_FACTOR_ENABLED:
         ),
         path('auth/2fa/verify/', TwoFactorVerifyView.as_view(), name='two_factor_verify'),
     ]
+
+    # The token flow's own second step. It cannot share the session one: that
+    # view reads the pending login out of the session cookie, and a client
+    # holding a signed challenge instead has no session to read.
+    from .views_token import TokenTwoFactorVerifyView
+
+    urlpatterns.append(
+        path(
+            'auth/token/2fa/verify/',
+            TokenTwoFactorVerifyView.as_view(),
+            name='token_two_factor_verify',
+        )
+    )
 
 if settings.SOCIAL_AUTH_ENABLED:
     from django.urls import include

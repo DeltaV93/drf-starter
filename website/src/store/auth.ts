@@ -11,7 +11,7 @@ import { useCallback, useEffect } from 'react';
 
 import { apiCall, ensureCsrfToken } from '../lib/api';
 import { routes } from '../lib/routes';
-import type { AuthPayload, User } from '../lib/types';
+import type { AuthPayload, User } from '@app/shared/types';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 

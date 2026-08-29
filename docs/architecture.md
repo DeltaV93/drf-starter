@@ -280,7 +280,8 @@ past the login page on every refresh.
 **`src/lib/routes.ts` is the only place that names a backend path**, and it
 preserves trailing slashes.
 
-**`src/styles/brand.ts` is the only place that names a colour.** See
+**`packages/shared/src/brand.ts` is the only place that names a colour**, for
+the website and the mobile app alike. See
 [Theming](../README.md#theming).
 
 ESLint runs with `--max-warnings 0`, and the React Compiler rules

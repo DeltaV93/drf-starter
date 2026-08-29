@@ -6,7 +6,7 @@ import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 
 import i18n from '../i18n';
-import type { User } from '../lib/types';
+import type { User } from '@app/shared/types';
 import theme from '../styles/theme';
 
 export function makeUser(overrides: Partial<User> = {}): User {

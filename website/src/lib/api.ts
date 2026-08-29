@@ -1,5 +1,5 @@
 /**
- * The single HTTP client.
+ * The single HTTP client for the browser.
  *
  * Session-cookie auth means two things have to be right on every unsafe
  * request: the cookies must be sent (withCredentials) and the CSRF token must
@@ -9,12 +9,20 @@
  * The token is read from the csrftoken cookie, which Django sets and
  * deliberately leaves readable by JavaScript. If it is missing -- first visit,
  * or the cookie expired -- the interceptor fetches one before retrying.
+ *
+ * Everything downstream of the response -- unwrapping the envelope, turning a
+ * failure into a field-addressable ApiError -- is in `@app/shared/api`, which
+ * the mobile client uses too. Only the part above this line is web-specific.
  */
 
-import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
+
+import { createApiClient } from '@app/shared/api';
+import type { ApiEnvelope } from '@app/shared/types';
 
 import { routes } from './routes';
-import type { ApiEnvelope } from './types';
+
+export { ApiError } from '@app/shared/api';
 
 const CSRF_COOKIE = 'csrftoken';
 const CSRF_HEADER = 'X-CSRFToken';
@@ -55,61 +63,4 @@ http.interceptors.request.use(async (config) => {
   return config;
 });
 
-export class ApiError extends Error {
-  readonly status: number | undefined;
-  readonly fieldErrors: Record<string, string[] | string>;
-
-  constructor(message: string, status?: number, fieldErrors = {}) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.fieldErrors = fieldErrors;
-  }
-
-  /** The first message for a field, for wiring straight into a form. */
-  fieldError(field: string): string | undefined {
-    const value = this.fieldErrors[field];
-    if (!value) return undefined;
-    return Array.isArray(value) ? value[0] : value;
-  }
-}
-
-function toApiError(error: unknown, fallback: string): ApiError {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<ApiEnvelope>;
-    const envelope = axiosError.response?.data;
-    return new ApiError(
-      envelope?.message || axiosError.message || fallback,
-      axiosError.response?.status,
-      envelope?.errors ?? {},
-    );
-  }
-  return new ApiError(fallback);
-}
-
-/**
- * Make a request and unwrap the response envelope.
- *
- * Throws ApiError on failure so callers can `try/catch` rather than inspect
- * status codes.
- */
-export async function apiCall<T = unknown>(
-  config: AxiosRequestConfig & { errorMessage?: string },
-): Promise<ApiEnvelope<T>> {
-  const { errorMessage = 'Something went wrong. Please try again.', ...axiosConfig } = config;
-
-  try {
-    const response = await http.request<ApiEnvelope<T>>(axiosConfig);
-    return response.data;
-  } catch (error) {
-    throw toApiError(error, errorMessage);
-  }
-}
-
-/** Same as apiCall but returns just the `data` payload. */
-export async function apiData<T>(
-  config: AxiosRequestConfig & { errorMessage?: string },
-): Promise<T | undefined> {
-  const envelope = await apiCall<T>(config);
-  return envelope.data;
-}
+export const { apiCall, apiData } = createApiClient(http);

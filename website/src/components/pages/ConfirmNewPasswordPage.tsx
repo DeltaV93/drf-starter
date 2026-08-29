@@ -16,7 +16,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ApiError, apiCall } from '../../lib/api';
 import { routes } from '../../lib/routes';
-import { usePasswordValidation } from '../../hooks/usePasswordValidation';
+import { usePasswordValidation } from '@app/shared/passwordValidation';
 import { useToast } from '../../store/toast';
 
 interface ConfirmPasswordForm {

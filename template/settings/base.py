@@ -11,6 +11,7 @@ See .env.example for the full list.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -141,6 +142,10 @@ MCP_OAUTH_ENABLED = env_bool('MCP_OAUTH_ENABLED', default=False)
 # can be agent-callable without itself being an agent, and the other way
 # round.
 MCP_CLIENT_ENABLED = env_bool('MCP_CLIENT_ENABLED', default=False)
+# Push notification device registry, for the mobile client. Off by default:
+# it is useless without credentials for a push service, and an app that never
+# sends a notification should not be storing device tokens.
+PUSH_ENABLED = env_bool('PUSH_ENABLED', default=False)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -152,6 +157,12 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'rest_framework.authtoken',
+    # Installed unconditionally, and that is deliberate. It is what makes
+    # `auth/token/revoke/` mean anything: without a blacklist a refresh token
+    # stays valid for its full lifetime after the user taps "log out", and a
+    # stolen one cannot be taken away. Rotation writes a row per refresh, so
+    # `flushexpiredtokens` belongs on a schedule -- see the README.
+    'rest_framework_simplejwt.token_blacklist',
     'django_filters',
     'drf_spectacular',
     'corsheaders',
@@ -188,6 +199,9 @@ if MCP_OAUTH_ENABLED:
 
 if MCP_CLIENT_ENABLED:
     INSTALLED_APPS.append('apps.mcp_client')
+
+if PUSH_ENABLED:
+    INSTALLED_APPS.append('apps.push')
 
 MIDDLEWARE = [
     # First on purpose: health probes must be answered before the SSL
@@ -379,6 +393,16 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        # Bearer tokens for the mobile app, FIRST and unconditionally.
+        #
+        # First because the class below it that also reads `Authorization:
+        # Bearer` -- apps.mcp_oauth -- *raises* on a token it cannot validate
+        # rather than declining it, so anything ordered after that one never
+        # runs. This class declines instead: a token whose `iss` is not ours
+        # returns None and the chain continues, which is what lets the two
+        # bearer schemes share one header. See its docstring for how it keeps
+        # the RFC 9728 challenge that position used to be responsible for.
+        'apps.authentication.authentication_token.MobileJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -428,18 +452,105 @@ if MCP_OAUTH_ENABLED:
     # apps/mcp_server forwards the caller's Authorization header into this
     # same stack -- there is no second auth path to keep in step.
     #
-    # FIRST, not appended, and that position is load-bearing. DRF builds the
-    # WWW-Authenticate header from `authenticators[0]` alone. SessionAuthentication
-    # offers none, so with it first DRF has nothing to challenge with and
-    # answers 403 instead of 401 -- and the RFC 9728 `resource_metadata` hint
-    # never reaches the client. That hint is how an MCP client discovers the
-    # authorization server, so losing it means nothing can connect unaided.
-    # Ordering costs nothing else: the class returns None for any request that
-    # is not `Authorization: Bearer ...`, so the others still run.
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-        'apps.mcp_oauth.authentication.BearerTokenAuthentication',
-        *REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'],
-    ]
+    # Ahead of SessionAuthentication, and that relative position is
+    # load-bearing. DRF builds the WWW-Authenticate header from
+    # `authenticators[0]` alone. SessionAuthentication offers none, so with it
+    # first DRF has nothing to challenge with and answers 403 instead of 401 --
+    # and the RFC 9728 `resource_metadata` hint never reaches the client. That
+    # hint is how an MCP client discovers the authorization server, so losing
+    # it means nothing can connect unaided.
+    #
+    # It is no longer index 0, because MobileJWTAuthentication has to see a
+    # bearer token first (that class declines what is not its own; this one
+    # raises). The challenge is preserved anyway: MobileJWTAuthentication
+    # delegates `authenticate_header` here whenever this flag is on, which
+    # apps/mcp_oauth/tests pin. Ordering costs nothing else -- both classes
+    # return None for any request that is not `Authorization: Bearer ...`.
+    _session_auth = 'rest_framework.authentication.SessionAuthentication'
+    _mcp_auth = 'apps.mcp_oauth.authentication.BearerTokenAuthentication'
+    _classes = list(REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'])
+    _classes.insert(_classes.index(_session_auth), _mcp_auth)
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = _classes
+
+# --------------------------------------------------------------------------
+# Bearer tokens for the mobile client
+#
+# The browser authenticates with a session cookie and a CSRF token, which is
+# the right answer for a same-origin SPA and the wrong one for a phone: a
+# native client has no cookie jar worth relying on, and CSRF is meaningless
+# without one. So the mobile app carries a short-lived access token and
+# refreshes it against a long-lived one held in the platform keystore.
+#
+# This is added to the authentication classes, never substituted for them --
+# the website's session auth is untouched, and apps/authentication/tests/
+# test_csrf.py still pins that contract.
+# --------------------------------------------------------------------------
+
+# What the `iss` claim carries, and the only thing that tells our tokens apart
+# from another bearer scheme's on the same header. MobileJWTAuthentication
+# routes on it; SimpleJWT verifies it. Changing it invalidates every token in
+# circulation, which is a blunt but effective revocation of last resort.
+TOKEN_ISSUER = os.environ.get('TOKEN_ISSUER', 'drf-starter')
+
+SIMPLE_JWT = {
+    # Short, because an access token cannot be revoked before it expires --
+    # nothing checks a database on the way through. The refresh token is the
+    # one with a revocation story, which is why it is the only one stored.
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=env_int('ACCESS_TOKEN_MINUTES', 15)),
+    # Long, because the alternative is asking someone to type a password into
+    # a phone every fortnight. Rotation is what makes that safe.
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=env_int('REFRESH_TOKEN_DAYS', 30)),
+    # Every refresh issues a new pair and blacklists the one just spent. A
+    # stolen refresh token is then good for exactly one use, and the moment
+    # either party spends it the other's next attempt fails -- which is the
+    # only signal a server gets that a token leaked.
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'ISSUER': TOKEN_ISSUER,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+# How long the client has to answer the second-factor prompt before the
+# challenge issued by auth/token/ stops being redeemable.
+TOKEN_TWO_FACTOR_CHALLENGE_SECONDS = env_int('TOKEN_TWO_FACTOR_CHALLENGE_SECONDS', 300)
+
+
+# --------------------------------------------------------------------------
+# Mobile app identity, for deep links
+#
+# The backend emails links like {FRONTEND_URL}/verify-email/<uid>/<token>.
+# Publishing the two association documents below is what makes the operating
+# system hand those same URLs to the installed app instead of the browser --
+# so one email works for both clients and there is no second link to keep in
+# step. Each document is served only when its half is configured; unset, the
+# path 404s, which is the correct answer for a deployment with no app.
+#
+# See apps/core/views.py (AppleAppSiteAssociationView, AssetLinksView).
+# --------------------------------------------------------------------------
+
+# "<TeamID>.<bundle identifier>", e.g. ABCDE12345.com.example.app
+MOBILE_IOS_APP_ID = os.environ.get('MOBILE_IOS_APP_ID', '')
+
+# The Android application id, e.g. com.example.app
+MOBILE_ANDROID_PACKAGE = os.environ.get('MOBILE_ANDROID_PACKAGE', '')
+
+# SHA-256 fingerprints of the signing certificates, colon-separated hex.
+# More than one is normal: Play App Signing and the upload key differ.
+MOBILE_ANDROID_SHA256_FINGERPRINTS = env_list('MOBILE_ANDROID_SHA256_FINGERPRINTS')
+
+# The custom scheme the app also answers on, used in development where there
+# is no verified domain. Mirrors `scheme` in mobile/app.json.
+MOBILE_APP_SCHEME = os.environ.get('MOBILE_APP_SCHEME', 'drfstarter')
+
+# Which client-side paths the app claims. Anything not listed keeps opening
+# in the browser, which is what you want for marketing pages and the admin.
+MOBILE_DEEP_LINK_PATHS = env_list(
+    'MOBILE_DEEP_LINK_PATHS',
+    default=['/verify-email/*', '/confirm-password/*', '/invitations/*'],
+)
 
 SPECTACULAR_SETTINGS = {
     'TITLE': os.environ.get('API_TITLE', 'DRF Starter API'),
@@ -614,6 +725,11 @@ CORS_ALLOW_HEADERS = [
     'origin',
     'x-csrftoken',
     'x-requested-with',
+    # How a client with no session says which organization it is acting for.
+    # See apps/organizations/context.py. Harmless with ORGANIZATIONS_ENABLED
+    # off -- nothing reads it -- and listing it unconditionally keeps the
+    # preflight allowance from depending on a flag.
+    'x-organization',
 ]
 CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
