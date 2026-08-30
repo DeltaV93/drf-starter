@@ -34,35 +34,99 @@ export interface AppTheme extends MD3Theme {
   cardShadow: string;
 }
 
+/**
+ * Read any colour the brand might hold into RGB.
+ *
+ * The default tokens are hex, but `text.*` is already `rgba(...)` and nothing
+ * stops a project using that form for a brand colour too.
+ */
+function toRgb(color: string): [number, number, number] | null {
+  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    const value = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
+    return [
+      parseInt(value.slice(0, 2), 16),
+      parseInt(value.slice(2, 4), 16),
+      parseInt(value.slice(4, 6), 16),
+    ];
+  }
+
+  const functional = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (functional) {
+    const parts = functional[1].split(',').map((n) => parseFloat(n));
+    if (parts.length >= 3 && parts.every((n) => !Number.isNaN(n))) {
+      return [parts[0], parts[1], parts[2]];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * `amount` of `color` over `onto`.
+ *
+ * This is what makes an MD3 "container" a container. The first version of
+ * this file mapped `primaryContainer` to the palette's `light` variant, which
+ * is *brighter* than `main` -- so the informational banner on the profile
+ * screen rendered as a saturated block of cyan rather than the pale tint the
+ * role is for. It looked like an error state.
+ *
+ * A container is a low-chroma wash of the role colour over the surface, so
+ * that is what this computes. Still derived entirely from the brand: no new
+ * colour is named, one is mixed.
+ */
+function mix(color: string, onto: string, amount: number): string {
+  const a = toRgb(color);
+  const b = toRgb(onto);
+  // Unparseable input falls back to the role colour rather than to something
+  // invented, so an unusual palette degrades to "too saturated" rather than
+  // to a colour with no relationship to the brand.
+  if (!a || !b) return color;
+
+  const channel = (i: number) => Math.round(a[i] * amount + b[i] * (1 - amount));
+  return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
+}
+
 function colorsFor(palette: BrandPalette, base: MD3Theme, dark: boolean) {
+  // How much of the role colour survives into its container. Dark mode needs
+  // more, because a wash this faint over near-black is invisible.
+  const TINT = dark ? 0.28 : 0.14;
+  const surface = palette.background.paper;
+
+  /** The container pair for a role: a wash, and something readable on it. */
+  const container = (role: BrandPalette['primary']) => ({
+    fill: mix(role.main, surface, TINT),
+    // On a pale wash the darker variant reads; on a dark one the lighter.
+    on: dark ? role.light : role.dark,
+  });
+
   return {
     ...base.colors,
 
     primary: palette.primary.main,
     onPrimary: palette.primary.contrastText,
-    // MD3's container roles are a muted fill plus text for it. The brand has
-    // no such pair, so the fill comes from the scheme's quieter end -- `dark`
-    // in dark mode, `light` in light mode -- which is the variant that reads
-    // as a tint rather than as a second button.
-    primaryContainer: dark ? palette.primary.dark : palette.primary.light,
-    onPrimaryContainer: dark ? palette.primary.contrastText : palette.text.primary,
+    // MD3's container roles are a muted fill plus something readable on it.
+    // The brand has no such pair, so `container()` mixes one -- see the note
+    // there for why the obvious choice was wrong.
+    primaryContainer: container(palette.primary).fill,
+    onPrimaryContainer: container(palette.primary).on,
 
     secondary: palette.secondary.main,
     onSecondary: palette.secondary.contrastText,
-    secondaryContainer: dark ? palette.secondary.dark : palette.secondary.light,
-    onSecondaryContainer: dark ? palette.secondary.contrastText : palette.text.primary,
+    secondaryContainer: container(palette.secondary).fill,
+    onSecondaryContainer: container(palette.secondary).on,
 
     // MD3 has a third accent that MD2 does not. Mapping it to `info` rather
     // than inventing one keeps every colour on screen traceable to a token.
     tertiary: palette.info.main,
     onTertiary: palette.info.contrastText,
-    tertiaryContainer: dark ? palette.info.dark : palette.info.light,
-    onTertiaryContainer: dark ? palette.info.contrastText : palette.text.primary,
+    tertiaryContainer: container(palette.info).fill,
+    onTertiaryContainer: container(palette.info).on,
 
     error: palette.error.main,
     onError: palette.error.contrastText,
-    errorContainer: dark ? palette.error.dark : palette.error.light,
-    onErrorContainer: dark ? palette.error.contrastText : palette.text.primary,
+    errorContainer: container(palette.error).fill,
+    onErrorContainer: container(palette.error).on,
 
     background: palette.background.default,
     onBackground: palette.text.primary,

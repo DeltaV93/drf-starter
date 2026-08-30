@@ -17,11 +17,13 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { ActivityIndicator, Card, Divider, List, Text, useTheme } from 'react-native-paper';
 
 import type { Subscription } from '@app/shared/types';
 
+import { FeatureOff } from '../../components/FeatureOff';
 import { Screen, ScreenHeader } from '../../components/Screen';
 import { flags, WEB_URL } from '../../lib/config';
 import { apiData } from '../../lib/api';
@@ -32,6 +34,7 @@ type State = { status: 'loading' } | { status: 'ready'; subscription: Subscripti
 
 export default function SubscriptionScreen() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
@@ -55,19 +58,18 @@ export default function SubscriptionScreen() {
 
   if (!flags.billing) {
     return (
-      <Screen>
-        <ScreenHeader
-          title="Billing is off"
-          subtitle="Set EXPO_PUBLIC_STRIPE_ENABLED, and STRIPE_ENABLED on the backend."
-        />
-      </Screen>
+      <FeatureOff
+        feature={t('subscription')}
+        clientFlag="EXPO_PUBLIC_STRIPE_ENABLED"
+        serverFlag="STRIPE_ENABLED"
+      />
     );
   }
 
   if (state.status === 'loading') {
     return (
       <Screen>
-        <ActivityIndicator accessibilityLabel="Loading" />
+        <ActivityIndicator accessibilityLabel={t('loading')} />
       </Screen>
     );
   }
@@ -76,7 +78,7 @@ export default function SubscriptionScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Subscription" />
+      <ScreenHeader title={t('subscription')} />
 
       <Card mode="outlined">
         <Card.Content>
@@ -84,19 +86,17 @@ export default function SubscriptionScreen() {
             <>
               <Text variant="titleLarge">{subscription.plan.name}</Text>
               <Divider style={{ marginVertical: theme.spacing(1) }} />
-              <List.Item title="Status" description={subscription.status} />
+              <List.Item title={t('status')} description={subscription.status} />
               <List.Item
-                title="Renews"
+                title={t('renews')}
                 description={new Date(subscription.current_period_end).toLocaleDateString()}
               />
-              <List.Item title="Price" description={subscription.plan.price} />
+              <List.Item title={t('price')} description={subscription.plan.price} />
             </>
           ) : (
             <>
-              <Text variant="titleLarge">No plan</Text>
-              <Text style={{ marginTop: theme.spacing(1) }}>
-                This account is not subscribed.
-              </Text>
+              <Text variant="titleLarge">{t('noPlan')}</Text>
+              <Text style={{ marginTop: theme.spacing(1) }}>{t('notSubscribed')}</Text>
             </>
           )}
         </Card.Content>
@@ -104,9 +104,7 @@ export default function SubscriptionScreen() {
 
       <View style={{ marginTop: theme.spacing(3) }}>
         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          Plans are managed on the website
-          {WEB_URL ? `, at ${WEB_URL}` : ''}. Sign in there with this same
-          account.
+          {WEB_URL ? t('plansOnWebsiteAt', { url: WEB_URL }) : t('plansOnWebsite')}
         </Text>
       </View>
     </Screen>

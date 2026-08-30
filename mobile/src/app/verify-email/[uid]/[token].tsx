@@ -14,11 +14,13 @@
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from 'react-native-paper';
 
 import { Screen, ScreenHeader } from '../../../components/Screen';
-import { ApiError, apiCall } from '../../../lib/api';
+import { apiCall } from '../../../lib/api';
 import { routes } from '../../../lib/routes';
+import { useErrorMessage } from '../../../lib/useErrorMessage';
 import { useAuth } from '../../../store/auth';
 
 type Outcome = 'checking' | 'verified' | 'failed';
@@ -26,6 +28,8 @@ type Outcome = 'checking' | 'verified' | 'failed';
 export default function VerifyEmailScreen() {
   const router = useRouter();
   const { uid, token } = useLocalSearchParams<{ uid: string; token: string }>();
+  const { t } = useTranslation();
+  const describe = useErrorMessage();
   const { isAuthenticated, refresh } = useAuth();
 
   const [outcome, setOutcome] = useState<Outcome>('checking');
@@ -40,11 +44,10 @@ export default function VerifyEmailScreen() {
           url: routes.api.auth.verifyEmail(),
           method: 'POST',
           data: { uid, token },
-          errorMessage: 'That link is no longer valid.',
         });
         if (cancelled) return;
 
-        setMessage(envelope.message ?? 'Your email address is confirmed.');
+        setMessage(envelope.message ?? t('emailVerified'));
         setOutcome('verified');
 
         // The signed-in user's `email_verified` just changed, and every
@@ -53,9 +56,7 @@ export default function VerifyEmailScreen() {
         if (isAuthenticated) await refresh();
       } catch (error) {
         if (cancelled) return;
-        setMessage(
-          error instanceof ApiError ? error.message : 'That link is no longer valid.',
-        );
+        setMessage(describe(error, 'linkNoLongerValid'));
         setOutcome('failed');
       }
     })();
@@ -73,14 +74,14 @@ export default function VerifyEmailScreen() {
   return (
     <Screen loading={outcome === 'checking'}>
       <ScreenHeader
-        title={outcome === 'verified' ? 'Email confirmed' : 'That link did not work'}
+        title={outcome === 'verified' ? t('emailConfirmed') : t('linkDidNotWork')}
         subtitle={message}
       />
       <Button
         mode="contained"
         onPress={() => router.replace(isAuthenticated ? '/profile' : '/login')}
       >
-        Continue
+        {t('continue')}
       </Button>
     </Screen>
   );

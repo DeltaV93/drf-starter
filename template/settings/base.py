@@ -16,6 +16,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import dj_database_url
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
 from django.utils.translation import gettext_lazy as _
@@ -161,7 +162,7 @@ INSTALLED_APPS = [
     # `auth/token/revoke/` mean anything: without a blacklist a refresh token
     # stays valid for its full lifetime after the user taps "log out", and a
     # stolen one cannot be taken away. Rotation writes a row per refresh, so
-    # `flushexpiredtokens` belongs on a schedule -- see the README.
+    # the table needs sweeping -- CELERY_BEAT_SCHEDULE below does that.
     'rest_framework_simplejwt.token_blacklist',
     'django_filters',
     'drf_spectacular',
@@ -761,6 +762,26 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = TIME_ZONE
+
+# Scheduled work. Needs a beat process as well as a worker:
+#
+#     celery -A template beat -l info
+#
+# Without one these entries are inert, which is a quiet failure -- so anything
+# added here belongs in the deployment guide too.
+CELERY_BEAT_SCHEDULE = {
+    # Refresh rotation writes a blacklist row per refresh, so this table grows
+    # by roughly a hundred rows per device per day and nothing else removes
+    # them. The command only deletes tokens that have already expired, so a
+    # blacklisted token stays enforceable for its full lifetime either way.
+    'flush-expired-tokens': {
+        'task': 'apps.authentication.tasks.flush_expired_tokens',
+        'schedule': crontab(
+            hour=env_int('TOKEN_CLEANUP_HOUR', 3),
+            minute=env_int('TOKEN_CLEANUP_MINUTE', 30),
+        ),
+    },
+}
 
 
 # --------------------------------------------------------------------------

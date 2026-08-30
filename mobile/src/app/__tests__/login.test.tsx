@@ -12,9 +12,11 @@ import { renderWithProviders, userEvent, waitFor } from '../../test/utils';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockParams: { redirect?: string } = {};
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useLocalSearchParams: () => mockParams,
 }));
 
 const mockLogin = jest.fn();
@@ -35,6 +37,7 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  delete mockParams.redirect;
 });
 
 it('asks for a username and a password', async () => {
@@ -51,7 +54,7 @@ it('signs in and goes to the app', async () => {
 
   await user.type(view.getByLabelText('Username'), 'ada');
   await user.type(view.getByLabelText('Password'), 'correct horse');
-  await user.press(view.getByText('Sign in'));
+  await user.press(view.getByText('Log in'));
 
   await waitFor(() => {
     expect(mockLogin).toHaveBeenCalledWith({ username: 'ada', password: 'correct horse' });
@@ -66,12 +69,14 @@ it('carries the challenge to the verification screen instead of signing in', asy
 
   await user.type(view.getByLabelText('Username'), 'ada');
   await user.type(view.getByLabelText('Password'), 'correct horse');
-  await user.press(view.getByText('Sign in'));
+  await user.press(view.getByText('Log in'));
 
   await waitFor(() => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/two-factor',
-      params: { challenge: 'signed-challenge' },
+      // The destination travels with the challenge: the second factor is a
+      // detour inside this flow, not the end of it.
+      params: { challenge: 'signed-challenge', redirect: '/profile' },
     });
   });
   // The important half: nothing navigated into the app.
@@ -80,17 +85,76 @@ it('carries the challenge to the verification screen instead of signing in', asy
 
 it('reports a refusal rather than navigating', async () => {
   const { ApiError } = jest.requireActual('@app/shared/api');
-  mockLogin.mockRejectedValue(new ApiError('Login failed.', 400, { password: ['Wrong.'] }));
+  // The fourth argument is `fromServer`. Only the backend's own words are
+  // shown as-is; a message this app invented is replaced by the translated
+  // fallback, so a Spanish reader never sees a stray English sentence.
+  mockLogin.mockRejectedValue(
+    new ApiError('Login failed.', 400, { password: ['Wrong.'] }, true),
+  );
   const user = userEvent.setup();
   const view = await renderScreen();
 
   await user.type(view.getByLabelText('Username'), 'ada');
   await user.type(view.getByLabelText('Password'), 'nope');
-  await user.press(view.getByText('Sign in'));
+  await user.press(view.getByText('Log in'));
 
   await waitFor(() => {
     expect(mockToastError).toHaveBeenCalledWith('Login failed.');
   });
   expect(mockReplace).not.toHaveBeenCalled();
   expect(mockPush).not.toHaveBeenCalled();
+});
+
+
+describe('resuming an interrupted flow', () => {
+  // The bug this covers: an emailed invitation sends someone here to sign in,
+  // and `replace('/profile')` destroyed the stack along with the invitation
+  // token in its URL. They arrived on their profile having joined nothing.
+  it('returns to where it was sent from', async () => {
+    mockParams.redirect = '/invitations/abc123';
+    mockLogin.mockResolvedValue({ status: 'authenticated', user: { id: 1 } });
+    const user = userEvent.setup();
+    const view = await renderScreen();
+
+    await user.type(view.getByLabelText('Username'), 'ada');
+    await user.type(view.getByLabelText('Password'), 'correct horse');
+    await user.press(view.getByText('Log in'));
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/invitations/abc123');
+    });
+  });
+
+  it('carries the destination through the second factor', async () => {
+    mockParams.redirect = '/invitations/abc123';
+    mockLogin.mockResolvedValue({ status: 'two-factor-required', challenge: 'c' });
+    const user = userEvent.setup();
+    const view = await renderScreen();
+
+    await user.type(view.getByLabelText('Username'), 'ada');
+    await user.type(view.getByLabelText('Password'), 'correct horse');
+    await user.press(view.getByText('Log in'));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: '/two-factor',
+        params: { challenge: 'c', redirect: '/invitations/abc123' },
+      });
+    });
+  });
+
+  it('will not be sent out of the app', async () => {
+    mockParams.redirect = 'https://evil.example.com';
+    mockLogin.mockResolvedValue({ status: 'authenticated', user: { id: 1 } });
+    const user = userEvent.setup();
+    const view = await renderScreen();
+
+    await user.type(view.getByLabelText('Username'), 'ada');
+    await user.type(view.getByLabelText('Password'), 'correct horse');
+    await user.press(view.getByText('Log in'));
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/profile');
+    });
+  });
 });

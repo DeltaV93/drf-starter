@@ -5,16 +5,23 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    // Named rather than left to discovery. Expo's base config sets
-    // `customConditions: ["react-native"]`, and under it TypeScript stops
-    // picking up the ambient @types packages from the workspace root -- so
-    // `fs`, `path` and `jest` in the tests resolve to nothing, with an error
-    // that suggests installing a package which is already installed.
-    "types": ["node", "jest"],
+    "types": [
+      "node",
+      "jest"
+    ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "expo-env.d.ts"],
-  "exclude": ["node_modules", ".expo", "dist"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    ".expo",
+    "dist"
+  ]
 }

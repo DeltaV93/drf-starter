@@ -13,6 +13,7 @@
 
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import type { ColorValue } from 'react-native';
 import { useTheme } from 'react-native-paper';
 
@@ -32,6 +33,7 @@ function icon(name: IconName) {
 
 export default function AppLayout() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -45,12 +47,12 @@ export default function AppLayout() {
     >
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarIcon: icon('account-circle-outline') }}
+        options={{ title: t('profile'), tabBarIcon: icon('account-circle-outline') }}
       />
       <Tabs.Screen
         name="organization"
         options={{
-          title: 'Team',
+          title: t('team'),
           tabBarIcon: icon('account-group-outline'),
           // `href: null` keeps the route reachable by URL -- an emailed
           // invitation still lands on it -- while hiding the tab. Removing
@@ -61,20 +63,20 @@ export default function AppLayout() {
       <Tabs.Screen
         name="files"
         options={{
-          title: 'Files',
+          title: t('files'),
           tabBarIcon: icon('file-outline'),
           href: flags.uploads ? undefined : null,
         }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarIcon: icon('cog-outline') }}
+        options={{ title: t('settings'), tabBarIcon: icon('cog-outline') }}
       />
 
       {/* Reached from Settings rather than from the tab bar. */}
-      <Tabs.Screen name="security" options={{ title: 'Security', href: null }} />
-      <Tabs.Screen name="connections" options={{ title: 'Connections', href: null }} />
-      <Tabs.Screen name="subscription" options={{ title: 'Subscription', href: null }} />
+      <Tabs.Screen name="security" options={{ title: t('security'), href: null }} />
+      <Tabs.Screen name="connections" options={{ title: t('connections'), href: null }} />
+      <Tabs.Screen name="subscription" options={{ title: t('subscription'), href: null }} />
     </Tabs>
   );
 }

@@ -390,8 +390,20 @@ nothing about the browser's session auth changes.
 | `REFRESH_TOKEN_DAYS` | `30` | Refresh token lifetime — how long someone stays signed in without retyping a password. Rotation plus blacklisting is what makes a value this large safe. |
 | `TOKEN_TWO_FACTOR_CHALLENGE_SECONDS` | `300` | How long the client has to answer a second-factor prompt before the challenge issued by `/auth/token/` stops being redeemable. |
 
-Refresh rotation writes a row per refresh, so schedule
-`python manage.py flushexpiredtokens` — daily is plenty.
+| `TOKEN_CLEANUP_HOUR` | `3` | Hour of the nightly sweep of expired blacklisted refresh tokens, in `TIME_ZONE`. |
+| `TOKEN_CLEANUP_MINUTE` | `30` | Minute of that sweep. |
+
+Refresh rotation writes a blacklist row per refresh — roughly a hundred per
+device per day — and `CELERY_BEAT_SCHEDULE` sweeps the expired ones nightly.
+That needs a **beat process** as well as a worker:
+
+```bash
+celery -A template beat -l info
+```
+
+Without one the schedule is inert and nothing removes the rows. The command
+only ever deletes tokens that have already expired, so a blacklisted token
+stays enforceable for its full lifetime either way.
 
 ---
 
@@ -481,6 +493,10 @@ Django runs on, so even the values that look shared are not.
 | `EXPO_PUBLIC_UPLOADS_ENABLED` | `false` | Must match `UPLOADS_ENABLED`. |
 | `EXPO_PUBLIC_MCP_CLIENT_ENABLED` | `false` | Must match `MCP_CLIENT_ENABLED`. |
 | `EXPO_PUBLIC_PUSH_ENABLED` | `false` | Must match `PUSH_ENABLED`. Asks for notification permission and registers the device. |
+| `EXPO_PUBLIC_SENTRY_DSN` | *(none)* | Crash reporting. Unset, nothing initialises and nothing is sent. A DSN is designed to ship in a client, so it is not a secret. |
+| `EXPO_PUBLIC_SENTRY_SEND_PII` | `false` | Ships usernames, email addresses and IP addresses to a third party. Off by default, like the backend's `SENTRY_SEND_PII`. |
+| `EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | `0` | Performance tracing. Costs battery and bandwidth per session. |
+| `EXPO_PUBLIC_SENTRY_RELEASE` | *(none)* | Which build a report came from. EAS sets this. |
 
 **Not an environment variable:** the app's colours, type and shape come from
 the same `packages/shared/src/brand.ts` the website reads.

@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import {
   ActivityIndicator,
@@ -22,10 +23,13 @@ import {
 
 import type { OrganizationInvitation, OrganizationMember } from '@app/shared/types';
 
+import { ErrorState } from '../../components/ErrorState';
+import { FeatureOff } from '../../components/FeatureOff';
 import { EmptyState, Screen, ScreenHeader } from '../../components/Screen';
-import { ApiError, apiData } from '../../lib/api';
+import { apiData } from '../../lib/api';
 import { flags } from '../../lib/config';
 import { routes } from '../../lib/routes';
+import { useErrorMessage } from '../../lib/useErrorMessage';
 import { useResource } from '../../lib/useResource';
 import { useOrganizations } from '../../store/organization';
 import { useToast } from '../../store/toast';
@@ -36,7 +40,9 @@ const CAN_MANAGE = new Set(['OWNER', 'ADMIN']);
 
 export default function OrganizationScreen() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
   const { organizations, active, loading, error, switchTo } = useOrganizations();
 
   const [inviteEmail, setInviteEmail] = useState('');
@@ -52,19 +58,13 @@ export default function OrganizationScreen() {
 
   const fetchMembers = useCallback(
     () =>
-      apiData<OrganizationMember[]>({
-        url: routes.api.organizations.members(),
-        errorMessage: 'Could not load the members.',
-      }),
+      apiData<OrganizationMember[]>({ url: routes.api.organizations.members() }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeSlug],
   );
   const fetchInvitations = useCallback(
     () =>
-      apiData<OrganizationInvitation[]>({
-        url: routes.api.organizations.invitations(),
-        errorMessage: 'Could not load the invitations.',
-      }),
+      apiData<OrganizationInvitation[]>({ url: routes.api.organizations.invitations() }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeSlug],
   );
@@ -83,13 +83,12 @@ export default function OrganizationScreen() {
         url: routes.api.organizations.invitations(),
         method: 'POST',
         data: { email: inviteEmail, role: 'MEMBER' },
-        errorMessage: 'Could not send that invitation.',
       });
       setInviteEmail('');
-      toast.success('Invitation sent.');
+      toast.success(t('orgInvitationSent'));
       invitationsResource.reload();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Could not send that invitation.');
+      toast.error(describe(err, 'couldNotSendInvitation'));
     } finally {
       setInviting(false);
     }
@@ -98,21 +97,20 @@ export default function OrganizationScreen() {
   async function revoke(id: number) {
     try {
       await apiData({ url: routes.api.organizations.invitation(id), method: 'DELETE' });
-      toast.success('Invitation revoked.');
+      toast.success(t('invitationRevoked'));
       invitationsResource.reload();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Could not revoke that invitation.');
+      toast.error(describe(err, 'couldNotRevokeInvitation'));
     }
   }
 
   if (!flags.organizations) {
     return (
-      <Screen>
-        <ScreenHeader
-          title="Teams are off"
-          subtitle="Set EXPO_PUBLIC_ORGANIZATIONS_ENABLED, and ORGANIZATIONS_ENABLED on the backend."
-        />
-      </Screen>
+      <FeatureOff
+        feature={t('team')}
+        clientFlag="EXPO_PUBLIC_ORGANIZATIONS_ENABLED"
+        serverFlag="ORGANIZATIONS_ENABLED"
+      />
     );
   }
 
@@ -121,7 +119,8 @@ export default function OrganizationScreen() {
   if (error) {
     return (
       <Screen>
-        <ScreenHeader title="Team" subtitle={error} />
+        <ScreenHeader title={t('team')} />
+        <ErrorState message={error} />
       </Screen>
     );
   }
@@ -129,10 +128,7 @@ export default function OrganizationScreen() {
   if (!active) {
     return (
       <Screen>
-        <ScreenHeader
-          title="No organization yet"
-          subtitle="You are not a member of one. An invitation will bring you into a team."
-        />
+        <ScreenHeader title={t('noOrganizationYet')} subtitle={t('noOrganizationHelp')} />
       </Screen>
     );
   }
@@ -143,7 +139,7 @@ export default function OrganizationScreen() {
 
       {organizations.length > 1 ? (
         <View style={{ marginBottom: theme.spacing(3) }}>
-          <Text variant="titleMedium">Acting as</Text>
+          <Text variant="titleMedium">{t('actingAs')}</Text>
           <View
             style={{
               flexDirection: 'row',
@@ -165,12 +161,17 @@ export default function OrganizationScreen() {
         </View>
       ) : null}
 
-      <Text variant="titleMedium">Members</Text>
+      <Text variant="titleMedium">{t('orgMembers')}</Text>
       <Divider style={{ marginVertical: theme.spacing(1) }} />
       {membersResource.loading ? (
-        <ActivityIndicator accessibilityLabel="Loading" />
+        <ActivityIndicator accessibilityLabel={t('loading')} />
+      ) : membersResource.error ? (
+        <ErrorState
+          message={describe(membersResource.error, 'couldNotLoadMembers')}
+          onRetry={membersResource.reload}
+        />
       ) : !members || members.length === 0 ? (
-        <EmptyState message="No members." />
+        <EmptyState message={t('noMembers')} />
       ) : (
         members.map((member) => (
           <List.Item
@@ -184,13 +185,13 @@ export default function OrganizationScreen() {
       {manages ? (
         <>
           <Text variant="titleMedium" style={{ marginTop: theme.spacing(3) }}>
-            Invitations
+            {t('orgInvitations')}
           </Text>
           <Divider style={{ marginVertical: theme.spacing(1) }} />
 
           <TextInput
             mode="outlined"
-            label="Invite by email"
+            label={t('inviteByEmail')}
             value={inviteEmail}
             onChangeText={setInviteEmail}
             keyboardType="email-address"
@@ -204,7 +205,7 @@ export default function OrganizationScreen() {
             disabled={inviting || !inviteEmail}
             style={{ marginTop: theme.spacing(1) }}
           >
-            Send invitation
+            {t('orgInvite')}
           </Button>
 
           {invitations && invitations.length > 0
@@ -214,12 +215,14 @@ export default function OrganizationScreen() {
                   title={invitation.email}
                   description={
                     invitation.is_expired
-                      ? 'Expired'
-                      : `Expires ${new Date(invitation.expires_at).toLocaleDateString()}`
+                      ? t('orgExpired')
+                      : t('expiresOn', {
+                          date: new Date(invitation.expires_at).toLocaleDateString(),
+                        })
                   }
                   right={() => (
                     <Button onPress={() => revoke(invitation.id)} textColor={theme.colors.error}>
-                      Revoke
+                      {t('orgRevoke')}
                     </Button>
                   )}
                 />

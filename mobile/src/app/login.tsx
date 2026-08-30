@@ -8,8 +8,9 @@
  * holding it.
  */
 
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { View } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
@@ -19,6 +20,8 @@ import { Screen, ScreenHeader } from '../components/Screen';
 import { ApiError } from '../lib/api';
 import { flags } from '../lib/config';
 import { registerForPush } from '../lib/push';
+import { safeRedirect } from '../lib/redirect';
+import { useErrorMessage } from '../lib/useErrorMessage';
 import { useAuth } from '../store/auth';
 import { useToast } from '../store/toast';
 import type { AppTheme } from '../theme/paper';
@@ -31,8 +34,16 @@ interface LoginForm {
 export default function LoginScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
+  const { t } = useTranslation();
   const { login } = useAuth();
   const toast = useToast();
+  const describe = useErrorMessage();
+
+  // Where to go once this succeeds. Defaults to the profile; an emailed
+  // invitation sends people here with its own URL so the flow can resume
+  // rather than ending on the wrong screen with the token gone.
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>();
+  const destination = safeRedirect(redirect);
 
   const { control, handleSubmit } = useForm<LoginForm>({
     defaultValues: { username: '', password: '' },
@@ -48,7 +59,12 @@ export default function LoginScreen() {
       const result = await login(values);
 
       if (result.status === 'two-factor-required') {
-        router.push({ pathname: '/two-factor', params: { challenge: result.challenge } });
+        // The destination travels with the challenge: the second factor is a
+        // detour within this same flow, not the end of it.
+        router.push({
+          pathname: '/two-factor',
+          params: { challenge: result.challenge, redirect: destination },
+        });
         return;
       }
 
@@ -58,17 +74,15 @@ export default function LoginScreen() {
       // prompt must not delay the first screen.
       if (flags.push) void registerForPush();
 
-      router.replace('/profile');
+      router.replace(destination);
     } catch (error) {
       if (error instanceof ApiError) {
         setFieldErrors({
           username: error.fieldError('username'),
           password: error.fieldError('password'),
         });
-        toast.error(error.message);
-      } else {
-        toast.error('Could not sign you in.');
       }
+      toast.error(describe(error, 'couldNotSignIn'));
     } finally {
       setSubmitting(false);
     }
@@ -76,12 +90,12 @@ export default function LoginScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Welcome back" />
+      <ScreenHeader title={t('welcomeBack')} />
 
       <FormField
         control={control}
         name="username"
-        label="Username"
+        label={t('username')}
         serverError={fieldErrors.username}
         textContentType="username"
         autoComplete="username"
@@ -89,7 +103,7 @@ export default function LoginScreen() {
       <FormField
         control={control}
         name="password"
-        label="Password"
+        label={t('password')}
         serverError={fieldErrors.password}
         secureTextEntry
         textContentType="password"
@@ -103,15 +117,18 @@ export default function LoginScreen() {
         disabled={submitting}
         style={{ marginTop: theme.spacing(1) }}
       >
-        Sign in
+        {t('login')}
       </Button>
 
       <View style={{ marginTop: theme.spacing(3), gap: theme.spacing(0.5) }}>
         <Button mode="text" onPress={() => router.push('/reset-password')}>
-          Forgot your password?
+          {t('forgotPassword')}
         </Button>
-        <Button mode="text" onPress={() => router.push('/signup')}>
-          Create an account
+        <Button
+          mode="text"
+          onPress={() => router.push({ pathname: '/signup', params: { redirect: destination } })}
+        >
+          {t('createAccount')}
         </Button>
       </View>
 
@@ -120,9 +137,7 @@ export default function LoginScreen() {
           variant="bodySmall"
           style={{ marginTop: theme.spacing(2), color: theme.colors.onSurfaceVariant }}
         >
-          Signing in with Google or LinkedIn is available on the website. Native
-          provider sign-in needs an authorization-code exchange the backend does
-          not offer yet — see docs/mobile.md.
+          {t('socialOnWebsite')}
         </Text>
       ) : null}
     </Screen>

@@ -9,6 +9,7 @@
 
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Linking, View } from 'react-native';
 import {
   ActivityIndicator,
@@ -25,20 +26,23 @@ import {
 
 import type { ApiKey, AuditEventPage, SocialConnections, TwoFactorStatus } from '@app/shared/types';
 
+import { ErrorState } from '../../components/ErrorState';
 import { EmptyState, Screen, ScreenHeader } from '../../components/Screen';
-import { ApiError, apiData } from '../../lib/api';
+import { apiData } from '../../lib/api';
 import { flags } from '../../lib/config';
 import { routes } from '../../lib/routes';
+import { useErrorMessage } from '../../lib/useErrorMessage';
 import { useResource } from '../../lib/useResource';
 import { useToast } from '../../store/toast';
 import type { AppTheme } from '../../theme/paper';
 
 export default function SecurityScreen() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
 
   return (
     <Screen>
-      <ScreenHeader title="Security" />
+      <ScreenHeader title={t('security')} />
       {flags.twoFactor ? <TwoFactorSection /> : null}
       {flags.apiKeys ? <ApiKeysSection /> : null}
       {flags.socialAuth ? <SocialSection /> : null}
@@ -65,7 +69,9 @@ function SectionHeading({ title }: { title: string }) {
 
 function TwoFactorSection() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -75,10 +81,7 @@ function TwoFactorSection() {
 
   const fetchStatus = useCallback(
     () =>
-      apiData<TwoFactorStatus>({
-        url: routes.api.auth.twoFactor.status(),
-        errorMessage: 'Could not read your two-step settings.',
-      }),
+      apiData<TwoFactorStatus>({ url: routes.api.auth.twoFactor.status() }),
     [],
   );
   const { data: status, loading, reload } = useResource(fetchStatus);
@@ -90,12 +93,11 @@ function TwoFactorSection() {
         url: routes.api.auth.twoFactor.enrol(),
         method: 'POST',
         data: { password },
-        errorMessage: 'Could not start enrolment.',
       });
       setUri(payload?.provisioning_uri ?? null);
       setPassword('');
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not start enrolment.');
+      toast.error(describe(error, 'couldNotStartEnrolment'));
     } finally {
       setBusy(false);
     }
@@ -108,14 +110,13 @@ function TwoFactorSection() {
         url: routes.api.auth.twoFactor.confirm(),
         method: 'POST',
         data: { code },
-        errorMessage: 'That code was not accepted.',
       });
       setRecoveryCodes(payload?.recovery_codes ?? []);
       setUri(null);
       setCode('');
       reload();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'That code was not accepted.');
+      toast.error(describe(error, 'codeNotAccepted'));
     } finally {
       setBusy(false);
     }
@@ -128,13 +129,12 @@ function TwoFactorSection() {
         url: routes.api.auth.twoFactor.disable(),
         method: 'POST',
         data: { password },
-        errorMessage: 'Could not turn this off.',
       });
       setPassword('');
-      toast.success('Two-step verification is off.');
+      toast.success(t('twoFactorDisabled'));
       reload();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not turn this off.');
+      toast.error(describe(error, 'couldNotTurnOff'));
     } finally {
       setBusy(false);
     }
@@ -142,18 +142,18 @@ function TwoFactorSection() {
 
   return (
     <>
-      <SectionHeading title="Two-step verification" />
+      <SectionHeading title={t('twoStepTitle')} />
 
       {loading || !status ? (
-        <ActivityIndicator accessibilityLabel="Loading" />
+        <ActivityIndicator accessibilityLabel={t('loading')} />
       ) : status.enabled ? (
         <>
           <Text style={{ marginBottom: theme.spacing(1) }}>
-            On. {status.recovery_codes_remaining} recovery codes left.
+            {t('twoStepIsOn', { count: status.recovery_codes_remaining })}
           </Text>
           <TextInput
             mode="outlined"
-            label="Your password"
+            label={t('yourPassword')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -166,33 +166,31 @@ function TwoFactorSection() {
             textColor={theme.colors.error}
             style={{ marginTop: theme.spacing(1) }}
           >
-            Turn off
+            {t('turnOff')}
           </Button>
         </>
       ) : uri ? (
         <>
-          <Text style={{ marginBottom: theme.spacing(1) }}>
-            Add this to your authenticator app, then enter the code it shows.
-          </Text>
+          <Text style={{ marginBottom: theme.spacing(1) }}>{t('twoFactorScan')}</Text>
           {/* No QR code, and that is the right call on a phone: the
               authenticator is on this same device, so there is no second
               screen to point a camera at. Handing the URI to the OS opens
               the app with the secret already filled in. */}
           <Button mode="contained" onPress={() => Linking.openURL(uri)}>
-            Open my authenticator app
+            {t('openAuthenticator')}
           </Button>
           <Button
             mode="text"
             onPress={async () => {
               await Clipboard.setStringAsync(uri);
-              toast.info('Setup link copied.');
+              toast.info(t('setupLinkCopied'));
             }}
           >
-            Copy the setup link instead
+            {t('copySetupLink')}
           </Button>
           <TextInput
             mode="outlined"
-            label="Code from the app"
+            label={t('codeFromApp')}
             value={code}
             onChangeText={setCode}
             keyboardType="number-pad"
@@ -204,18 +202,15 @@ function TwoFactorSection() {
             disabled={busy || !code}
             style={{ marginTop: theme.spacing(1) }}
           >
-            Confirm
+            {t('twoFactorConfirm')}
           </Button>
         </>
       ) : (
         <>
-          <Text style={{ marginBottom: theme.spacing(1) }}>
-            Off. Turning it on asks for a code from an authenticator app each
-            time you sign in.
-          </Text>
+          <Text style={{ marginBottom: theme.spacing(1) }}>{t('twoStepIsOff')}</Text>
           <TextInput
             mode="outlined"
-            label="Your password"
+            label={t('yourPassword')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -227,7 +222,7 @@ function TwoFactorSection() {
             disabled={busy || !password}
             style={{ marginTop: theme.spacing(1) }}
           >
-            Turn on
+            {t('turnOn')}
           </Button>
         </>
       )}
@@ -236,12 +231,9 @@ function TwoFactorSection() {
           and are useless to anyone who taps past them. */}
       <Portal>
         <Dialog visible={recoveryCodes !== null} onDismiss={() => setRecoveryCodes(null)}>
-          <Dialog.Title>Save your recovery codes</Dialog.Title>
+          <Dialog.Title>{t('saveRecoveryCodes')}</Dialog.Title>
           <Dialog.Content>
-            <Text style={{ marginBottom: theme.spacing(1) }}>
-              These are shown once. Each one signs you in if you lose your
-              authenticator.
-            </Text>
+            <Text style={{ marginBottom: theme.spacing(1) }}>{t('recoveryCodesHelp')}</Text>
             {recoveryCodes?.map((recoveryCode) => (
               <Text key={recoveryCode} variant="titleMedium">
                 {recoveryCode}
@@ -252,12 +244,12 @@ function TwoFactorSection() {
             <Button
               onPress={async () => {
                 await Clipboard.setStringAsync((recoveryCodes ?? []).join('\n'));
-                toast.info('Recovery codes copied.');
+                toast.info(t('recoveryCodesCopied'));
               }}
             >
-              Copy
+              {t('copy')}
             </Button>
-            <Button onPress={() => setRecoveryCodes(null)}>Done</Button>
+            <Button onPress={() => setRecoveryCodes(null)}>{t('done')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -271,14 +263,13 @@ function TwoFactorSection() {
 
 function ApiKeysSection() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const fetchKeys = useCallback(
     () =>
-      apiData<ApiKey[]>({
-        url: routes.api.apiKeys.list(),
-        errorMessage: 'Could not load your API keys.',
-      }),
+      apiData<ApiKey[]>({ url: routes.api.apiKeys.list() }),
     [],
   );
   const { data: keys, loading, error, reload } = useResource(fetchKeys);
@@ -286,38 +277,38 @@ function ApiKeysSection() {
   async function revoke(id: number) {
     try {
       await apiData({ url: routes.api.apiKeys.revoke(id), method: 'DELETE' });
-      toast.success('Key revoked.');
+      toast.success(t('keyRevoked'));
       reload();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not revoke that key.');
+      toast.error(describe(error, 'couldNotRevokeKey'));
     }
   }
 
   return (
     <>
-      <SectionHeading title="API keys" />
+      <SectionHeading title={t('apiKeys')} />
       {/* Listing and revoking only. Creating one shows a secret exactly once,
           which belongs somewhere it can be copied into a terminal -- so the
           app does not offer it. */}
       <Text style={{ marginBottom: theme.spacing(1), color: theme.colors.onSurfaceVariant }}>
-        Create new keys on the website. Here you can see and revoke them.
+        {t('apiKeysMobileHelp')}
       </Text>
       {loading ? (
-        <ActivityIndicator accessibilityLabel="Loading" />
+        <ActivityIndicator accessibilityLabel={t('loading')} />
       ) : error ? (
-        <EmptyState message={error} />
+        <ErrorState message={describe(error, 'couldNotLoadKeys')} onRetry={reload} />
       ) : !keys || keys.length === 0 ? (
-        <EmptyState message="No API keys." />
+        <EmptyState message={t('apiKeyNone')} />
       ) : (
         keys.map((key) => (
           <List.Item
             key={key.id}
             title={key.name}
-            description={`${key.prefix}… · ${key.scope}${key.is_revoked ? ' · revoked' : ''}`}
+            description={`${key.prefix}… · ${key.scope}${key.is_revoked ? ` · ${t('apiKeyRevoked')}` : ''}`}
             right={() =>
               key.is_revoked ? null : (
                 <Button onPress={() => revoke(key.id)} textColor={theme.colors.error}>
-                  Revoke
+                  {t('apiKeyRevoke')}
                 </Button>
               )
             }
@@ -334,13 +325,12 @@ function ApiKeysSection() {
 
 function SocialSection() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
   const fetchConnections = useCallback(
     () =>
-      apiData<SocialConnections>({
-        url: routes.api.social.connections(),
-        errorMessage: 'Could not load your linked accounts.',
-      }),
+      apiData<SocialConnections>({ url: routes.api.social.connections() }),
     [],
   );
   const { data: connections, loading, error, reload } = useResource(fetchConnections);
@@ -348,28 +338,31 @@ function SocialSection() {
   async function disconnect(provider: string) {
     try {
       await apiData({ url: routes.api.social.disconnect(provider), method: 'POST' });
-      toast.success(`${provider} disconnected.`);
+      toast.success(t('providerDisconnected', { provider }));
       reload();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not disconnect.');
+      toast.error(describe(error, 'couldNotDisconnect'));
     }
   }
 
   return (
     <>
-      <SectionHeading title="Linked accounts" />
+      <SectionHeading title={t('connectedAccounts')} />
       {/* Disconnecting only. Connecting a provider needs the redirect flow,
           which on native means an authorization-code exchange the backend
           does not offer yet -- see docs/mobile.md. */}
       <Text style={{ marginBottom: theme.spacing(1), color: theme.colors.onSurfaceVariant }}>
-        Link a new provider on the website.
+        {t('linkedAccountsMobileHelp')}
       </Text>
       {loading ? (
-        <ActivityIndicator accessibilityLabel="Loading" />
+        <ActivityIndicator accessibilityLabel={t('loading')} />
       ) : error || !connections ? (
-        <EmptyState message={error ?? 'No linked accounts.'} />
+        <ErrorState
+          message={describe(error, 'couldNotLoadLinkedAccounts')}
+          onRetry={reload}
+        />
       ) : connections.providers.length === 0 ? (
-        <EmptyState message="No linked accounts." />
+        <EmptyState message={t('noConnections')} />
       ) : (
         connections.providers.map((connection) => (
           <List.Item
@@ -386,7 +379,7 @@ function SocialSection() {
                   !connections.has_usable_password && connections.providers.length === 1
                 }
               >
-                Unlink
+                {t('unlink')}
               </Button>
             )}
           />
@@ -401,25 +394,24 @@ function SocialSection() {
 // ---------------------------------------------------------------------------
 
 function ActivitySection() {
+  const { t } = useTranslation();
+  const describe = useErrorMessage();
   const fetchActivity = useCallback(
     () =>
-      apiData<AuditEventPage>({
-        url: routes.api.account.activity(),
-        errorMessage: 'Could not load your activity.',
-      }),
+      apiData<AuditEventPage>({ url: routes.api.account.activity() }),
     [],
   );
   const { data: page, loading, error } = useResource(fetchActivity);
 
   return (
     <>
-      <SectionHeading title="Recent activity" />
+      <SectionHeading title={t('recentActivity')} />
       {loading ? (
-        <ActivityIndicator accessibilityLabel="Loading" />
+        <ActivityIndicator accessibilityLabel={t('loading')} />
       ) : error || !page ? (
-        <EmptyState message={error ?? 'Nothing recorded yet.'} />
+        <ErrorState message={describe(error, 'couldNotLoadActivity')} />
       ) : page.results.length === 0 ? (
-        <EmptyState message="Nothing recorded yet." />
+        <EmptyState message={t('noActivity')} />
       ) : (
         page.results.map((event) => (
           <List.Item
@@ -441,7 +433,9 @@ function ActivitySection() {
 
 function DataExportSection() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
   const [requesting, setRequesting] = useState(false);
 
   async function request() {
@@ -450,13 +444,10 @@ function DataExportSection() {
       await apiData({
         url: routes.api.account.requestExport(),
         method: 'POST',
-        errorMessage: 'Could not request your export.',
       });
-      toast.success('We will email you a link when your export is ready.');
+      toast.success(t('exportOnItsWay'));
     } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Could not request your export.',
-      );
+      toast.error(describe(error, 'couldNotRequestExport'));
     } finally {
       setRequesting(false);
     }
@@ -464,17 +455,14 @@ function DataExportSection() {
 
   return (
     <>
-      <SectionHeading title="Your data" />
+      <SectionHeading title={t('dataExport')} />
       <Card mode="outlined">
         <Card.Content>
-          <Text>
-            Request a copy of everything this account holds. It arrives as a
-            link by email.
-          </Text>
+          <Text>{t('exportCardHelp')}</Text>
         </Card.Content>
         <Card.Actions>
           <Button onPress={request} loading={requesting} disabled={requesting}>
-            Request an export
+            {t('requestAnExport')}
           </Button>
         </Card.Actions>
       </Card>
@@ -483,8 +471,7 @@ function DataExportSection() {
         variant="bodySmall"
         style={{ marginTop: theme.spacing(2), color: theme.colors.onSurfaceVariant }}
       >
-        Deleting your account is on the website. It is irreversible, and it is
-        not a thing to offer behind a mis-tap on a phone.
+        {t('deleteAccountNote')}
       </Text>
     </>
   );

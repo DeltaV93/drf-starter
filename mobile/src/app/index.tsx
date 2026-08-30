@@ -9,6 +9,7 @@
 
 import { identity } from '@app/shared/brand';
 import { Redirect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 
@@ -19,13 +20,14 @@ import type { AppTheme } from '../theme/paper';
 export default function HomeScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
+  const { t } = useTranslation();
   const { status } = useAuth();
 
   if (status === 'loading') {
     return (
       <Screen scrollable={false}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator accessibilityLabel="Loading" />
+          <ActivityIndicator accessibilityLabel={t('loading')} />
         </View>
       </Screen>
     );
@@ -45,10 +47,10 @@ export default function HomeScreen() {
 
         <View style={{ marginTop: theme.spacing(4), gap: theme.spacing(1.5) }}>
           <Button mode="contained" onPress={() => router.push('/login')}>
-            Sign in
+            {t('login')}
           </Button>
           <Button mode="outlined" onPress={() => router.push('/signup')}>
-            Create an account
+            {t('createAccount')}
           </Button>
         </View>
       </View>

@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { View } from 'react-native';
 import { Button, Card, Divider, List, Text, useTheme } from 'react-native-paper';
@@ -18,6 +19,7 @@ import { FormField } from '../../components/FormField';
 import { Screen, ScreenHeader } from '../../components/Screen';
 import { ApiError, apiData } from '../../lib/api';
 import { routes } from '../../lib/routes';
+import { useErrorMessage } from '../../lib/useErrorMessage';
 import { useAuth } from '../../store/auth';
 import { useToast } from '../../store/toast';
 import type { AppTheme } from '../../theme/paper';
@@ -30,8 +32,10 @@ interface ProfileForm {
 
 export default function ProfileScreen() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const { user, isLoading, refresh } = useAuth();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const { control, handleSubmit, reset } = useForm<ProfileForm>({
     defaultValues: { first_name: '', last_name: '', phone_number: '' },
@@ -60,10 +64,9 @@ export default function ProfileScreen() {
         url: routes.api.users.me(),
         method: 'PATCH',
         data: values,
-        errorMessage: 'Could not save your profile.',
       });
       await refresh();
-      toast.success('Profile updated.');
+      toast.success(t('profileUpdated'));
     } catch (error) {
       if (error instanceof ApiError) {
         setFieldErrors({
@@ -71,10 +74,8 @@ export default function ProfileScreen() {
           last_name: error.fieldError('last_name'),
           phone_number: error.fieldError('phone_number'),
         });
-        toast.error(error.message);
-      } else {
-        toast.error('Could not save your profile.');
       }
+      toast.error(describe(error, 'couldNotSaveProfile'));
     } finally {
       setSubmitting(false);
     }
@@ -98,8 +99,7 @@ export default function ProfileScreen() {
         >
           <Card.Content>
             <Text style={{ color: theme.colors.onTertiaryContainer }}>
-              Your email address is not confirmed yet. Check your inbox for the
-              link — opening it on this device brings you straight back here.
+              {t('confirmEmailBanner')}
             </Text>
           </Card.Content>
         </Card>
@@ -108,21 +108,21 @@ export default function ProfileScreen() {
       <FormField
         control={control}
         name="first_name"
-        label="First name"
+        label={t('firstName')}
         serverError={fieldErrors.first_name}
         autoCapitalize="words"
       />
       <FormField
         control={control}
         name="last_name"
-        label="Last name"
+        label={t('lastName')}
         serverError={fieldErrors.last_name}
         autoCapitalize="words"
       />
       <FormField
         control={control}
         name="phone_number"
-        label="Phone number"
+        label={t('phoneNumber')}
         serverError={fieldErrors.phone_number}
         keyboardType="number-pad"
       />
@@ -133,16 +133,16 @@ export default function ProfileScreen() {
         loading={submitting}
         disabled={submitting}
       >
-        Save changes
+        {t('saveChanges')}
       </Button>
 
       <View style={{ marginTop: theme.spacing(4) }}>
-        <Text variant="titleMedium">Account</Text>
+        <Text variant="titleMedium">{t('account')}</Text>
         <Divider style={{ marginVertical: theme.spacing(1) }} />
-        <List.Item title="Username" description={user.username} />
-        <List.Item title="Account type" description={user.account_type} />
+        <List.Item title={t('username')} description={user.username} />
+        <List.Item title={t('accountType')} description={user.account_type} />
         <List.Item
-          title="Member since"
+          title={t('memberSince')}
           description={new Date(user.date_joined).toLocaleDateString()}
         />
       </View>

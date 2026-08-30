@@ -12,14 +12,16 @@
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { Button, Text, useTheme } from 'react-native-paper';
 
 import { FormField } from '../components/FormField';
 import { Screen, ScreenHeader } from '../components/Screen';
-import { ApiError } from '../lib/api';
 import { flags } from '../lib/config';
 import { registerForPush } from '../lib/push';
+import { safeRedirect } from '../lib/redirect';
+import { useErrorMessage } from '../lib/useErrorMessage';
 import { useAuth } from '../store/auth';
 import { useToast } from '../store/toast';
 import type { AppTheme } from '../theme/paper';
@@ -27,9 +29,15 @@ import type { AppTheme } from '../theme/paper';
 export default function TwoFactorScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
-  const { challenge } = useLocalSearchParams<{ challenge?: string }>();
+  const { challenge, redirect } = useLocalSearchParams<{
+    challenge?: string;
+    redirect?: string;
+  }>();
+  const destination = safeRedirect(redirect);
+  const { t } = useTranslation();
   const { verifyTwoFactor } = useAuth();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const { control, handleSubmit } = useForm<{ code: string }>({ defaultValues: { code: '' } });
   const [submitting, setSubmitting] = useState(false);
@@ -41,9 +49,9 @@ export default function TwoFactorScreen() {
     try {
       await verifyTwoFactor(challenge, code);
       if (flags.push) void registerForPush();
-      router.replace('/profile');
+      router.replace(destination);
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'That code was not accepted.');
+      toast.error(describe(error, 'codeNotAccepted'));
     } finally {
       setSubmitting(false);
     }
@@ -52,12 +60,9 @@ export default function TwoFactorScreen() {
   if (!challenge) {
     return (
       <Screen>
-        <ScreenHeader
-          title="Start again"
-          subtitle="This verification is no longer available. Sign in to get a new code."
-        />
+        <ScreenHeader title={t('startAgain')} subtitle={t('verificationExpired')} />
         <Button mode="contained" onPress={() => router.replace('/login')}>
-          Back to sign in
+          {t('backToLogin')}
         </Button>
       </Screen>
     );
@@ -65,15 +70,12 @@ export default function TwoFactorScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
-        title="Two-step verification"
-        subtitle="Enter the code from your authenticator app."
-      />
+      <ScreenHeader title={t('twoStepTitle')} subtitle={t('twoStepPrompt')} />
 
       <FormField
         control={control}
         name="code"
-        label="Code"
+        label={t('twoFactorCode')}
         keyboardType="number-pad"
         textContentType="oneTimeCode"
         autoComplete="one-time-code"
@@ -85,14 +87,14 @@ export default function TwoFactorScreen() {
         loading={submitting}
         disabled={submitting}
       >
-        Verify
+        {t('twoFactorVerify')}
       </Button>
 
       <Text
         variant="bodySmall"
         style={{ marginTop: theme.spacing(2), color: theme.colors.onSurfaceVariant }}
       >
-        Lost your authenticator? Enter one of your recovery codes instead.
+        {t('lostAuthenticator')}
       </Text>
     </Screen>
   );

@@ -26,11 +26,24 @@ export class ApiError extends Error {
   readonly status: number | undefined;
   readonly fieldErrors: Record<string, string[] | string>;
 
-  constructor(message: string, status?: number, fieldErrors = {}) {
+  /**
+   * Whether `message` is the backend's own words.
+   *
+   * False for a transport failure, and for an HTTP error whose body carried
+   * no message -- in both cases `message` is a fallback this library or the
+   * call site invented, in whatever language that source happened to be
+   * written in. A client that translates its own copy needs to know the
+   * difference, or it shows a stray English sentence to a Spanish reader on
+   * exactly the failures nobody tests.
+   */
+  readonly fromServer: boolean;
+
+  constructor(message: string, status?: number, fieldErrors = {}, fromServer = false) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.fromServer = fromServer;
   }
 
   /** The first message for a field, for wiring straight into a form. */
@@ -63,6 +76,7 @@ export function toApiError(error: unknown, fallback = DEFAULT_ERROR_MESSAGE): Ap
       envelope?.message || axiosError.message || fallback,
       axiosError.response?.status,
       envelope?.errors ?? {},
+      Boolean(envelope?.message),
     );
   }
   return new ApiError(fallback);

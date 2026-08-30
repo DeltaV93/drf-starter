@@ -9,12 +9,14 @@
 
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 
 import { FormField } from '../components/FormField';
 import { Screen, ScreenHeader } from '../components/Screen';
-import { ApiError, apiCall } from '../lib/api';
+import { apiCall } from '../lib/api';
 import { routes } from '../lib/routes';
+import { useErrorMessage } from '../lib/useErrorMessage';
 import { useToast } from '../store/toast';
 import { Button, Text, useTheme } from 'react-native-paper';
 import type { AppTheme } from '../theme/paper';
@@ -22,7 +24,9 @@ import type { AppTheme } from '../theme/paper';
 export default function ResetPasswordScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const { control, handleSubmit } = useForm<{ email: string }>({ defaultValues: { email: '' } });
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +43,7 @@ export default function ResetPasswordScreen() {
       });
       setSent(true);
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not send the email.');
+      toast.error(describe(error, 'couldNotSendEmail'));
     } finally {
       setSubmitting(false);
     }
@@ -48,19 +52,15 @@ export default function ResetPasswordScreen() {
   if (sent) {
     return (
       <Screen>
-        <ScreenHeader
-          title="Check your email"
-          subtitle="If an account exists for that address, we have sent a link to reset the password."
-        />
+        <ScreenHeader title={t('checkYourEmail')} subtitle={t('passwordResetSent')} />
         <Text
           variant="bodySmall"
           style={{ marginBottom: theme.spacing(2), color: theme.colors.onSurfaceVariant }}
         >
-          Opening that link on this device brings you straight back here to
-          choose a new password.
+          {t('resetLinkOpensApp')}
         </Text>
         <Button mode="contained" onPress={() => router.replace('/login')}>
-          Back to sign in
+          {t('backToLogin')}
         </Button>
       </Screen>
     );
@@ -68,15 +68,12 @@ export default function ResetPasswordScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
-        title="Reset your password"
-        subtitle="We will email you a link to choose a new one."
-      />
+      <ScreenHeader title={t('resetPassword')} subtitle={t('resetPasswordHelp')} />
 
       <FormField
         control={control}
         name="email"
-        label="Email"
+        label={t('email')}
         keyboardType="email-address"
         textContentType="emailAddress"
         autoComplete="email"
@@ -88,7 +85,7 @@ export default function ResetPasswordScreen() {
         loading={submitting}
         disabled={submitting}
       >
-        Send the link
+        {t('sendResetLink')}
       </Button>
     </Screen>
   );

@@ -8,8 +8,9 @@
  */
 
 import { usePasswordValidation } from '@app/shared/passwordValidation';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, useWatch } from 'react-hook-form';
 import { View } from 'react-native';
 import { Button, HelperText, useTheme } from 'react-native-paper';
@@ -19,6 +20,8 @@ import { Screen, ScreenHeader } from '../components/Screen';
 import { ApiError } from '../lib/api';
 import { flags } from '../lib/config';
 import { registerForPush } from '../lib/push';
+import { safeRedirect } from '../lib/redirect';
+import { useErrorMessage } from '../lib/useErrorMessage';
 import { useAuth } from '../store/auth';
 import { useToast } from '../store/toast';
 import type { AppTheme } from '../theme/paper';
@@ -44,8 +47,15 @@ const EMPTY: SignUpForm = {
 export default function SignUpScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
+  const { t } = useTranslation();
   const { register } = useAuth();
   const toast = useToast();
+  const describe = useErrorMessage();
+
+  // Same contract as the sign-in screen: an invitation that sent someone here
+  // to create an account has to get them back to accepting it.
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>();
+  const destination = safeRedirect(redirect);
 
   const { control, handleSubmit } = useForm<SignUpForm>({ defaultValues: EMPTY });
   const [submitting, setSubmitting] = useState(false);
@@ -62,8 +72,8 @@ export default function SignUpScreen() {
     try {
       await register(values);
       if (flags.push) void registerForPush();
-      toast.success('Account created. Check your email to confirm your address.');
-      router.replace('/profile');
+      toast.success(t('signupSuccess'));
+      router.replace(destination);
     } catch (error) {
       if (error instanceof ApiError) {
         setFieldErrors({
@@ -72,10 +82,8 @@ export default function SignUpScreen() {
           password: error.fieldError('password'),
           password2: error.fieldError('password2'),
         });
-        toast.error(error.message);
-      } else {
-        toast.error('Could not create your account.');
       }
+      toast.error(describe(error, 'couldNotCreateAccount'));
     } finally {
       setSubmitting(false);
     }
@@ -83,12 +91,12 @@ export default function SignUpScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Create an account" />
+      <ScreenHeader title={t('createAccount')} />
 
       <FormField
         control={control}
         name="username"
-        label="Username"
+        label={t('username')}
         serverError={fieldErrors.username}
         textContentType="username"
         autoComplete="username"
@@ -96,7 +104,7 @@ export default function SignUpScreen() {
       <FormField
         control={control}
         name="email"
-        label="Email"
+        label={t('email')}
         serverError={fieldErrors.email}
         keyboardType="email-address"
         textContentType="emailAddress"
@@ -105,14 +113,14 @@ export default function SignUpScreen() {
       <FormField
         control={control}
         name="first_name"
-        label="First name"
+        label={t('firstName')}
         autoCapitalize="words"
       />
-      <FormField control={control} name="last_name" label="Last name" autoCapitalize="words" />
+      <FormField control={control} name="last_name" label={t('lastName')} autoCapitalize="words" />
       <FormField
         control={control}
         name="password"
-        label="Password"
+        label={t('password')}
         serverError={fieldErrors.password}
         secureTextEntry
         textContentType="newPassword"
@@ -121,7 +129,7 @@ export default function SignUpScreen() {
       <FormField
         control={control}
         name="password2"
-        label="Confirm password"
+        label={t('confirmPassword')}
         serverError={fieldErrors.password2}
         secureTextEntry
         textContentType="newPassword"
@@ -145,10 +153,13 @@ export default function SignUpScreen() {
           loading={submitting}
           disabled={submitting || !isValid}
         >
-          Create account
+          {t('createAccountAction')}
         </Button>
-        <Button mode="text" onPress={() => router.push('/login')}>
-          I already have an account
+        <Button
+          mode="text"
+          onPress={() => router.push({ pathname: '/login', params: { redirect: destination } })}
+        >
+          {t('alreadyHaveAccount')}
         </Button>
       </View>
     </Screen>

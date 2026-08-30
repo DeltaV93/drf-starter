@@ -8,15 +8,22 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PaperIcon } from '../components/PaperIcon';
 import { Toast } from '../components/Toast';
 import '../i18n';
+import { initialiseMonitoring, withMonitoring } from '../lib/monitoring';
+import { usePushNavigation } from '../lib/usePushNavigation';
 import { useAuthBootstrap } from '../store/auth';
 import { useOrganizationBootstrap } from '../store/organization';
 import { useAppTheme, useColorSchemeBootstrap, useResolvedColorScheme } from '../theme/colorScheme';
+
+// Before anything renders, so a crash during the first paint is reported
+// rather than lost. A no-op when no DSN is configured.
+initialiseMonitoring();
 
 /** The route group that requires a session. Everything else is public. */
 const PROTECTED_GROUP = '(app)';
@@ -52,14 +59,19 @@ function useSessionGate(status: 'loading' | 'authenticated' | 'anonymous') {
   }, [status, segments, router]);
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const status = useAuthBootstrap();
   useColorSchemeBootstrap();
   useOrganizationBootstrap();
   useSessionGate(status);
+  // Unconditional: hooks cannot be called behind a flag, and the hook itself
+  // does nothing when no notification has been tapped -- which is every
+  // launch on a deployment with push switched off.
+  usePushNavigation();
 
   const theme = useAppTheme();
   const scheme = useResolvedColorScheme();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaProvider>
@@ -76,13 +88,17 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ title: 'Sign in' }} />
-          <Stack.Screen name="signup" options={{ title: 'Create an account' }} />
-          <Stack.Screen name="two-factor" options={{ title: 'Verification' }} />
-          <Stack.Screen name="reset-password" options={{ title: 'Reset password' }} />
+          <Stack.Screen name="login" options={{ title: t('login') }} />
+          <Stack.Screen name="signup" options={{ title: t('createAccount') }} />
+          <Stack.Screen name="two-factor" options={{ title: t('twoStepTitle') }} />
+          <Stack.Screen name="reset-password" options={{ title: t('resetPassword') }} />
         </Stack>
         <Toast />
       </PaperProvider>
     </SafeAreaProvider>
   );
 }
+
+// Wrapped so an unhandled render error anywhere in the tree is reported
+// instead of showing a blank screen. Identity function when monitoring is off.
+export default withMonitoring(RootLayout);

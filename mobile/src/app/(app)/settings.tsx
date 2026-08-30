@@ -7,6 +7,7 @@
  */
 
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button, Divider, List, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 
@@ -22,6 +23,7 @@ import type { AppTheme } from '../../theme/paper';
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
+  const { t } = useTranslation();
   const { logout } = useAuth();
   const { forget } = useOrganizations();
   const { preference, choose } = useColorSchemePreference();
@@ -34,40 +36,40 @@ export default function SettingsScreen() {
     if (flags.push) await unregisterFromPush();
     await forget();
     await logout();
-    toast.success('Signed out.');
+    toast.success(t('loggedOut'));
     router.replace('/login');
   }
 
   return (
     <Screen>
-      <ScreenHeader title="Settings" />
+      <ScreenHeader title={t('settings')} />
 
-      <Text variant="titleMedium">Appearance</Text>
+      <Text variant="titleMedium">{t('themeLabel')}</Text>
       <SegmentedButtons
         value={preference}
         onValueChange={(value) => choose(value as typeof preference)}
         style={{ marginTop: theme.spacing(1), marginBottom: theme.spacing(3) }}
         buttons={[
-          { value: 'system', label: 'System' },
-          { value: 'light', label: 'Light' },
-          { value: 'dark', label: 'Dark' },
+          { value: 'system', label: t('themeSystem') },
+          { value: 'light', label: t('themeLight') },
+          { value: 'dark', label: t('themeDark') },
         ]}
       />
 
-      <Text variant="titleMedium">Account</Text>
+      <Text variant="titleMedium">{t('account')}</Text>
       <Divider style={{ marginVertical: theme.spacing(1) }} />
 
       <List.Item
-        title="Security"
-        description="Two-step verification, API keys, activity and your data"
+        title={t('security')}
+        description={t('securityRowHelp')}
         left={(props) => <List.Icon {...props} icon="shield-outline" />}
         onPress={() => router.push('/security')}
       />
 
       {flags.billing ? (
         <List.Item
-          title="Subscription"
-          description="Your current plan"
+          title={t('subscription')}
+          description={t('subscriptionRowHelp')}
           left={(props) => <List.Icon {...props} icon="credit-card-outline" />}
           onPress={() => router.push('/subscription')}
         />
@@ -75,8 +77,8 @@ export default function SettingsScreen() {
 
       {flags.mcpClient ? (
         <List.Item
-          title="Connections"
-          description="Servers this account has connected"
+          title={t('connections')}
+          description={t('connectionsRowHelp')}
           left={(props) => <List.Icon {...props} icon="power-plug-outline" />}
           onPress={() => router.push('/connections')}
         />
@@ -84,7 +86,7 @@ export default function SettingsScreen() {
 
       <View style={{ marginTop: theme.spacing(4) }}>
         <Button mode="outlined" onPress={signOut} textColor={theme.colors.error}>
-          Sign out
+          {t('logout')}
         </Button>
       </View>
     </Screen>

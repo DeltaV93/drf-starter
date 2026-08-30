@@ -19,6 +19,45 @@ import { apiCall } from './api';
 import { flags } from './config';
 import { routes } from './routes';
 
+/**
+ * What a notification carries when it should open somewhere in particular.
+ *
+ * The backend decides this; the contract is one key. Anything else in `data`
+ * is ignored here and available to whatever reads the notification itself.
+ *
+ *     {"to": "...", "body": "Ada invited you", "data": {"path": "/organization"}}
+ */
+export interface PushPayload {
+  path?: string;
+}
+
+/**
+ * How a notification behaves when it arrives while the app is open.
+ *
+ * Set at module load rather than in a component: a notification can arrive
+ * before any screen has mounted, and without a handler registered the
+ * operating system's default is to show nothing at all -- which reads as
+ * "push is broken" rather than as a missing line of configuration.
+ *
+ * The banner shows; sound and badge do not. Those are the two people find
+ * intrusive from an app they have just installed, and both are one edit away
+ * for a project that has earned them.
+ */
+// Guarded because this module is imported on every platform, including web,
+// where the native module behind it does not exist. An exception here happens
+// at import time -- before any component renders -- so it takes the whole app
+// down rather than degrading one feature.
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
+
 export type RegistrationOutcome =
   | { status: 'registered'; token: string }
   | { status: 'skipped'; reason: string };

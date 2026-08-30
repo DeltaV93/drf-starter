@@ -26,22 +26,24 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { ApiError } from './api';
-
 export interface Resource<T> {
   data: T | null;
   loading: boolean;
-  /** A message to show, or null. Distinct from `data === null`. */
-  error: string | null;
+  /**
+   * Whatever was thrown, or null. Distinct from `data === null`.
+   *
+   * The raw error rather than a message, because only the component knows
+   * how to say it: `useErrorMessage` translates, and distinguishes "you are
+   * offline" from "the server refused". A hook cannot call `t` on the
+   * caller's behalf without guessing which of the two it is.
+   */
+  error: unknown;
   reload: () => void;
 }
 
-export function useResource<T>(
-  fetcher: () => Promise<T | undefined>,
-  fallbackMessage = 'Could not load this.',
-): Resource<T> {
+export function useResource<T>(fetcher: () => Promise<T | undefined>): Resource<T> {
   const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -55,14 +57,14 @@ export function useResource<T>(
         setError(null);
       } catch (thrown) {
         if (cancelled) return;
-        setError(thrown instanceof ApiError ? thrown.message : fallbackMessage);
+        setError(thrown);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [fetcher, fallbackMessage, attempt]);
+  }, [fetcher, attempt]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 

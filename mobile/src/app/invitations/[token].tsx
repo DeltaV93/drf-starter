@@ -10,14 +10,18 @@
  * and the sign-in screen returns here rather than to the home screen.
  */
 
+import { appRoutes } from '@app/shared/routes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Text, useTheme } from 'react-native-paper';
 
+import { FeatureOff } from '../../components/FeatureOff';
 import { Screen, ScreenHeader } from '../../components/Screen';
-import { ApiError, apiCall } from '../../lib/api';
+import { apiCall } from '../../lib/api';
 import { flags } from '../../lib/config';
 import { routes } from '../../lib/routes';
+import { useErrorMessage } from '../../lib/useErrorMessage';
 import { useAuth } from '../../store/auth';
 import { useToast } from '../../store/toast';
 import type { AppTheme } from '../../theme/paper';
@@ -26,8 +30,12 @@ export default function AcceptInvitationScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
   const { token } = useLocalSearchParams<{ token: string }>();
+  // This screen's own path, to hand to the sign-in screen as a destination.
+  const returnHere = appRoutes.acceptInvitation(token);
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading } = useAuth();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,14 +46,11 @@ export default function AcceptInvitationScreen() {
         url: routes.api.organizations.acceptInvitation(),
         method: 'POST',
         data: { token },
-        errorMessage: 'That invitation could not be accepted.',
       });
-      toast.success('You have joined the organization.');
+      toast.success(t('invitationJoined'));
       router.replace('/organization');
     } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : 'That invitation could not be accepted.',
-      );
+      toast.error(describe(error, 'invitationFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -53,12 +58,11 @@ export default function AcceptInvitationScreen() {
 
   if (!flags.organizations) {
     return (
-      <Screen>
-        <ScreenHeader
-          title="Not available"
-          subtitle="Teams are switched off in this app. Check EXPO_PUBLIC_ORGANIZATIONS_ENABLED."
-        />
-      </Screen>
+      <FeatureOff
+        feature={t('team')}
+        clientFlag="EXPO_PUBLIC_ORGANIZATIONS_ENABLED"
+        serverFlag="ORGANIZATIONS_ENABLED"
+      />
     );
   }
 
@@ -69,23 +73,33 @@ export default function AcceptInvitationScreen() {
   if (!isAuthenticated) {
     return (
       <Screen>
-        <ScreenHeader
-          title="You have been invited"
-          subtitle="Sign in or create an account to accept this invitation."
-        />
+        <ScreenHeader title={t('invitationTitle')} subtitle={t('invitationSignInHelp')} />
         <Text
           variant="bodySmall"
           style={{ marginBottom: theme.spacing(2), color: theme.colors.onSurfaceVariant }}
         >
-          Use the address the invitation was sent to.
+          {t('invitationUseAddress')}
         </Text>
-        {/* `push`, not `replace`: the back gesture has to return here, and
-            this screen's URL is the only place the token exists. */}
-        <Button mode="contained" onPress={() => router.push('/login')}>
-          Sign in
+        {/* The `redirect` is what makes this flow work at all. Signing in
+            ends with `replace`, which destroys the stack -- and this screen's
+            URL is the only place the invitation token exists, so without a
+            destination to come back to the token is simply gone and the
+            person lands on their profile having joined nothing. */}
+        <Button
+          mode="contained"
+          onPress={() =>
+            router.push({ pathname: '/login', params: { redirect: returnHere } })
+          }
+        >
+          {t('login')}
         </Button>
-        <Button mode="outlined" onPress={() => router.push('/signup')}>
-          Create an account
+        <Button
+          mode="outlined"
+          onPress={() =>
+            router.push({ pathname: '/signup', params: { redirect: returnHere } })
+          }
+        >
+          {t('createAccount')}
         </Button>
       </Screen>
     );
@@ -93,12 +107,9 @@ export default function AcceptInvitationScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
-        title="Accept your invitation"
-        subtitle="You will join the organization that invited you."
-      />
+      <ScreenHeader title={t('invitationAcceptTitle')} subtitle={t('invitationAcceptHelp')} />
       <Button mode="contained" onPress={accept} loading={submitting} disabled={submitting}>
-        Accept
+        {t('invitationAccept')}
       </Button>
     </Screen>
   );

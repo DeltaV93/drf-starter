@@ -19,7 +19,7 @@
 
 import type { ExpoConfig } from 'expo/config';
 
-import { identity, lightPalette } from '@app/shared/brand';
+import { darkPalette, identity, lightPalette } from '@app/shared/brand';
 
 /** The host the app claims universal links on, derived from the web URL. */
 function webHost(): string | null {
@@ -49,6 +49,9 @@ const config: ExpoConfig = {
   scheme: 'drfstarter',
   // Follow the system setting. The palette swap is in src/theme/.
   userInterfaceStyle: 'automatic',
+  // Generated from the brand tokens by `npm run assets`. Placeholders on
+  // purpose -- overwrite them when you have real artwork.
+  icon: './assets/icon.png',
   ios: {
     bundleIdentifier: 'com.example.drfstarter',
     supportsTablet: true,
@@ -62,6 +65,12 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.example.drfstarter',
+    adaptiveIcon: {
+      // Transparent foreground over a brand fill: Android crops this to
+      // whatever shape the launcher uses, so anything at the edges is lost.
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: lightPalette.primary.main,
+    },
     intentFilters: host
       ? [
           {
@@ -76,8 +85,20 @@ const config: ExpoConfig = {
         ]
       : undefined,
   },
+  web: {
+    favicon: './assets/favicon.png',
+  },
   plugins: [
     'expo-router',
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/splash-icon.png',
+        imageWidth: 160,
+        backgroundColor: lightPalette.background.default,
+        dark: { backgroundColor: darkPalette.background.default },
+      },
+    ],
     'expo-secure-store',
     'expo-localization',
     [

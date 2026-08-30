@@ -147,8 +147,32 @@ A token identifies an *installation*, not a person, so registering a token
 that already exists moves it to whoever is registering. Without that, signing
 in on a colleague's phone leaves it receiving your notifications.
 
-Rotation writes a row per refresh, so schedule
-`python manage.py flushexpiredtokens` — daily is plenty.
+### What the app does with one
+
+`src/lib/push.ts` registers a foreground handler at module load — without one
+the operating system shows nothing while the app is open, which reads as
+"push is broken" rather than as a missing line. The banner shows; sound and
+badge are off, because those are what people find intrusive from an app they
+have just installed.
+
+`usePushNavigation` opens the screen a notification names. The contract is one
+key in `data`:
+
+```json
+{ "to": "ExponentPushToken[...]", "body": "Ada invited you", "data": { "path": "/organization" } }
+```
+
+It uses `useLastNotificationResponse` rather than a listener, and that is the
+difference between working and half-working: the common case is a tap on an
+app that was *not* running, where the response was delivered before any
+listener could exist. The path goes through the same `safeRedirect` guard the
+sign-in redirect uses — a payload is whatever reached the push service with
+your credentials, not this app's code.
+
+Rotation writes a blacklist row per refresh, swept nightly by
+`CELERY_BEAT_SCHEDULE`. That needs a `celery -A template beat` process running
+alongside the worker — see
+[Bearer tokens (mobile)](configuration.md#bearer-tokens-mobile).
 
 ---
 
@@ -198,6 +222,37 @@ Binaries are built with [EAS](https://docs.expo.dev/build/introduction/), not
 in this repository's CI — a build needs signing material, which a pull request
 has no business holding. CI bundles the app with Metro instead, which is what
 catches an import that only resolves on someone's laptop.
+
+`mobile/eas.json` has three profiles:
+
+| Profile | What it is for |
+|---|---|
+| `development` | A development client for use with `make mobile-dev`. Points at `localhost` by default — override `EXPO_PUBLIC_API_BASE_URL` for a device on your LAN. |
+| `preview` | An internal build, and an iOS simulator build, for sharing before release. |
+| `production` | The store build. `autoIncrement` handles the build number. |
+
+```bash
+npx eas build --profile preview --platform ios
+```
+
+### Icon and splash
+
+`npm run assets --workspace mobile` regenerates `mobile/assets/` from the
+brand tokens, so a re-brand reaches the home screen too — the one place a
+stale colour is impossible to miss and easiest to forget, because nothing in
+the build reads an icon's contents.
+
+The generator writes PNGs by hand rather than pulling in `sharp` or
+ImageMagick: on a template, an image toolchain is the difference between "run
+this" and "first, set up an image toolchain". The mark it draws is a
+placeholder — a rounded square, not a logo. Overwrite the files, or edit
+`mobile/scripts/generate-assets.mjs`, when you have real artwork.
+
+### Crash reporting
+
+`EXPO_PUBLIC_SENTRY_DSN` turns on Sentry, mirroring the backend's setup: off
+unless configured, never during a test run, and personal information off by
+default. See [Mobile app](configuration.md#mobile-app).
 
 Before the first build, set the real identifiers in `mobile/app.config.ts`
 (`ios.bundleIdentifier`, `android.package`) and keep them in step with the

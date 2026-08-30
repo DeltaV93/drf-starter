@@ -12,16 +12,20 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { ActivityIndicator, Button, IconButton, List, useTheme } from 'react-native-paper';
 
 import type { Attachment } from '@app/shared/types';
 
+import { ErrorState } from '../../components/ErrorState';
+import { FeatureOff } from '../../components/FeatureOff';
 import { EmptyState, Screen, ScreenHeader } from '../../components/Screen';
-import { ApiError, apiData } from '../../lib/api';
+import { apiData } from '../../lib/api';
 import { flags } from '../../lib/config';
 import { routes } from '../../lib/routes';
 import { currentTokens } from '../../lib/tokenStore';
+import { useErrorMessage } from '../../lib/useErrorMessage';
 import { useResource } from '../../lib/useResource';
 import { useToast } from '../../store/toast';
 import type { AppTheme } from '../../theme/paper';
@@ -41,16 +45,15 @@ function humanSize(bytes: number): string {
 
 export default function FilesScreen() {
   const theme = useTheme<AppTheme>();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const [uploading, setUploading] = useState(false);
 
   const fetchFiles = useCallback(
     () =>
-      apiData<Attachment[]>({
-        url: routes.api.files.list(),
-        errorMessage: 'Could not load your files.',
-      }),
+      apiData<Attachment[]>({ url: routes.api.files.list() }),
     [],
   );
   const { data: files, loading, error, reload } = useResource(fetchFiles);
@@ -75,13 +78,12 @@ export default function FilesScreen() {
         method: 'POST',
         data: body,
         headers: { 'Content-Type': 'multipart/form-data' },
-        errorMessage: 'Could not upload that file.',
       });
 
-      toast.success('File uploaded.');
+      toast.success(t('fileUploaded'));
       reload();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not upload that file.');
+      toast.error(describe(error, 'couldNotUpload'));
     } finally {
       setUploading(false);
     }
@@ -102,7 +104,7 @@ export default function FilesScreen() {
   async function pickImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      toast.error('Photo access was not granted.');
+      toast.error(t('photoPermissionDenied'));
       return;
     }
 
@@ -122,10 +124,10 @@ export default function FilesScreen() {
   async function remove(id: number) {
     try {
       await apiData({ url: routes.api.files.detail(id), method: 'DELETE' });
-      toast.success('File deleted.');
+      toast.success(t('fileDeleted'));
       reload();
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not delete that file.');
+      toast.error(describe(error, 'couldNotDeleteFile'));
     }
   }
 
@@ -156,27 +158,26 @@ export default function FilesScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(downloaded.uri, { mimeType: file.content_type });
       } else {
-        toast.info(`Saved to ${downloaded.uri}`);
+        toast.info(t('savedTo', { path: downloaded.uri }));
       }
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : 'Could not download that file.');
+      toast.error(describe(error, 'couldNotDownload'));
     }
   }
 
   if (!flags.uploads) {
     return (
-      <Screen>
-        <ScreenHeader
-          title="Files are off"
-          subtitle="Set EXPO_PUBLIC_UPLOADS_ENABLED, and UPLOADS_ENABLED on the backend."
-        />
-      </Screen>
+      <FeatureOff
+        feature={t('files')}
+        clientFlag="EXPO_PUBLIC_UPLOADS_ENABLED"
+        serverFlag="UPLOADS_ENABLED"
+      />
     );
   }
 
   return (
     <Screen>
-      <ScreenHeader title="Files" />
+      <ScreenHeader title={t('files')} />
 
       <View style={{ flexDirection: 'row', gap: theme.spacing(1), marginBottom: theme.spacing(2) }}>
         <Button
@@ -187,7 +188,7 @@ export default function FilesScreen() {
           disabled={uploading}
           style={{ flex: 1 }}
         >
-          File
+          {t('pickFile')}
         </Button>
         <Button
           mode="contained-tonal"
@@ -196,16 +197,16 @@ export default function FilesScreen() {
           disabled={uploading}
           style={{ flex: 1 }}
         >
-          Photo
+          {t('pickPhoto')}
         </Button>
       </View>
 
       {loading ? (
-        <ActivityIndicator accessibilityLabel="Loading" />
+        <ActivityIndicator accessibilityLabel={t('loading')} />
       ) : error ? (
-        <EmptyState message={error} />
+        <ErrorState message={describe(error, 'couldNotLoadFiles')} onRetry={reload} />
       ) : !files || files.length === 0 ? (
-        <EmptyState message="Nothing uploaded yet." />
+        <EmptyState message={t('noFiles')} />
       ) : (
         files.map((file) => (
           <List.Item
@@ -218,7 +219,7 @@ export default function FilesScreen() {
                 icon="delete-outline"
                 iconColor={theme.colors.error}
                 onPress={() => remove(file.id)}
-                accessibilityLabel={`Delete ${file.original_name}`}
+                accessibilityLabel={`${t('delete')}: ${file.original_name}`}
               />
             )}
           />

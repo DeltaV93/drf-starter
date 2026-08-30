@@ -80,11 +80,37 @@ describe('shape, spacing and type', () => {
 
 describe('no second source of truth', () => {
   it('names no colour of its own', () => {
-    // Hex literals and rgb()/rgba() calls both. `paper.ts` derives; it does
-    // not decide.
+    // Hex literals, and `rgb(` followed by an actual number. `paper.ts`
+    // computes some colours -- a container is a mix of a brand colour and the
+    // surface -- so `rgb(${...})` is derivation, not decision. A digit after
+    // the paren is the thing that would be a decision.
     const source = readFileSync(join(__dirname, '..', 'paper.ts'), 'utf8');
 
     expect(source.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull();
-    expect(source.match(/\brgba?\(/g)).toBeNull();
+    expect(source.match(/\brgba?\(\s*\d/g)).toBeNull();
+  });
+
+  it('makes a container a wash of its role, not a brighter version of it', () => {
+    // The failure this replaced: `primaryContainer` was the palette's `light`
+    // variant, which is *brighter* than `main`. The informational banner on
+    // the profile screen rendered as a saturated block that read as an error.
+    //
+    // A container has to sit close to the surface it is on, so the check is
+    // that it is nearer the surface than the role colour is.
+    const distance = (a: string, b: string) => {
+      const parse = (c: string) =>
+        c.startsWith('#')
+          ? [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16))
+          : c.match(/\d+/g)!.slice(0, 3).map(Number);
+      const [x, y] = [parse(a), parse(b)];
+      return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+    };
+
+    for (const theme of [lightTheme, darkTheme]) {
+      const surface = theme.colors.surface;
+      expect(distance(theme.colors.primaryContainer, surface)).toBeLessThan(
+        distance(theme.colors.primary, surface),
+      );
+    }
   });
 });

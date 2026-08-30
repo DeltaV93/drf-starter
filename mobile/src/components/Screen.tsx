@@ -79,7 +79,12 @@ export function ScreenHeader({ title, subtitle }: { title: string; subtitle?: st
 
   return (
     <View style={{ marginBottom: theme.spacing(3) }}>
-      <Text variant="headlineMedium">{title}</Text>
+      {/* Announced as a heading, so a screen reader's heading navigation
+          finds it and someone landing on the screen hears what it is rather
+          than the first button on it. */}
+      <Text variant="headlineMedium" accessibilityRole="header">
+        {title}
+      </Text>
       {subtitle ? (
         <Text
           variant="bodyMedium"
@@ -97,7 +102,13 @@ export function EmptyState({ message }: { message: string }) {
   const theme = useTheme<AppTheme>();
 
   return (
-    <View style={[styles.centered, { padding: theme.spacing(4) }]}>
+    // A live region: this replaces a list that was loading, and without the
+    // announcement a screen-reader user is left on a screen that has gone
+    // quiet with no way to tell whether it finished or stalled.
+    <View
+      accessibilityLiveRegion="polite"
+      style={[styles.centered, { padding: theme.spacing(4) }]}
+    >
       <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
         {message}
       </Text>

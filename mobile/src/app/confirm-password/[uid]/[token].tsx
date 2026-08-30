@@ -9,6 +9,7 @@
 import { usePasswordValidation } from '@app/shared/passwordValidation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, useWatch } from 'react-hook-form';
 import { Button, HelperText } from 'react-native-paper';
 
@@ -16,6 +17,7 @@ import { FormField } from '../../../components/FormField';
 import { Screen, ScreenHeader } from '../../../components/Screen';
 import { ApiError, apiCall } from '../../../lib/api';
 import { routes } from '../../../lib/routes';
+import { useErrorMessage } from '../../../lib/useErrorMessage';
 import { useToast } from '../../../store/toast';
 
 interface ConfirmForm {
@@ -26,7 +28,9 @@ interface ConfirmForm {
 export default function ConfirmPasswordScreen() {
   const router = useRouter();
   const { uid, token } = useLocalSearchParams<{ uid: string; token: string }>();
+  const { t } = useTranslation();
   const toast = useToast();
+  const describe = useErrorMessage();
 
   const { control, handleSubmit } = useForm<ConfirmForm>({
     defaultValues: { password: '', password_confirm: '' },
@@ -47,14 +51,13 @@ export default function ConfirmPasswordScreen() {
         url: routes.api.auth.passwordResetConfirm(),
         method: 'POST',
         data: { uid, token, ...values },
-        errorMessage: 'Could not change your password.',
       });
 
       // Straight to sign-in rather than signing them in here. The reset
       // endpoint establishes nothing this client can use -- it has no session
       // -- and a screen that appeared to succeed and then showed a signed-out
       // app would be worse than asking for the new password once.
-      toast.success('Password changed. Sign in with your new password.');
+      toast.success(t('passwordChangedSignIn'));
       router.replace('/login');
     } catch (error) {
       if (error instanceof ApiError) {
@@ -62,10 +65,8 @@ export default function ConfirmPasswordScreen() {
           password: error.fieldError('password'),
           password_confirm: error.fieldError('password_confirm'),
         });
-        toast.error(error.message);
-      } else {
-        toast.error('Could not change your password.');
       }
+      toast.error(describe(error, 'couldNotChangePassword'));
     } finally {
       setSubmitting(false);
     }
@@ -73,12 +74,12 @@ export default function ConfirmPasswordScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Choose a new password" />
+      <ScreenHeader title={t('chooseNewPassword')} />
 
       <FormField
         control={control}
         name="password"
-        label="New password"
+        label={t('newPassword')}
         serverError={fieldErrors.password}
         secureTextEntry
         textContentType="newPassword"
@@ -87,7 +88,7 @@ export default function ConfirmPasswordScreen() {
       <FormField
         control={control}
         name="password_confirm"
-        label="Confirm new password"
+        label={t('confirmPassword')}
         serverError={fieldErrors.password_confirm}
         secureTextEntry
         textContentType="newPassword"
@@ -108,7 +109,7 @@ export default function ConfirmPasswordScreen() {
         loading={submitting}
         disabled={submitting || !isValid}
       >
-        Change password
+        {t('changePassword')}
       </Button>
     </Screen>
   );

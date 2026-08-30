@@ -234,3 +234,43 @@ def test_session_auth_is_untouched(api_client, user):
 
     assert response.status_code == 200
     assert '_auth_user_id' in api_client.session
+
+
+# ---------------------------------------------------------------------------
+# Keeping the blacklist from growing forever
+# ---------------------------------------------------------------------------
+
+
+def test_expired_blacklisted_tokens_are_swept_on_a_schedule():
+    """Rotation writes a row per refresh and nothing else removes them.
+
+    Roughly a hundred rows per device per day, forever. This was documented
+    before it was scheduled, which is the worse of the two failures: a reader
+    is told to handle it and given no mechanism.
+    """
+    from django.conf import settings
+
+    entry = settings.CELERY_BEAT_SCHEDULE['flush-expired-tokens']
+
+    assert entry['task'] == 'apps.authentication.tasks.flush_expired_tokens'
+
+
+def test_the_sweep_only_deletes_tokens_that_have_already_expired(user):
+    """So running it can never shorten a blacklisting.
+
+    `flushexpiredtokens` is SimpleJWT's own command; this pins that the task
+    calls it rather than deleting rows itself.
+    """
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+
+    from apps.authentication import token_services
+    from apps.authentication.tasks import flush_expired_tokens
+
+    pair = token_services.issue_pair(user)
+    token_services.revoke(pair['refresh'])
+    assert BlacklistedToken.objects.count() == 1
+
+    flush_expired_tokens()
+
+    # Still there: it is blacklisted but has not expired yet.
+    assert BlacklistedToken.objects.count() == 1
