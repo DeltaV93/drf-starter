@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -29,9 +30,27 @@ interface ScreenProps {
   scrollable?: boolean;
   loading?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  /**
+   * Pull down to reload. Omit it and the gesture does nothing, which is what
+   * a screen with nothing to reload should do.
+   *
+   * Here rather than per screen because every list wanted the same six lines,
+   * and because the tint has to come from the theme -- the default spinner is
+   * grey on both platforms and looks like a rendering artefact against a
+   * brand colour.
+   */
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
-export function Screen({ children, scrollable = true, loading, contentStyle }: ScreenProps) {
+export function Screen({
+  children,
+  scrollable = true,
+  loading,
+  contentStyle,
+  onRefresh,
+  refreshing = false,
+}: ScreenProps) {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
 
@@ -63,6 +82,16 @@ export function Screen({ children, scrollable = true, loading, contentStyle }: S
         <ScrollView
           contentContainerStyle={[padding, contentStyle]}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.primary}
+                colors={[theme.colors.primary]}
+              />
+            ) : undefined
+          }
         >
           {body}
         </ScrollView>

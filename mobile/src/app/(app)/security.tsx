@@ -8,7 +8,7 @@
  */
 
 import * as Clipboard from 'expo-clipboard';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, View } from 'react-native';
 import {
@@ -24,7 +24,13 @@ import {
   useTheme,
 } from 'react-native-paper';
 
-import type { ApiKey, AuditEventPage, SocialConnections, TwoFactorStatus } from '@app/shared/types';
+import type {
+  ApiKey,
+  AuditEvent,
+  AuditEventPage,
+  SocialConnections,
+  TwoFactorStatus,
+} from '@app/shared/types';
 
 import { ErrorState } from '../../components/ErrorState';
 import { EmptyState, Screen, ScreenHeader } from '../../components/Screen';
@@ -40,13 +46,27 @@ export default function SecurityScreen() {
   const theme = useTheme<AppTheme>();
   const { t } = useTranslation();
 
+  // One counter, remounting every section. This screen is four independent
+  // resources with no shared hook to reload, and a key change is the honest
+  // way to say "all of it" without threading four reload callbacks up here.
+  const [generation, setGeneration] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  function refreshAll() {
+    setRefreshing(true);
+    setGeneration((n) => n + 1);
+    // The sections fetch on mount, so there is nothing to await. A short
+    // hold is what stops the spinner vanishing before it has been seen.
+    setTimeout(() => setRefreshing(false), 600);
+  }
+
   return (
-    <Screen>
+    <Screen onRefresh={refreshAll} refreshing={refreshing}>
       <ScreenHeader title={t('security')} />
-      {flags.twoFactor ? <TwoFactorSection /> : null}
-      {flags.apiKeys ? <ApiKeysSection /> : null}
-      {flags.socialAuth ? <SocialSection /> : null}
-      {flags.auditLog ? <ActivitySection /> : null}
+      {flags.twoFactor ? <TwoFactorSection key={generation} /> : null}
+      {flags.apiKeys ? <ApiKeysSection key={generation} /> : null}
+      {flags.socialAuth ? <SocialSection key={generation} /> : null}
+      {flags.auditLog ? <ActivitySection key={generation} /> : null}
       <DataExportSection />
       <View style={{ height: theme.spacing(4) }} />
     </Screen>
@@ -154,6 +174,7 @@ function TwoFactorSection() {
           <TextInput
             mode="outlined"
             label={t('yourPassword')}
+        accessibilityLabel={t('yourPassword')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -191,6 +212,7 @@ function TwoFactorSection() {
           <TextInput
             mode="outlined"
             label={t('codeFromApp')}
+        accessibilityLabel={t('codeFromApp')}
             value={code}
             onChangeText={setCode}
             keyboardType="number-pad"
@@ -211,6 +233,7 @@ function TwoFactorSection() {
           <TextInput
             mode="outlined"
             label={t('yourPassword')}
+        accessibilityLabel={t('yourPassword')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -394,34 +417,100 @@ function SocialSection() {
 // ---------------------------------------------------------------------------
 
 function ActivitySection() {
+  const theme = useTheme<AppTheme>();
   const { t } = useTranslation();
   const describe = useErrorMessage();
-  const fetchActivity = useCallback(
-    () =>
-      apiData<AuditEventPage>({ url: routes.api.account.activity() }),
-    [],
-  );
-  const { data: page, loading, error } = useResource(fetchActivity);
+
+  // Accumulated across pages rather than replaced, because "load more" means
+  // more -- and the previous version rendered `results` from page one and
+  // nothing else, so a log with two hundred entries looked like ten and there
+  // was no way to tell.
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [error, setError] = useState<unknown>(null);
+  const [settled, setSettled] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const result = await apiData<AuditEventPage>({
+          url: routes.api.account.activity(page),
+        });
+        if (cancelled) return;
+
+        // Appended for a later page, replaced for the first -- which is what
+        // makes a pull-to-refresh reset the list rather than duplicate it.
+        setEvents((current) =>
+          page === 1 ? (result?.results ?? []) : [...current, ...(result?.results ?? [])],
+        );
+        setTotal(result?.count ?? 0);
+        setHasMore(Boolean(result?.next));
+        setError(null);
+      } catch (thrown) {
+        if (!cancelled) setError(thrown);
+      } finally {
+        if (!cancelled) setSettled(page);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page]);
+
+  const loading = settled === 0 && error === null;
+  const loadingMore = settled !== page;
 
   return (
     <>
       <SectionHeading title={t('recentActivity')} />
       {loading ? (
         <ActivityIndicator accessibilityLabel={t('loading')} />
-      ) : error || !page ? (
-        <ErrorState message={describe(error, 'couldNotLoadActivity')} />
-      ) : page.results.length === 0 ? (
+      ) : error ? (
+        <ErrorState
+          message={describe(error, 'couldNotLoadActivity')}
+          onRetry={() => setPage(1)}
+        />
+      ) : events.length === 0 ? (
         <EmptyState message={t('noActivity')} />
       ) : (
-        page.results.map((event) => (
-          <List.Item
-            key={event.id}
-            title={event.action}
-            description={`${new Date(event.created_at).toLocaleString()}${
-              event.ip_address ? ` · ${event.ip_address}` : ''
-            }`}
-          />
-        ))
+        <>
+          {events.map((event) => (
+            <List.Item
+              key={event.id}
+              title={event.action}
+              description={`${new Date(event.created_at).toLocaleString()}${
+                event.ip_address ? ` · ${event.ip_address}` : ''
+              }`}
+            />
+          ))}
+
+          {/* The count is the honest part: without it a truncated list is
+              indistinguishable from a complete one. */}
+          <Text
+            variant="bodySmall"
+            style={{
+              marginTop: theme.spacing(1),
+              color: theme.colors.onSurfaceVariant,
+            }}
+          >
+            {t('showingOf', { shown: events.length, total })}
+          </Text>
+
+          {hasMore ? (
+            <Button
+              onPress={() => setPage((n) => n + 1)}
+              loading={loadingMore}
+              disabled={loadingMore}
+            >
+              {t('loadMore')}
+            </Button>
+          ) : null}
+        </>
       )}
     </>
   );
@@ -432,7 +521,6 @@ function ActivitySection() {
 // ---------------------------------------------------------------------------
 
 function DataExportSection() {
-  const theme = useTheme<AppTheme>();
   const { t } = useTranslation();
   const toast = useToast();
   const describe = useErrorMessage();
@@ -467,12 +555,7 @@ function DataExportSection() {
         </Card.Actions>
       </Card>
 
-      <Text
-        variant="bodySmall"
-        style={{ marginTop: theme.spacing(2), color: theme.colors.onSurfaceVariant }}
-      >
-        {t('deleteAccountNote')}
-      </Text>
+
     </>
   );
 }

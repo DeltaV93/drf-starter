@@ -191,8 +191,8 @@ screen explains which flag to set rather than showing a broken list.
 
 ## What the app deliberately does not do
 
-Four things the website does that the app does not. Each is a decision, not an
-oversight — if one is wrong for your product, change it knowingly.
+Three things the website does that the app does not. Each is a decision, not
+an oversight — if one is wrong for your product, change it knowingly.
 
 **Buying a subscription.** Apple requires digital goods consumed in an app to
 be sold through in-app purchase, and a Stripe checkout reached from the app is
@@ -211,8 +211,47 @@ existing connections; linking a new one happens on the website.
 **Creating an API key.** The secret is shown exactly once and belongs
 somewhere it can be pasted into a terminal. Listing and revoking are here.
 
-**Deleting your account.** Irreversible, and not a thing to put behind a
-mis-tap on a phone.
+Account deletion **is** in the app, and has to be: Apple's guideline 5.1.1(v)
+requires an app that offers account creation to offer deletion in the app
+rather than on a website it links to. An earlier version of this project sent
+people to the website and called that a considered decision; it was a
+rejection waiting to happen. See [Deleting an account](#deleting-an-account).
+
+---
+
+## Deleting an account
+
+`(app)/delete-account.tsx`, reachable from Settings. Required by Apple's
+5.1.1(v), and the reason the security screen no longer points at the website.
+
+What "delete" means is anonymisation, not erasure — `utils/gdpr_utils.py`
+overwrites the personal fields, unsets the password, deactivates the row and
+blacklists every outstanding refresh token. Records the account created
+survive with the name removed, so an invoice still has an author. The screen
+says that rather than promising something the backend does not do.
+
+The friction is a password (which the endpoint requires anyway) plus a named
+confirmation. That is not the same as hiding it: the row is one tap from
+Settings.
+
+---
+
+## Permissions
+
+`app.config.ts` declares only what the app actually requests. iOS treats a
+missing usage string as a hard error — App Review rejects the build, and on a
+device the request does not prompt, it crashes. Android's list is explicit
+because autolinking otherwise contributes the union of what every installed
+library *might* use, and an unexplained permission in a store listing costs
+installs.
+
+| Permission | Why |
+|---|---|
+| `NSPhotoLibraryUsageDescription` / `READ_MEDIA_IMAGES` | Attaching a photo on the Files screen. |
+| `POST_NOTIFICATIONS` | Push, and only when `EXPO_PUBLIC_PUSH_ENABLED` is on. |
+
+`CAMERA` and `RECORD_AUDIO` arrive through expo-image-picker's manifest and
+are blocked: the app opens the library, never a camera.
 
 ---
 

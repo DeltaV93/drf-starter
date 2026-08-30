@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const theme = useTheme<AppTheme>();
   const { t } = useTranslation();
   const { user, isLoading, refresh } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
   const describe = useErrorMessage();
 
@@ -85,8 +86,19 @@ export default function ProfileScreen() {
     return <Screen loading />;
   }
 
+  async function reload() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
-    <Screen>
+    // Pulling here re-reads the profile, which is how someone who has just
+    // confirmed their email in another app makes the banner go away.
+    <Screen onRefresh={reload} refreshing={refreshing}>
       <ScreenHeader title={user.display_name || user.username} subtitle={user.email} />
 
       {!user.email_verified ? (

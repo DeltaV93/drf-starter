@@ -32,7 +32,7 @@ export default function ConnectionsScreen() {
       apiData<ConnectableServer[]>({ url: routes.api.mcp.servers() }),
     [],
   );
-  const { data: servers, loading, error, reload } = useResource(fetchServers);
+  const { data: servers, loading, error, refreshing, reload } = useResource(fetchServers);
 
   async function toggle(server: ConnectableServer, enabled: boolean) {
     try {
@@ -58,7 +58,7 @@ export default function ConnectionsScreen() {
   }
 
   return (
-    <Screen>
+    <Screen onRefresh={reload} refreshing={refreshing}>
       <ScreenHeader title={t('connections')} subtitle={t('connectionsMobileHelp')} />
 
       {loading ? (

@@ -55,6 +55,18 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.example.drfstarter',
     supportsTablet: true,
+    // Every permission the app can ask for needs a sentence saying why, and
+    // iOS treats a missing one as a hard error: App Review rejects the build,
+    // and on a device the request does not prompt -- it crashes. Only the
+    // permissions this app actually requests are listed; declaring one the
+    // app never uses is its own review finding.
+    infoPlist: {
+      NSPhotoLibraryUsageDescription:
+        'Lets you attach a photo from your library to your account.',
+      // No NSCameraUsageDescription and no NSFaceIDUsageDescription: the
+      // app opens the photo library but never a camera, and there is no
+      // biometric unlock. Add them alongside the feature, not before it.
+    },
     // `applinks` claims the emailed URLs; `webcredentials` is what lets iOS
     // offer a password saved for the website when signing in to the app.
     // Both need the matching half published at
@@ -65,6 +77,21 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.example.drfstarter',
+    // Named explicitly rather than left to autolinking, which adds the union
+    // of what every installed library *might* use. An app asking for more
+    // than it needs is a review finding on Play too, and an unexplained
+    // permission in the store listing costs installs.
+    permissions: [
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.POST_NOTIFICATIONS',
+      'android.permission.INTERNET',
+    ],
+    blockedPermissions: [
+      // Pulled in by expo-image-picker's manifest; the app never opens a
+      // camera or records audio.
+      'android.permission.CAMERA',
+      'android.permission.RECORD_AUDIO',
+    ],
     adaptiveIcon: {
       // Transparent foreground over a brand fill: Android crops this to
       // whatever shape the launcher uses, so anything at the edges is lost.

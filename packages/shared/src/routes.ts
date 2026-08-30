@@ -123,7 +123,10 @@ export function createRoutes(baseUrl: string = DEFAULT_API_BASE_URL) {
       },
       account: {
         requestExport: () => join(BASE_URL, 'account/export/'),
-        activity: () => join(BASE_URL, 'account/activity/'),
+        // Paginated with DRF's PageNumberPagination, so the page is a query
+        // parameter rather than part of the path.
+        activity: (page?: number) =>
+          join(BASE_URL, `account/activity/${page && page > 1 ? `?page=${page}` : ''}`),
       },
       apiKeys: {
         list: () => join(BASE_URL, 'api-keys/'),

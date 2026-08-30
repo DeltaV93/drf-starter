@@ -6,6 +6,7 @@
  */
 
 import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,11 +20,29 @@ import { initialiseMonitoring, withMonitoring } from '../lib/monitoring';
 import { usePushNavigation } from '../lib/usePushNavigation';
 import { useAuthBootstrap } from '../store/auth';
 import { useOrganizationBootstrap } from '../store/organization';
-import { useAppTheme, useColorSchemeBootstrap, useResolvedColorScheme } from '../theme/colorScheme';
+import {
+  useAppTheme,
+  useColorSchemeBootstrap,
+  useColorSchemeHydrated,
+  useResolvedColorScheme,
+} from '../theme/colorScheme';
 
 // Before anything renders, so a crash during the first paint is reported
 // rather than lost. A no-op when no DSN is configured.
 initialiseMonitoring();
+
+// Hold the splash until we know who is signed in.
+//
+// The keychain read is asynchronous, so the first frame always looks
+// anonymous. Left to hide itself, the splash goes as soon as that frame
+// paints -- and a returning user sees the signed-out home screen flash past
+// before landing on their profile. The website has the same problem and
+// solves it the same way, with the inline script in index.html.
+//
+// Failure is ignored on purpose: on a platform with no splash module this
+// rejects, and an app that will not start because it could not keep a splash
+// screen up is a worse outcome than a flash.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /** The route group that requires a session. Everything else is public. */
 const PROTECTED_GROUP = '(app)';
@@ -72,6 +91,17 @@ function RootLayout() {
   const theme = useAppTheme();
   const scheme = useResolvedColorScheme();
   const { t } = useTranslation();
+  const colorSchemeReady = useColorSchemeHydrated();
+
+  // Both answers are needed before the first visible frame: who is signed in
+  // decides the screen, and the stored theme decides its colours. Hiding on
+  // the first alone trades a flash of the wrong screen for a flash of the
+  // wrong palette.
+  const ready = status !== 'loading' && colorSchemeReady;
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
 
   return (
     <SafeAreaProvider>

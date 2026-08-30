@@ -16,8 +16,20 @@
 
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import { ApiError } from './api';
+
+/**
+ * "45 seconds" or "2 minutes".
+ *
+ * Rounded up: telling someone to wait 59 seconds when the answer is a minute
+ * invites them to try at 58 and fail again.
+ */
+function humanWait(seconds: number, t: TFunction): string {
+  if (seconds < 60) return t('waitSeconds', { count: Math.max(1, seconds) });
+  return t('waitMinutes', { count: Math.ceil(seconds / 60) });
+}
 
 export type DescribeError = (error: unknown, fallbackKey?: string) => string;
 
@@ -31,6 +43,15 @@ export function useErrorMessage(): DescribeError {
         // captive portal, the API host unreachable. The backend's own
         // wording cannot help here because the backend never saw it.
         if (error.isNetworkError) return t('offlineHelp');
+
+        // Throttled. The backend's message says what happened; only the
+        // header says for how long, and without that people retry straight
+        // back into the limit.
+        if (error.isRateLimited) {
+          const wait = error.retryAfterSeconds;
+          if (wait === undefined) return t('tooManyAttempts');
+          return t('tooManyAttemptsIn', { wait: humanWait(wait, t) });
+        }
 
         // Only the backend's own words are shown as-is. Anything else is a
         // fallback invented in English somewhere up the stack, and showing it

@@ -274,3 +274,26 @@ def test_the_sweep_only_deletes_tokens_that_have_already_expired(user):
 
     # Still there: it is blacklisted but has not expired yet.
     assert BlacklistedToken.objects.count() == 1
+
+
+def test_deleting_an_account_blacklists_its_outstanding_tokens(api_client, user):
+    """A deleted account should leave no month-long credential outstanding.
+
+    `is_active` is already false by then and SimpleJWT refuses an inactive
+    user, so this is a second barrier rather than the only one -- but the
+    session-backed client has its sessions dropped on deletion, and a token
+    client would otherwise have nothing equivalent done for it.
+    """
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+
+    from utils.gdpr_utils import anonymize_user_data
+
+    refresh = obtain(api_client, user).data['data']['refresh']
+    assert BlacklistedToken.objects.count() == 0
+
+    anonymize_user_data(user)
+
+    assert BlacklistedToken.objects.count() == 1
+    assert (
+        api_client.post(reverse('v1:token_refresh'), {'refresh': refresh}).status_code == 401
+    )

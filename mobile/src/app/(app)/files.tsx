@@ -56,7 +56,7 @@ export default function FilesScreen() {
       apiData<Attachment[]>({ url: routes.api.files.list() }),
     [],
   );
-  const { data: files, loading, error, reload } = useResource(fetchFiles);
+  const { data: files, loading, error, refreshing, reload } = useResource(fetchFiles);
 
   async function upload(picked: PickedFile) {
     setUploading(true);
@@ -176,7 +176,7 @@ export default function FilesScreen() {
   }
 
   return (
-    <Screen>
+    <Screen onRefresh={reload} refreshing={refreshing}>
       <ScreenHeader title={t('files')} />
 
       <View style={{ flexDirection: 'row', gap: theme.spacing(1), marginBottom: theme.spacing(2) }}>

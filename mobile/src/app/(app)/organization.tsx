@@ -134,7 +134,16 @@ export default function OrganizationScreen() {
   }
 
   return (
-    <Screen>
+    <Screen
+      // Both lists reload together: they are two halves of one screen, and a
+      // gesture that refreshed only the members would be a lie about the
+      // invitations underneath them.
+      onRefresh={() => {
+        membersResource.reload();
+        invitationsResource.reload();
+      }}
+      refreshing={membersResource.refreshing || invitationsResource.refreshing}
+    >
       <ScreenHeader title={active.name} subtitle={active.role ?? undefined} />
 
       {organizations.length > 1 ? (
@@ -192,6 +201,7 @@ export default function OrganizationScreen() {
           <TextInput
             mode="outlined"
             label={t('inviteByEmail')}
+        accessibilityLabel={t('inviteByEmail')}
             value={inviteEmail}
             onChangeText={setInviteEmail}
             keyboardType="email-address"

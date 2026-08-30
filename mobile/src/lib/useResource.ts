@@ -38,6 +38,14 @@ export interface Resource<T> {
    * caller's behalf without guessing which of the two it is.
    */
   error: unknown;
+  /**
+   * True while a *re*-load is in flight, false during the first one.
+   *
+   * `RefreshControl` needs the distinction: the spinner it draws is the one
+   * the user is already holding, and showing it for the initial load leaves
+   * two spinners on screen.
+   */
+  refreshing: boolean;
   reload: () => void;
 }
 
@@ -45,6 +53,10 @@ export function useResource<T>(fetcher: () => Promise<T | undefined>): Resource<
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
+  // Which attempt has finished. Derived rather than a `setRefreshing(true)`
+  // in the effect body, which is the synchronous write React's compiler rules
+  // reject -- and the reason `loading` is derived too.
+  const [settled, setSettled] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +70,8 @@ export function useResource<T>(fetcher: () => Promise<T | undefined>): Resource<
       } catch (thrown) {
         if (cancelled) return;
         setError(thrown);
+      } finally {
+        if (!cancelled) setSettled(attempt);
       }
     })();
 
@@ -68,5 +82,13 @@ export function useResource<T>(fetcher: () => Promise<T | undefined>): Resource<
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
-  return { data, loading: data === null && error === null, error, reload };
+  return {
+    data,
+    loading: data === null && error === null,
+    // A reload is in flight when the effect has been re-run and has not yet
+    // reported back.
+    refreshing: attempt > 0 && settled !== attempt,
+    error,
+    reload,
+  };
 }

@@ -38,12 +38,34 @@ export class ApiError extends Error {
    */
   readonly fromServer: boolean;
 
-  constructor(message: string, status?: number, fieldErrors = {}, fromServer = false) {
+  /**
+   * Seconds to wait before retrying, from the `Retry-After` header.
+   *
+   * Only ever present on a 429. DRF sets it on every throttled response, and
+   * without reading it a client can only say "too many attempts" -- so people
+   * retry immediately, straight back into the limit, which is how a login
+   * throttle of 10/min turns into an account nobody can get into for an hour.
+   */
+  readonly retryAfterSeconds: number | undefined;
+
+  constructor(
+    message: string,
+    status?: number,
+    fieldErrors = {},
+    fromServer = false,
+    retryAfterSeconds?: number,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.fieldErrors = fieldErrors;
     this.fromServer = fromServer;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+
+  /** True when the server refused because the caller is going too fast. */
+  get isRateLimited(): boolean {
+    return this.status === 429;
   }
 
   /** The first message for a field, for wiring straight into a form. */
@@ -77,9 +99,30 @@ export function toApiError(error: unknown, fallback = DEFAULT_ERROR_MESSAGE): Ap
       axiosError.response?.status,
       envelope?.errors ?? {},
       Boolean(envelope?.message),
+      retryAfter(axiosError),
     );
   }
   return new ApiError(fallback);
+}
+
+/**
+ * `Retry-After` as a number of seconds, if the response carried one.
+ *
+ * The header is defined as either a delay in seconds or an HTTP date. DRF
+ * only ever sends the former, but a proxy in front of it may rewrite it, so
+ * both are read -- a date that has already passed reads as zero rather than
+ * as a negative wait.
+ */
+function retryAfter(error: AxiosError): number | undefined {
+  const header = error.response?.headers?.['retry-after'];
+  if (header === undefined || header === null) return undefined;
+
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return Math.max(0, Math.round(seconds));
+
+  const until = Date.parse(String(header));
+  if (Number.isNaN(until)) return undefined;
+  return Math.max(0, Math.round((until - Date.now()) / 1000));
 }
 
 export type ApiRequestConfig = AxiosRequestConfig & { errorMessage?: string };

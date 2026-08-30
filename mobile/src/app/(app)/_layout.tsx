@@ -77,6 +77,7 @@ export default function AppLayout() {
       <Tabs.Screen name="security" options={{ title: t('security'), href: null }} />
       <Tabs.Screen name="connections" options={{ title: t('connections'), href: null }} />
       <Tabs.Screen name="subscription" options={{ title: t('subscription'), href: null }} />
+      <Tabs.Screen name="delete-account" options={{ title: t('deleteAccount'), href: null }} />
     </Tabs>
   );
 }

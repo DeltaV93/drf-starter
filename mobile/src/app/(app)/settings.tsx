@@ -84,6 +84,19 @@ export default function SettingsScreen() {
         />
       ) : null}
 
+      {/* Apple requires an app that creates accounts to delete them in the
+          app, so this is a row here rather than a link to the website. It sits
+          below sign-out because that is the one people actually want. */}
+      <List.Item
+        title={t('deleteAccount')}
+        description={t('deleteAccountRowHelp')}
+        titleStyle={{ color: theme.colors.error }}
+        left={(props) => (
+          <List.Icon {...props} icon="account-remove-outline" color={theme.colors.error} />
+        )}
+        onPress={() => router.push('/delete-account')}
+      />
+
       <View style={{ marginTop: theme.spacing(4) }}>
         <Button mode="outlined" onPress={signOut} textColor={theme.colors.error}>
           {t('logout')}
