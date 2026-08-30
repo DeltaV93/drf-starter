@@ -50,7 +50,7 @@ sentry-sdk[django]>=2.20
 # TOTP for two-factor authentication (only imported when
 # TWO_FACTOR_ENABLED is true; safe to remove with apps/authentication's
 # two_factor module if the project does not need it)
-pyotp>=2.9
+pyotp>=2.10.0
 
 # Model Context Protocol. Only imported when MCP_SERVER_ENABLED is true;
 # safe to remove along with apps/mcp_server if the application does not need
