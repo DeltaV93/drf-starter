@@ -7,8 +7,8 @@ Nothing fails, so nothing gets fixed.
 
 These tests are the thing that fails. `scripts/env_vars.py` parses the source
 for every environment read; the assertions below compare that against
-`.env.example`, `website/.env.example` and `docs/configuration.md`, in both
-directions, and name what is missing.
+`.env.example`, `website/.env.example`, `mobile/.env.example` and
+`docs/configuration.md`, in both directions, and name what is missing.
 
 Not settings-dependent, so they run under every flag combination -- which
 matters, because a variable read inside `if UPLOADS_ENABLED:` is still a
@@ -24,6 +24,7 @@ from scripts.env_vars import (
     documentable,
     documented_in_reference,
     frontend_settings,
+    mobile_settings,
     settings_read,
 )
 
@@ -53,9 +54,20 @@ def test_every_frontend_setting_is_in_the_website_env_example():
     )
 
 
+def test_every_mobile_setting_is_in_the_mobile_env_example():
+    documented = _names_in_env_file(BASE_DIR / 'mobile' / '.env.example')
+    missing = mobile_settings() - documented
+
+    assert not missing, (
+        f'Read by the mobile app but absent from mobile/.env.example:\n  {_listing(missing)}'
+    )
+
+
 def test_env_example_does_not_invent_settings():
-    documented = _names_in_env_file(BASE_DIR / '.env.example') | _names_in_env_file(
-        BASE_DIR / 'website' / '.env.example'
+    documented = (
+        _names_in_env_file(BASE_DIR / '.env.example')
+        | _names_in_env_file(BASE_DIR / 'website' / '.env.example')
+        | _names_in_env_file(BASE_DIR / 'mobile' / '.env.example')
     )
     extra = documented - settings_read()
 

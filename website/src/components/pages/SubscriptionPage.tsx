@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiError, apiCall } from '../../lib/api';
 import { routes } from '../../lib/routes';
-import type { SubscriptionPlan } from '../../lib/types';
+import type { SubscriptionPlan } from '@app/shared/types';
 import { useToast } from '../../store/toast';
 
 const BILLING_ENABLED = import.meta.env.VITE_STRIPE_ENABLED === 'true';

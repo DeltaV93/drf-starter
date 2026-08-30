@@ -53,8 +53,33 @@ def anonymize_user_data(user):
     # everywhere, not just in the browser that made the request.
     _delete_sessions_for_user(user)
 
+    # And every outstanding refresh token, for the same reason. Sessions are
+    # the browser's credential; a token client has neither a session nor any
+    # other thing this function would otherwise reach.
+    #
+    # `is_active` is already false above, and SimpleJWT refuses an inactive
+    # user, so this is defence in depth rather than the only barrier -- but a
+    # deleted account should not leave a month-long credential outstanding
+    # that works again the moment someone reactivates the row.
+    _blacklist_tokens_for_user(user)
+
     logger.info('Anonymized user %s', user.pk)
     return user
+
+
+def _blacklist_tokens_for_user(user):
+    """Blacklist every refresh token issued to a user.
+
+    The blacklist app is always installed -- see the note in base.py -- so
+    there is no flag to check, only the rows to sweep.
+    """
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
 
 
 def _delete_sessions_for_user(user):

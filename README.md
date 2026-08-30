@@ -26,7 +26,8 @@ command, with the auth, billing, tooling and CI already wired up.
 | [Architecture](docs/architecture.md) | What is here, how a request moves through it, and why the flags are independent |
 | [Extending](docs/extending.md) | Recipes: a new endpoint, a new feature behind a flag, a page, a task, a locale |
 | [MCP](docs/mcp.md) | The three separate things called MCP here, what each one guarantees, and what has not been verified |
-| [Theming](#theming) | Re-skinning the SPA for a new brand |
+| [Mobile](docs/mobile.md) | The Expo app: how it authenticates, how emailed links reach it, and what it deliberately does not do |
+| [Theming](#theming) | Re-skinning both clients for a new brand |
 | [CLAUDE.md](CLAUDE.md) | The decisions that are easy to undo by accident. Read before changing anything structural |
 
 The rest of this file is the tour: quick start, then a section per feature
@@ -47,7 +48,8 @@ make up
 
 The API is on http://localhost:8000, docs on http://localhost:8000/api/docs/.
 Start the frontend separately with `make fe-install && make fe-dev`
-(http://localhost:3000).
+(http://localhost:3000), and the mobile app with `make mobile-dev` — see
+[docs/mobile.md](docs/mobile.md).
 
 ### Without Docker
 
@@ -104,8 +106,15 @@ utils/             response envelope, email, logging, GDPR helpers
 templates/emails/  transactional email templates
 requirements/      base.txt, dev.txt, prod.txt
 scripts/           the rename script
+packages/shared/   brand tokens, route table, API types -- both clients import these
 website/           the React SPA (see website/README.md)
+mobile/            the Expo app (see docs/mobile.md)
 ```
+
+The three JavaScript directories are npm workspaces with one lockfile at the
+root. `packages/shared` is the reason: the website and the mobile app have to
+agree on every backend path, every response type and every brand token, and
+two copies of those drift.
 
 ---
 
@@ -827,8 +836,9 @@ so drop it with a migration rather than by hand.
 
 ## Theming
 
-Everything visual comes from **`website/src/styles/brand.ts`**. No component
-hardcodes a colour or a radius, so a re-brand is one file:
+Everything visual comes from **`packages/shared/src/brand.ts`**. No component
+hardcodes a colour or a radius, and both clients read the same file — so a
+re-brand is one file for the website and the app together:
 
 ```ts
 export const identity = {

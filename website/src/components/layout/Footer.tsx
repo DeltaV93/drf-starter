@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Container } from '@mui/material';
 
-import { identity } from '../../styles/brand';
+import { identity } from '@app/shared/brand';
 
 const Footer: React.FC = () => {
   return (

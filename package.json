@@ -1,0 +1,17 @@
+{
+  "name": "drf-starter-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "npm workspace root. The Django project is the repository; this file exists so the two JavaScript clients can share one copy of the brand tokens, the route table and the API types.",
+  "workspaces": [
+    "packages/*",
+    "website",
+    "mobile"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspace website"
+  }
+}

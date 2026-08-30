@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help setup up down logs shell migrate migrations superuser test test-backend \
-        test-frontend lint format check schema build clean rename fe-install fe-dev fe-build
+        test-frontend test-mobile lint format check schema build clean rename \
+        fe-install fe-dev fe-build mobile-dev mobile-ios mobile-android
 
 PYTHON ?= python
 VENV   ?= .venv
@@ -21,6 +22,7 @@ setup: ## Create the virtualenv, install deps, copy .env
 	$(BIN)/pip install -r requirements/dev.txt
 	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example")
 	@test -f website/.env || (cp website/.env.example website/.env && echo "Created website/.env")
+	@test -f mobile/.env || (cp mobile/.env.example mobile/.env && echo "Created mobile/.env")
 	@echo "Now run: make migrate && make run"
 
 run: ## Run the Django dev server
@@ -58,23 +60,29 @@ logs: ## Tail service logs
 # Quality
 # ---------------------------------------------------------------------------
 
-test: test-backend test-frontend ## Run every test suite
+test: test-backend test-frontend test-mobile ## Run every test suite
 
 test-backend: ## Run pytest with coverage
 	$(BIN)/python -m pytest --cov --cov-report=term-missing
 
-test-frontend: ## Run the frontend test suite
-	cd website && npm run test
+test-frontend: ## Run the website test suite
+	npm run test --workspace website
 
-lint: ## Lint backend and frontend
+test-mobile: ## Run the mobile test suite
+	npm run test --workspace mobile
+
+lint: ## Lint backend, website and mobile
 	$(BIN)/ruff check .
 	$(BIN)/ruff format --check .
-	cd website && npm run lint && npm run typecheck
+	@# `--workspaces` covers packages/shared too, which has a typecheck and no
+	@# lint of its own -- `--if-present` is what lets that be true.
+	npm run lint --workspaces --if-present
+	npm run typecheck --workspaces --if-present
 
 format: ## Auto-format and auto-fix
 	$(BIN)/ruff check --fix .
 	$(BIN)/ruff format .
-	cd website && npm run lint:fix
+	npm run lint:fix --workspaces --if-present
 
 check: ## Django checks, including the production deploy checklist
 	$(BIN)/python manage.py check
@@ -102,14 +110,30 @@ schema: ## Write the OpenAPI schema to schema.yml
 # Frontend
 # ---------------------------------------------------------------------------
 
-fe-install: ## Install frontend dependencies
-	cd website && npm install
+fe-install: ## Install every workspace's dependencies
+	@# One install at the root. The website, the mobile app and packages/shared
+	@# are npm workspaces, so installing inside one of them would produce a
+	@# second lockfile and a second copy of React.
+	npm install
 
 fe-dev: ## Run the Vite dev server
-	cd website && npm run dev
+	npm run dev --workspace website
 
 fe-build: ## Production build of the frontend
-	cd website && npm run build
+	npm run build --workspace website
+
+# ---------------------------------------------------------------------------
+# Mobile
+# ---------------------------------------------------------------------------
+
+mobile-dev: ## Start the Expo dev server
+	npm run start --workspace mobile
+
+mobile-ios: ## Open the app in the iOS simulator
+	npm run ios --workspace mobile
+
+mobile-android: ## Open the app in the Android emulator
+	npm run android --workspace mobile
 
 # ---------------------------------------------------------------------------
 # Template

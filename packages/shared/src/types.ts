@@ -169,3 +169,53 @@ export interface ConnectableServer {
   enabled: boolean;
   last_used_at: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Bearer-token authentication
+//
+// Used by clients with no cookie jar -- the mobile app. The website never
+// sees these shapes: it authenticates with the session cookie and its login
+// response carries `csrfToken` instead.
+// ---------------------------------------------------------------------------
+
+export interface TokenPair {
+  access: string;
+  refresh: string;
+  /** Seconds until `access` expires, so a client can refresh ahead of a 401. */
+  access_expires_in: number;
+}
+
+/** A completed token login. */
+export interface TokenAuthPayload extends TokenPair {
+  user: User;
+}
+
+/**
+ * What `auth/token/` answers with.
+ *
+ * With two-factor enrolled the password step issues no tokens at all. It
+ * answers `two_factor_required` plus a short-lived challenge the second step
+ * exchanges for the real pair -- so a client that read `access` unconditionally
+ * would store `undefined` and believe itself signed in.
+ */
+export interface TokenChallenge {
+  two_factor_required: true;
+  challenge: string;
+}
+
+export type TokenResponse = TokenAuthPayload | TokenChallenge;
+
+export function isTokenChallenge(response: TokenResponse): response is TokenChallenge {
+  return (response as TokenChallenge).two_factor_required === true;
+}
+
+/** A device registered to receive push notifications. */
+export interface PushDevice {
+  id: number;
+  token: string;
+  platform: 'ios' | 'android' | 'web';
+  device_name: string;
+  is_active: boolean;
+  last_seen_at: string;
+  created_at: string;
+}

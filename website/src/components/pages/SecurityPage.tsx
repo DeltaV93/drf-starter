@@ -39,7 +39,7 @@ import type {
   CreatedApiKey,
   SocialConnections,
   TwoFactorStatus,
-} from '../../lib/types';
+} from '@app/shared/types';
 import { useToast } from '../../store/toast';
 
 const TWO_FACTOR_ENABLED = import.meta.env.VITE_TWO_FACTOR_ENABLED === 'true';

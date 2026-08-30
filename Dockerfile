@@ -9,13 +9,31 @@
 # ---------------------------------------------------------------------------
 FROM node:26-slim AS frontend
 
+# The workspace root, not website/: there is one lockfile for the website, the
+# mobile app and packages/shared, and `npm ci` has to run where it lives.
+WORKDIR /app
+
+# Manifests first, so `npm ci` stays cached until a dependency actually
+# changes. Every workspace's package.json has to be here even though only one
+# is installed below -- `npm ci` verifies the lockfile against all of them and
+# refuses to run if one is missing.
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/
+COPY website/package.json website/
+COPY mobile/package.json mobile/
+
+# Only the website's tree. Without `--workspace` this would also install React
+# Native and every Expo module -- hundreds of megabytes of native code that no
+# part of this image can run, in a stage whose only job is to produce
+# website/dist.
+RUN npm ci --workspace website --workspace @app/shared --include-workspace-root
+
+# The shared package is source, not a build artefact: Vite compiles its
+# TypeScript as part of the app. It has to be present before the build.
+COPY packages/shared/ packages/shared/
+COPY website/ website/
+
 WORKDIR /app/website
-
-# package files first so npm ci is cached until dependencies actually change.
-COPY website/package.json website/package-lock.json ./
-RUN npm ci
-
-COPY website/ ./
 
 ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_STRIPE_ENABLED=false

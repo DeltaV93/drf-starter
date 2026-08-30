@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 
 import { apiCall, apiData, http } from '../../lib/api';
 import { routes } from '../../lib/routes';
-import type { Attachment } from '../../lib/types';
+import type { Attachment } from '@app/shared/types';
 import { useToast } from '../../store/toast';
 
 function humanSize(bytes: number) {

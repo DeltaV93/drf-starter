@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 
 import { useAuth } from '../../store/auth';
-import { identity } from '../../styles/brand';
+import { identity } from '@app/shared/brand';
 import { useToast } from '../../store/toast';
 import ColorSchemeToggle from './ColorSchemeToggle';
 

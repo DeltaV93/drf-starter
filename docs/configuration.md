@@ -375,6 +375,75 @@ test run, so a DSN in a CI environment cannot fill a real project with noise.
 
 ---
 
+## Bearer tokens (mobile)
+
+The website authenticates with a session cookie and a CSRF token. A phone has
+no cookie jar worth relying on, so the mobile app carries a short-lived access
+token and refreshes it against a long-lived one held in the platform keystore.
+This is *added* to the authentication classes, never substituted for them —
+nothing about the browser's session auth changes.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `TOKEN_ISSUER` | `drf-starter` | The `iss` claim. Also the only thing telling these tokens apart from another bearer scheme's on the same header, so do not share a value between deployments that can reach each other. Changing it invalidates every token in circulation. |
+| `ACCESS_TOKEN_MINUTES` | `15` | Access token lifetime. Keep it short: an access token cannot be revoked before it expires, because nothing consults a database on the way through. |
+| `REFRESH_TOKEN_DAYS` | `30` | Refresh token lifetime — how long someone stays signed in without retyping a password. Rotation plus blacklisting is what makes a value this large safe. |
+| `TOKEN_TWO_FACTOR_CHALLENGE_SECONDS` | `300` | How long the client has to answer a second-factor prompt before the challenge issued by `/auth/token/` stops being redeemable. |
+
+| `TOKEN_CLEANUP_HOUR` | `3` | Hour of the nightly sweep of expired blacklisted refresh tokens, in `TIME_ZONE`. |
+| `TOKEN_CLEANUP_MINUTE` | `30` | Minute of that sweep. |
+
+Refresh rotation writes a blacklist row per refresh — roughly a hundred per
+device per day — and `CELERY_BEAT_SCHEDULE` sweeps the expired ones nightly.
+That needs a **beat process** as well as a worker:
+
+```bash
+celery -A template beat -l info
+```
+
+Without one the schedule is inert and nothing removes the rows. The command
+only ever deletes tokens that have already expired, so a blacklisted token
+stays enforceable for its full lifetime either way.
+
+---
+
+## Mobile deep links
+
+The backend emails links into the web app: `/verify-email/<uid>/<token>`,
+`/confirm-password/...`, `/invitations/<token>`. Set these and it also
+publishes the two association documents that make iOS and Android hand those
+**same** URLs to the installed app instead of the browser — so one email works
+for both clients.
+
+Unset, each document 404s, which is the right answer for a deployment with no
+app: an empty `applinks` document tells iOS the association was checked and
+*refused*, and that answer is cached.
+
+Nothing here is a secret. Both documents are fetched unauthenticated by
+Apple's and Google's infrastructure.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `MOBILE_IOS_APP_ID` | *(none)* | `<TeamID>.<bundle identifier>`, from App Store Connect. Publishes `/.well-known/apple-app-site-association`. |
+| `MOBILE_ANDROID_PACKAGE` | *(none)* | The Android application id. With a fingerprint, publishes `/.well-known/assetlinks.json`. |
+| `MOBILE_ANDROID_SHA256_FINGERPRINTS` | *(none)* | Comma-separated SHA-256 signing fingerprints. More than one is normal — with Play App Signing the upload key and the distribution key differ, and a debug build differs again. Listing only the release fingerprint is why links work in production and open the browser on a developer's own handset. |
+| `MOBILE_APP_SCHEME` | `drfstarter` | The custom scheme the app also answers on, for development where there is no verified domain. Must match `scheme` in `mobile/app.json`. |
+| `MOBILE_DEEP_LINK_PATHS` | `/verify-email/*,/confirm-password/*,/invitations/*` | Which client-side paths the app claims. Anything not listed keeps opening in the browser. |
+
+---
+
+## Push notifications
+
+A registry of device tokens and nothing more: this project stores them and
+does not send anything, because which push service a project uses is not a
+decision a template should make. See `apps/push/`.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `PUSH_ENABLED` | `false` | Mounts `apps.push` and `/push/devices/`. Off by default — an app that never sends a notification should not be holding device tokens. |
+
+---
+
 ## Frontend
 
 These live in `website/.env` and are **inlined into the bundle at build time**.
@@ -396,7 +465,41 @@ one on a deployed container does nothing until the image is rebuilt.
 | `VITE_MCP_CLIENT_ENABLED` | `false` | Must match `MCP_CLIENT_ENABLED`. Mounts `/connections`, where a user authorises outbound MCP servers. There is no twin for `MCP_SERVER_ENABLED` or `MCP_OAUTH_ENABLED` — neither gates any UI. |
 
 **Not an environment variable:** the product name, colours, type and shape come
-from `website/src/styles/brand.ts`. See [Theming](../README.md#theming).
+from `packages/shared/src/brand.ts`, which the mobile app reads too. See
+[Theming](../README.md#theming).
+
+
+---
+
+## Mobile app
+
+These live in `mobile/.env` and are **inlined into the bundle at build time**
+by Expo, which only ever inlines the `EXPO_PUBLIC_` prefix. A variable read any
+other way is `undefined` in a release build.
+
+Its own file rather than the website's: a phone or simulator is not the machine
+Django runs on, so even the values that look shared are not.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `EXPO_PUBLIC_API_BASE_URL` | `http://localhost:8000/api/v1` | Where the app sends requests. **Must not end in a slash.** There is no dev-server proxy and no same-origin default — use `http://10.0.2.2:8000/api/v1` on an Android emulator, and a LAN address on a physical device. |
+| `EXPO_PUBLIC_WEB_URL` | `http://localhost:3000` | Where "Manage your subscription" and the other web-only links send people. |
+| `EXPO_PUBLIC_STRIPE_ENABLED` | `false` | Must match `STRIPE_ENABLED`. Shows the read-only plan screen. |
+| `EXPO_PUBLIC_SOCIAL_AUTH_ENABLED` | `false` | Must match `SOCIAL_AUTH_ENABLED`. |
+| `EXPO_PUBLIC_ORGANIZATIONS_ENABLED` | `false` | Must match `ORGANIZATIONS_ENABLED`. |
+| `EXPO_PUBLIC_API_KEYS_ENABLED` | `false` | Must match `API_KEYS_ENABLED`. |
+| `EXPO_PUBLIC_AUDIT_LOG_ENABLED` | `false` | Must match `AUDIT_LOG_ENABLED`. |
+| `EXPO_PUBLIC_TWO_FACTOR_ENABLED` | `false` | Must match `TWO_FACTOR_ENABLED`. |
+| `EXPO_PUBLIC_UPLOADS_ENABLED` | `false` | Must match `UPLOADS_ENABLED`. |
+| `EXPO_PUBLIC_MCP_CLIENT_ENABLED` | `false` | Must match `MCP_CLIENT_ENABLED`. |
+| `EXPO_PUBLIC_PUSH_ENABLED` | `false` | Must match `PUSH_ENABLED`. Asks for notification permission and registers the device. |
+| `EXPO_PUBLIC_SENTRY_DSN` | *(none)* | Crash reporting. Unset, nothing initialises and nothing is sent. A DSN is designed to ship in a client, so it is not a secret. |
+| `EXPO_PUBLIC_SENTRY_SEND_PII` | `false` | Ships usernames, email addresses and IP addresses to a third party. Off by default, like the backend's `SENTRY_SEND_PII`. |
+| `EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | `0` | Performance tracing. Costs battery and bandwidth per session. |
+| `EXPO_PUBLIC_SENTRY_RELEASE` | *(none)* | Which build a report came from. EAS sets this. |
+
+**Not an environment variable:** the app's colours, type and shape come from
+the same `packages/shared/src/brand.ts` the website reads.
 
 ---
 

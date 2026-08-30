@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
-import { darkPalette, identity, lightPalette } from './src/styles/brand.ts';
+import { darkPalette, identity, lightPalette } from '@app/shared/brand';
 
 /**
  * Substitutes the brand tokens into index.html at build time.

@@ -1,0 +1,162 @@
+/**
+ * The half of the HTTP client that has nothing to do with the platform.
+ *
+ * What differs between the website and the mobile app is only how a request
+ * proves who is making it: the browser sends a session cookie and echoes a
+ * CSRF token, the phone sends a bearer token it refreshes itself. Neither of
+ * those belongs here.
+ *
+ * What is identical is everything after the response arrives -- unwrapping the
+ * `{status, message, data, errors}` envelope and turning a failure into an
+ * error a form can read field by field. That is what lives here, so a change
+ * to the envelope is one edit rather than two.
+ */
+
+import axios, {
+  type AxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from 'axios';
+
+import type { ApiEnvelope } from './types';
+
+export const DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please try again.';
+
+export class ApiError extends Error {
+  readonly status: number | undefined;
+  readonly fieldErrors: Record<string, string[] | string>;
+
+  /**
+   * Whether `message` is the backend's own words.
+   *
+   * False for a transport failure, and for an HTTP error whose body carried
+   * no message -- in both cases `message` is a fallback this library or the
+   * call site invented, in whatever language that source happened to be
+   * written in. A client that translates its own copy needs to know the
+   * difference, or it shows a stray English sentence to a Spanish reader on
+   * exactly the failures nobody tests.
+   */
+  readonly fromServer: boolean;
+
+  /**
+   * Seconds to wait before retrying, from the `Retry-After` header.
+   *
+   * Only ever present on a 429. DRF sets it on every throttled response, and
+   * without reading it a client can only say "too many attempts" -- so people
+   * retry immediately, straight back into the limit, which is how a login
+   * throttle of 10/min turns into an account nobody can get into for an hour.
+   */
+  readonly retryAfterSeconds: number | undefined;
+
+  constructor(
+    message: string,
+    status?: number,
+    fieldErrors = {},
+    fromServer = false,
+    retryAfterSeconds?: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.fieldErrors = fieldErrors;
+    this.fromServer = fromServer;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+
+  /** True when the server refused because the caller is going too fast. */
+  get isRateLimited(): boolean {
+    return this.status === 429;
+  }
+
+  /** The first message for a field, for wiring straight into a form. */
+  fieldError(field: string): string | undefined {
+    const value = this.fieldErrors[field];
+    if (!value) return undefined;
+    return Array.isArray(value) ? value[0] : value;
+  }
+
+  /**
+   * True when the request failed before it reached the backend.
+   *
+   * Worth distinguishing on mobile, where losing signal mid-request is
+   * ordinary rather than exceptional and deserves a different message from
+   * "the server said no".
+   */
+  get isNetworkError(): boolean {
+    return this.status === undefined;
+  }
+}
+
+/** Turn anything thrown by axios into an ApiError carrying the envelope. */
+export function toApiError(error: unknown, fallback = DEFAULT_ERROR_MESSAGE): ApiError {
+  if (error instanceof ApiError) return error;
+
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<ApiEnvelope>;
+    const envelope = axiosError.response?.data;
+    return new ApiError(
+      envelope?.message || axiosError.message || fallback,
+      axiosError.response?.status,
+      envelope?.errors ?? {},
+      Boolean(envelope?.message),
+      retryAfter(axiosError),
+    );
+  }
+  return new ApiError(fallback);
+}
+
+/**
+ * `Retry-After` as a number of seconds, if the response carried one.
+ *
+ * The header is defined as either a delay in seconds or an HTTP date. DRF
+ * only ever sends the former, but a proxy in front of it may rewrite it, so
+ * both are read -- a date that has already passed reads as zero rather than
+ * as a negative wait.
+ */
+function retryAfter(error: AxiosError): number | undefined {
+  const header = error.response?.headers?.['retry-after'];
+  if (header === undefined || header === null) return undefined;
+
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return Math.max(0, Math.round(seconds));
+
+  const until = Date.parse(String(header));
+  if (Number.isNaN(until)) return undefined;
+  return Math.max(0, Math.round((until - Date.now()) / 1000));
+}
+
+export type ApiRequestConfig = AxiosRequestConfig & { errorMessage?: string };
+
+/**
+ * Bind `apiCall` / `apiData` to a configured axios instance.
+ *
+ * Each app supplies its own instance -- already carrying whichever auth
+ * interceptor it needs -- and gets back the same two functions its call sites
+ * use, so no screen knows which authentication scheme it is running under.
+ */
+export function createApiClient(http: AxiosInstance) {
+  /**
+   * Make a request and unwrap the response envelope.
+   *
+   * Throws ApiError on failure so callers can `try/catch` rather than inspect
+   * status codes.
+   */
+  async function apiCall<T = unknown>(config: ApiRequestConfig): Promise<ApiEnvelope<T>> {
+    const { errorMessage = DEFAULT_ERROR_MESSAGE, ...axiosConfig } = config;
+
+    try {
+      const response = await http.request<ApiEnvelope<T>>(axiosConfig);
+      return response.data;
+    } catch (error) {
+      throw toApiError(error, errorMessage);
+    }
+  }
+
+  /** Same as apiCall but returns just the `data` payload. */
+  async function apiData<T>(config: ApiRequestConfig): Promise<T | undefined> {
+    const envelope = await apiCall<T>(config);
+    return envelope.data;
+  }
+
+  return { apiCall, apiData };
+}

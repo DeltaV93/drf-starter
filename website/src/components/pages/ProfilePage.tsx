@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiError, apiCall } from '../../lib/api';
 import { routes } from '../../lib/routes';
-import type { User } from '../../lib/types';
+import type { User } from '@app/shared/types';
 import { useAuth } from '../../store/auth';
 import { useToast } from '../../store/toast';
 

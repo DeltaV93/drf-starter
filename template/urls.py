@@ -8,6 +8,9 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.core import deep_links
+from apps.core.views import AppleAppSiteAssociationView, AssetLinksView
+
 # Everything the SPA talks to lives under a version prefix so a breaking
 # change can ship as /api/v2/ alongside the old routes.
 api_v1_patterns = [
@@ -34,6 +37,9 @@ if settings.UPLOADS_ENABLED:
 if settings.MCP_CLIENT_ENABLED:
     api_v1_patterns.append(path('', include('apps.mcp_client.urls')))
 
+if settings.PUSH_ENABLED:
+    api_v1_patterns.append(path('', include('apps.push.urls')))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),
@@ -45,6 +51,23 @@ urlpatterns = [
         name='swagger-ui',
     ),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+]
+
+# The two documents that let the mobile app claim this site's own URLs, so an
+# emailed verification or invitation link opens the app rather than the SPA.
+# At the root, not under the version prefix: both paths are fixed by the
+# platform and cannot carry one.
+#
+# Registered unconditionally, with no flag. Each view 404s until its own half
+# is configured, which is the right answer for a deployment with no app -- and
+# a flag would be one more thing to remember on the day the app ships.
+urlpatterns += [
+    path(
+        deep_links.APPLE_PATH,
+        AppleAppSiteAssociationView.as_view(),
+        name='apple-app-site-association',
+    ),
+    path(deep_links.ANDROID_PATH, AssetLinksView.as_view(), name='android-asset-links'),
 ]
 
 if settings.MCP_OAUTH_ENABLED:

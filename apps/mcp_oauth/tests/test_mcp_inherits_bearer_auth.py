@@ -132,6 +132,7 @@ def test_the_mcp_server_imports_nothing_from_the_oauth_app():
     working with the flag off and the two apps would no longer be separable --
     which is the thing this file exists to keep true.
     """
+    import importlib.util
     import pkgutil
 
     import apps.mcp_server
@@ -140,7 +141,12 @@ def test_the_mcp_server_imports_nothing_from_the_oauth_app():
     for module in pkgutil.walk_packages(apps.mcp_server.__path__, prefix='apps.mcp_server.'):
         if '.tests' in module.name:
             continue
-        source = pkgutil.get_loader(module.name).get_source(module.name) or ''
+        # `importlib.util.find_spec` rather than `pkgutil.get_loader`, which
+        # Python 3.14 removed. Reading the source without importing is the
+        # point: importing every module would defeat a test about what they
+        # import.
+        spec = importlib.util.find_spec(module.name)
+        source = spec.loader.get_source(module.name) or '' if spec and spec.loader else ''
         if 'mcp_oauth' in source:
             offenders.append(module.name)
 

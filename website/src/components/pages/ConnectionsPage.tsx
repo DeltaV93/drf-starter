@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 
 import { apiCall, apiData } from '../../lib/api';
 import { routes } from '../../lib/routes';
-import type { ConnectableServer } from '../../lib/types';
+import type { ConnectableServer } from '@app/shared/types';
 import { useToast } from '../../store/toast';
 
 export default function ConnectionsPage() {

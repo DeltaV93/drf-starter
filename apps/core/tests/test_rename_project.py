@@ -7,9 +7,11 @@ with nothing in the diff to explain it -- and by then the script has usually
 been deleted, as its own closing message advises.
 
 It had no tests. That is the gap worth closing rather than any single bug: the
-display name lives in `website/src/styles/brand.ts` only because the theming
+display name lives in `packages/shared/src/brand.ts` only because the theming
 work put it there, and nothing would have failed if that file had been outside
-the script's reach.
+the script's reach. It has since moved once already -- out of `website/src/`
+and into the package the mobile app shares -- which is the second argument for
+pinning it here rather than trusting the script's reach.
 
 Everything below runs against a throwaway copy of the repository, renamed
 once for the whole module. Nothing touches the working tree.
@@ -94,7 +96,7 @@ def test_the_product_name_is_renamed_at_its_single_source(renamed):
     the theming work, long after this script was written, and nothing checked
     that the script could still reach it.
     """
-    brand = (renamed / 'website' / 'src' / 'styles' / 'brand.ts').read_text()
+    brand = (renamed / 'packages' / 'shared' / 'src' / 'brand.ts').read_text()
 
     assert f"name: '{NEW_DISPLAY_NAME}'" in brand
     assert OLD_DISPLAY_NAME not in brand

@@ -19,9 +19,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
+from contextlib import contextmanager
 from typing import Any
 
 from django.core.asgi import get_asgi_application
+from django.core.signals import request_finished, request_started
+from django.db import close_old_connections
 
 # Built once. Django is already configured by the time this is imported, and
 # constructing the handler per call would rebuild the middleware chain on every
@@ -34,6 +38,51 @@ def _app():
     if _django_asgi_app is None:
         _django_asgi_app = get_asgi_application()
     return _django_asgi_app
+
+
+# Sub-requests can overlap: two agents calling tools at once share one process,
+# and the signal receivers below are global to it. A depth count means the last
+# one out restores them, rather than the first one out restoring them while the
+# others are still running.
+_nesting_lock = threading.Lock()
+_nesting = 0
+
+
+@contextmanager
+def _borrowed_connections():
+    """Run a sub-request without letting it manage the database connection.
+
+    Django connects `close_old_connections` to `request_started` and
+    `request_finished`, which is right for a request that owns its connection
+    and wrong for this one: the caller already has one open, and this is a
+    nested call inside it rather than a new lifecycle.
+
+    In production the connection closed mid-flight would be the outer HTTP
+    request's. Under a test it is the transaction pytest-django wraps each
+    test in: `close_old_connections` reads an autocommit setting that no
+    longer matches -- being inside `atomic` is exactly that mismatch -- and
+    closes it, so the next query raises "the connection is closed". SQLite
+    hides the whole thing, because its backend declines to close an in-memory
+    database, which is why this only ever failed against PostgreSQL.
+
+    Django's own test client disconnects the same two receivers for the same
+    reason. Doing it here rather than in the tests is deliberate: the tests
+    are not the only caller, and they should exercise what production runs.
+    """
+    global _nesting
+    with _nesting_lock:
+        if _nesting == 0:
+            request_started.disconnect(close_old_connections)
+            request_finished.disconnect(close_old_connections)
+        _nesting += 1
+    try:
+        yield
+    finally:
+        with _nesting_lock:
+            _nesting -= 1
+            if _nesting == 0:
+                request_started.connect(close_old_connections)
+                request_finished.connect(close_old_connections)
 
 
 class ApiError(Exception):
@@ -120,7 +169,8 @@ async def call_api(
         elif message['type'] == 'http.response.body':
             chunks.append(message.get('body', b''))
 
-    await _app()(scope, receive, send)
+    with _borrowed_connections():
+        await _app()(scope, receive, send)
 
     raw = b''.join(chunks)
     try:

@@ -145,3 +145,62 @@ def test_the_server_holds_no_credential_of_its_own(user):
     with _As(None):
         with pytest.raises(MissingCredential):
             async_to_sync(identity.whoami)()
+
+
+def test_a_tool_call_leaves_the_surrounding_connection_open(user):
+    """The sub-request must not close the connection its caller is using.
+
+    `call_api` drives the ASGI application directly, so Django's
+    `close_old_connections` fires on `request_started` and `request_finished`
+    exactly as it would for a request arriving over a socket -- and closes a
+    connection that belongs to whoever called the tool rather than to this
+    request. In production that is the outer HTTP request; here it is the
+    transaction each test runs in.
+
+    Asserted by watching for the close itself rather than by issuing a query
+    afterwards, because the query only fails on PostgreSQL. SQLite's backend
+    declines to close an in-memory database at all, so the close lands and
+    nothing breaks. This suite runs on SQLite by default, which is why this
+    reached CI: six tests in this file exercised the path and none of them
+    could see it.
+    """
+    from django.db import connection
+
+    closes = []
+    real_close = connection.close
+    connection.close = lambda: closes.append(True)
+    try:
+        with _As(_key_for(user)):
+            async_to_sync(identity.whoami)()
+    finally:
+        connection.close = real_close
+
+    assert not closes
+
+
+def test_overlapping_tool_calls_do_not_restore_the_receivers_early():
+    """Two agents can call tools at once, and the receivers are process-wide.
+
+    Restoring them when the first call finishes would re-arm
+    `close_old_connections` underneath the second one, putting back exactly
+    the bug the test above pins -- but only under load, which is the worst
+    way to find out.
+    """
+    from django.core.signals import request_started
+    from django.db import close_old_connections
+
+    from apps.mcp_server.call import _borrowed_connections
+
+    def armed():
+        # `_live_receivers` rather than `receivers`, which holds weakrefs and
+        # so never compares equal to the function itself.
+        sync_receivers, _ = request_started._live_receivers(None)
+        return close_old_connections in sync_receivers
+
+    assert armed()
+    with _borrowed_connections():
+        assert not armed()
+        with _borrowed_connections():
+            assert not armed()
+        assert not armed(), 'the inner call restored them while the outer was still running'
+    assert armed()

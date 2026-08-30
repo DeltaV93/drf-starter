@@ -20,7 +20,7 @@ import {
   shape,
   spacingUnit,
   type BrandPalette,
-} from './brand';
+} from '@app/shared/brand';
 import theme from './theme';
 
 // ---------------------------------------------------------------------------
