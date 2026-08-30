@@ -219,3 +219,23 @@ export interface PushDevice {
   last_seen_at: string;
   created_at: string;
 }
+
+/**
+ * What the backend says about the build asking.
+ *
+ * `required` is the only one that blocks. Anything the client cannot reach or
+ * cannot parse has to be treated as `none`: a version gate that fails closed
+ * turns a backend outage into every phone showing an upgrade wall, and no
+ * amount of tapping clears it.
+ */
+export type UpgradeRequirement = 'none' | 'recommended' | 'required';
+
+export interface UpgradeCheck {
+  requirement: UpgradeRequirement;
+  minimum_version: string;
+  recommended_version: string;
+  /** Where "Update" goes. Empty when nobody has configured a store listing. */
+  store_url: string;
+  /** Replaces the app's own wording when set, in whatever language it is written. */
+  message: string;
+}

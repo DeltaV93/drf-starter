@@ -85,20 +85,20 @@ CELERY_TASK_EAGER_PROPAGATES = True
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 # Throttling would make the suite order-dependent. The scopes have to stay
-# defined -- views name them explicitly in throttle_classes -- so the limits
-# are raised out of reach instead of removed. Rate limiting itself is covered
-# by apps/authentication/tests/test_throttling.py, which sets its own rates.
+# defined -- views name them explicitly in throttle_classes, and a scope with
+# no rate raises KeyError rather than going unthrottled -- so the limits are
+# raised out of reach instead of removed. Rate limiting itself is covered by
+# apps/authentication/tests/test_throttling.py, which sets its own rates.
+#
+# Derived from base rather than listed again. The list was written out by hand
+# and every scope added since had to be remembered here too; forgetting turned
+# into a 500 from the view that named it, which reads as a bug in the view.
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,
     'DEFAULT_THROTTLE_CLASSES': [],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100000/day',
-        'user': '100000/day',
-        'login': '100000/day',
-        'password_reset': '100000/day',
-        'api_key': '100000/day',
-        'data_export': '100000/day',
-    },
+    'DEFAULT_THROTTLE_RATES': dict.fromkeys(
+        REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'], '100000/day'
+    ),
 }
 
 SESSION_COOKIE_SECURE = False

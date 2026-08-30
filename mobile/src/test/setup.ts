@@ -84,3 +84,27 @@ jest.mock('expo-notifications', () => ({
   // override it.
   useLastNotificationResponse: jest.fn(() => null),
 }));
+
+/**
+ * Over-the-air updates.
+ *
+ * `isEnabled` false by default, which is what a real build without an EAS
+ * project reports -- so a test that does not opt in exercises the same path a
+ * plain checkout runs. The tests that care flip it.
+ */
+jest.mock('expo-updates', () => ({
+  isEnabled: false,
+  checkForUpdateAsync: jest.fn(async () => ({ isAvailable: false })),
+  fetchUpdateAsync: jest.fn(async () => ({ isNew: true })),
+  // Present so a test that calls it fails loudly rather than silently
+  // reloading nothing. Applying an update on the spot is the thing
+  // `lib/updates.ts` must never do.
+  reloadAsync: jest.fn(async () => {
+    throw new Error('reloadAsync must not be called: updates apply on next cold start');
+  }),
+}));
+
+jest.mock('expo-application', () => ({
+  nativeApplicationVersion: '1.0.0',
+  nativeBuildVersion: '1',
+}));

@@ -9,6 +9,8 @@ website and signs in to the same accounts.
 - [Authentication](#authentication)
 - [Deep links](#deep-links)
 - [Push notifications](#push-notifications)
+- [Over-the-air updates](#over-the-air-updates)
+- [Requiring an upgrade](#requiring-an-upgrade)
 - [Feature flags](#feature-flags)
 - [What the app deliberately does not do](#what-the-app-deliberately-does-not-do)
 - [Building for the stores](#building-for-the-stores)
@@ -173,6 +175,118 @@ Rotation writes a blacklist row per refresh, swept nightly by
 `CELERY_BEAT_SCHEDULE`. That needs a `celery -A template beat` process running
 alongside the worker — see
 [Bearer tokens (mobile)](configuration.md#bearer-tokens-mobile).
+
+---
+
+## Over-the-air updates
+
+A JavaScript-only fix can reach devices without a store release.
+`expo-updates` fetches a new bundle in the background and it takes effect the
+**next time the app is launched from cold**. Nothing calls
+`Updates.reloadAsync()`, and that is a decision rather than an omission:
+reloading restarts the app underneath whoever is using it and loses whatever
+they had typed, for a change they did not ask for and cannot decline. The
+tests in `mobile/src/lib/__tests__/updates.test.ts` fail if someone adds it.
+
+The app looks on launch and again when it returns to the foreground — a phone
+that is never fully closed can otherwise run the same bundle for weeks —
+throttled to one check every thirty minutes.
+
+### Turning it on
+
+```bash
+cd mobile && npx eas init      # creates the project, prints its id
+echo "EXPO_PUBLIC_EAS_PROJECT_ID=<the id>" >> .env
+npx eas update --branch production
+```
+
+Unset, `updates` is omitted from the manifest entirely and `Updates.isEnabled`
+is false. That is the correct state for a fresh checkout: an app pointed at an
+update server that does not answer retries on every launch for nothing. The
+template carries no project id because one identifies *your* account — every
+adopter would otherwise publish into it, or fail at publish time against a
+project they cannot write to.
+
+### What an update may and may not change
+
+`runtimeVersion` uses the **`fingerprint`** policy: Expo hashes everything
+affecting the native runtime — the SDK, the native modules, `app.config.ts` —
+and an update only installs into a build whose fingerprint matches.
+
+This is the safety property, and it is worth understanding what it buys.
+Expo matches runtime versions by string equality and verifies nothing beyond
+it. Under the more common `appVersion` policy, compatibility is tied to the
+marketing version, so publishing after adding a native module without
+remembering to bump `version` sends a bundle that imports a module the binary
+does not contain — a crash on launch, delivered over the air, on devices you
+cannot reach. `fingerprint` cannot drift, because it is derived from the thing
+it is protecting.
+
+The cost is real: adding native code forces a new store build. That is the
+honest constraint stated at publish time instead of discovered in a crash
+report.
+
+### Versions
+
+| What | Where it lives | Who bumps it |
+|---|---|---|
+| Marketing version (`1.4.0`) | `mobile/package.json`, read by `app.config.ts` | You, via `npm version` |
+| Build number / `versionCode` | EAS, remotely | `autoIncrement` in `eas.json` |
+| `runtimeVersion` | Computed from the native fingerprint | Nobody — it is derived |
+
+One version number, in `package.json`, because npm already owns that field and
+a second copy in `app.config.ts` is the one nobody remembers to change.
+`appVersionSource: "remote"` in `eas.json` governs the *build number* only, not
+this — which is why no `buildNumber` or `versionCode` appears in the manifest.
+`mobile/src/__tests__/appConfig.test.ts` pins all three.
+
+---
+
+## Requiring an upgrade
+
+Some builds have to stop running: one that corrupts data, or leaks something,
+or calls an endpoint that had to be withdrawn. An OTA update cannot fix those
+— they are in the binary — so the backend can refuse them.
+
+`apps/app_releases` holds one row per platform, edited in Django admin:
+
+| Field | Effect |
+|---|---|
+| `minimum_version` | Below it, the app shows a screen with no way past it. |
+| `recommended_version` | Below it, a dismissible banner. Declining is remembered for the session, not forever. |
+| `store_url` | Where "Update" goes. Without it the block explains itself instead. |
+| `message` | Replaces the app's own wording, in whatever language you write it. |
+
+An empty table gates nobody, which is what a fresh deployment must do. In the
+admin because the moment you need this is an incident, and waiting on a deploy
+to change an environment variable is the wrong shape for that.
+
+Reach for `recommended_version` first. `minimum_version` is the one that can
+lock every user out of the product, and it should cost you a moment's thought
+each time.
+
+### How the client treats it
+
+```
+GET /api/v1/app/upgrade/?platform=ios&version=1.4.0
+    → { requirement: "none" | "recommended" | "required", store_url, message, ... }
+```
+
+Unauthenticated, deliberately: the build being gated may be one whose sign-in
+is exactly what broke, and requiring a session would mean the only people who
+could be told to upgrade are the ones who did not need telling.
+
+**It fails open, everywhere.** Offline, a 500, a timeout, an HTML error page
+from a proxy, a `requirement` this client does not recognise, a version string
+neither side can parse — every one of them resolves to "carry on". A version
+gate that failed closed would turn a backend wobble into an upgrade wall on
+every phone at once, clearable only by a store release. Most of
+`mobile/src/lib/__tests__/upgrade.test.ts` is about that direction rather than
+about blocking working.
+
+The version compared is `Application.nativeApplicationVersion` — the binary's,
+not the JavaScript bundle's. After an OTA update those differ, and the gate is
+about the binary, since that is the thing no update can replace.
 
 ---
 

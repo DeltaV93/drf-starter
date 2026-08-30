@@ -5,19 +5,23 @@
  * runs exactly once per launch -- which is what the bootstraps need.
  */
 
+import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PaperProvider } from 'react-native-paper';
+import { Banner, PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PaperIcon } from '../components/PaperIcon';
 import { Toast } from '../components/Toast';
+import { UpgradeRequired } from '../components/UpgradeRequired';
 import '../i18n';
 import { initialiseMonitoring, withMonitoring } from '../lib/monitoring';
+import { useBackgroundUpdates } from '../lib/updates';
 import { usePushNavigation } from '../lib/usePushNavigation';
+import { useUpgradeGate } from '../lib/useUpgradeGate';
 import { useAuthBootstrap } from '../store/auth';
 import { useOrganizationBootstrap } from '../store/organization';
 import {
@@ -87,21 +91,46 @@ function RootLayout() {
   // does nothing when no notification has been tapped -- which is every
   // launch on a deployment with push switched off.
   usePushNavigation();
+  // Downloads in the background and takes effect on the next cold start.
+  // Nothing to render, and nothing to wait for.
+  useBackgroundUpdates();
+
+  const gate = useUpgradeGate();
+  // Once per launch: this component mounts once, so declining here is
+  // remembered for the session and forgotten by the next one. Deliberately
+  // not persisted -- a nudge someone dismissed in March should come back.
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   const theme = useAppTheme();
   const scheme = useResolvedColorScheme();
   const { t } = useTranslation();
   const colorSchemeReady = useColorSchemeHydrated();
 
-  // Both answers are needed before the first visible frame: who is signed in
-  // decides the screen, and the stored theme decides its colours. Hiding on
-  // the first alone trades a flash of the wrong screen for a flash of the
-  // wrong palette.
-  const ready = status !== 'loading' && colorSchemeReady;
+  // Three answers are needed before the first visible frame: who is signed
+  // in decides the screen, the stored theme decides its colours, and the
+  // version check decides whether there is an app to show at all. Hiding on
+  // fewer trades a flash of the wrong screen for a flash of the wrong
+  // palette -- or, worse, a blocked build showing its home screen for a beat
+  // before the wall drops.
+  const ready = status !== 'loading' && colorSchemeReady && !gate.pending;
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
+
+  // Rendered in place of the navigator, not above it. A wall you can
+  // navigate behind is not a wall -- and this stays inside the providers so
+  // it is themed and translated like everything else.
+  if (gate.check?.requirement === 'required') {
+    return (
+      <SafeAreaProvider>
+        <PaperProvider theme={theme} settings={{ icon: PaperIcon }}>
+          <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+          <UpgradeRequired check={gate.check} />
+        </PaperProvider>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -109,6 +138,23 @@ function RootLayout() {
         {/* Inverted on purpose: the status bar text has to contrast with the
             app's background, so a dark theme needs light text. */}
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+        {gate.check?.requirement === 'recommended' && !nudgeDismissed ? (
+          <Banner
+            visible
+            actions={[
+              {
+                label: t('upgradeAction'),
+                onPress: () => {
+                  if (gate.check?.store_url) void Linking.openURL(gate.check.store_url);
+                  setNudgeDismissed(true);
+                },
+              },
+              { label: t('upgradeLater'), onPress: () => setNudgeDismissed(true) },
+            ]}
+          >
+            {gate.check.message || t('upgradeAvailableTitle')}
+          </Banner>
+        ) : null}
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: theme.colors.surface },

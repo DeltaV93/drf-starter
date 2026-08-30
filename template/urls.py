@@ -17,6 +17,9 @@ api_v1_patterns = [
     path('', include('apps.core.urls')),
     path('', include('apps.authentication.urls')),
     path('', include('apps.users.urls')),
+    # Always mounted: a mobile client that cannot reach the upgrade check
+    # cannot be gated, so this must not depend on a feature flag.
+    path('', include('apps.app_releases.urls')),
 ]
 
 if settings.STRIPE_ENABLED:

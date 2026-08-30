@@ -172,6 +172,12 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.users',
     'apps.authentication',
+    # Not flag-gated, unlike the optional features below. The mobile client
+    # asks this app whether it is too old to run, and a flag would mean a
+    # deployment could silently answer 404 to that question -- which the
+    # client can only treat as "carry on", the exact opposite of a gate. It
+    # costs one table that is empty until someone fills it in.
+    'apps.app_releases',
 ]
 
 if STRIPE_ENABLED:
@@ -432,6 +438,11 @@ REST_FRAMEWORK = {
         # mail to an address. Unthrottled it is both a load amplifier and a
         # way to make the application send someone repeated email.
         'data_export': os.environ.get('THROTTLE_DATA_EXPORT', '3/day'),
+        # The mobile version gate, which every installation calls on launch
+        # and on foreground. Anonymous throttling is keyed by IP, so this has
+        # to have room for a whole office behind one address -- and the view
+        # answers from a one-minute cache, so it is cheap to allow.
+        'app_upgrade': os.environ.get('THROTTLE_APP_UPGRADE', '600/hour'),
     },
 }
 
