@@ -91,10 +91,16 @@ jobs:
 
       # Billing is optional. Prove the project still boots and passes with it
       # switched off, not just with the default-on test configuration.
+      #
+      # `--create-db` overrides the `--reuse-db` in pyproject: the database the
+      # previous step left behind was built from a different INSTALLED_APPS.
+      # Reusing it leaves `subscriptions_*` tables present but unmanaged, and a
+      # `transaction=True` test then fails at teardown, because PostgreSQL
+      # refuses to TRUNCATE a table that an untruncated one references.
       - name: Test with billing disabled
         env:
           STRIPE_ENABLED: 'false'
-        run: pytest -q
+        run: pytest -q --create-db
 
       # Optional subsystems are independent by design -- no feature holds a
       # foreign key into another. This is what proves it: every flag off, then
@@ -103,6 +109,9 @@ jobs:
       # It does NOT cover the full combination space, and is not meant to.
       # With N flags that is 2^N; this catches the realistic failure, which is
       # one feature quietly depending on another.
+      #
+      # Each combination builds its own database -- see the step above for why
+      # a reused one cannot be trusted once INSTALLED_APPS changes.
       - name: Flag combinations
         run: |
           set -uo pipefail
@@ -111,7 +120,7 @@ jobs:
           run_with() {
             local label="$1"; shift
             echo "::group::$label"
-            if ! env "$@" pytest -q; then
+            if ! env "$@" pytest -q --create-db; then
               echo "::endgroup::"
               echo "::error::suite failed with $label"
               return 1
