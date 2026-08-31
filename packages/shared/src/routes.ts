@@ -137,6 +137,16 @@ export function createRoutes(baseUrl: string = DEFAULT_API_BASE_URL) {
         detail: (id: number) => join(BASE_URL, `files/${id}/`),
         download: (id: number) => join(BASE_URL, `files/${id}/download/`),
       },
+      // Asked before sign-in, and by a build that may be too old to sign in
+      // at all -- so unlike everything else here it takes no credential.
+      app: {
+        upgrade: (platform: string, version: string) =>
+          join(
+            BASE_URL,
+            `app/upgrade/?platform=${encodeURIComponent(platform)}` +
+              `&version=${encodeURIComponent(version)}`,
+          ),
+      },
       // Push registration exists only for the mobile client, but it lives in
       // the same table so there is still one list of what the backend serves.
       push: {

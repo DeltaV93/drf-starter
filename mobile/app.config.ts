@@ -21,6 +21,17 @@ import type { ExpoConfig } from 'expo/config';
 
 import { darkPalette, identity, lightPalette } from '@app/shared/brand';
 
+// The one place the app's version is written down. `package.json` rather than
+// a literal here because npm already owns that field -- `npm version minor`
+// bumps it, and a second copy in this file would be the one nobody remembers.
+//
+// This is the *marketing* version: CFBundleShortVersionString on iOS,
+// versionName on Android, the number the store listing shows. It is not what
+// `appVersionSource: "remote"` in eas.json governs -- that manages the build
+// number (ios.buildNumber / android.versionCode), which EAS increments per
+// build and which is deliberately absent from this file.
+import { version } from './package.json';
+
 /** The host the app claims universal links on, derived from the web URL. */
 function webHost(): string | null {
   const raw = process.env.EXPO_PUBLIC_WEB_URL;
@@ -39,10 +50,25 @@ function webHost(): string | null {
 
 const host = webHost();
 
+/**
+ * The EAS project that serves over-the-air updates, if there is one.
+ *
+ * Deliberately not checked in. A project id is an account's identifier, and a
+ * template carrying one would have every adopter publishing updates to it --
+ * or, more likely, to a project they cannot write to, which fails at publish
+ * rather than at build and is confusing at exactly the wrong moment.
+ *
+ * `eas init` prints the id; put it in `mobile/.env` as EXPO_PUBLIC_EAS_PROJECT_ID
+ * and updates start working. Without it the app is built with updates off,
+ * which is the right behaviour for a checkout nobody has configured: an app
+ * pointed at an update server that does not answer retries on every launch.
+ */
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || null;
+
 const config: ExpoConfig = {
   name: identity.name,
   slug: 'drf-starter',
-  version: '0.1.0',
+  version,
   orientation: 'portrait',
   // Answers `drfstarter://...`. Must match MOBILE_APP_SCHEME on the backend.
   // Development relies on this: there is no verified domain on a simulator.
@@ -112,6 +138,33 @@ const config: ExpoConfig = {
         ]
       : undefined,
   },
+  // Which builds an update is allowed to land on. `fingerprint` hashes
+  // everything that affects the native runtime -- the SDK, native modules,
+  // and this file -- so the value changes by itself the moment a build stops
+  // being compatible.
+  //
+  // The alternative, `appVersion`, ties compatibility to the marketing version
+  // above, which means an update reaches any build sharing that number
+  // regardless of what native code it contains. Expo matches runtime versions
+  // by string equality and does not verify anything beyond it: publish after
+  // adding a native module without bumping `version` and the update installs
+  // into a build with no such module, which crashes on launch, over the air,
+  // on devices you cannot reach. The cost of `fingerprint` is that adding
+  // native code forces a store build -- which is the honest constraint,
+  // stated at publish time rather than discovered in a crash report.
+  runtimeVersion: { policy: 'fingerprint' },
+  updates: easProjectId
+    ? {
+        url: `https://u.expo.dev/${easProjectId}`,
+        // Ask on launch, but never wait: `fallbackToCacheTimeout: 0` starts
+        // the app from the bundle it already has and downloads in the
+        // background. Any positive value here is a splash screen held hostage
+        // by whatever the network is doing, which on a bad connection is the
+        // difference between a slow app and a broken-looking one.
+        fallbackToCacheTimeout: 0,
+      }
+    : undefined,
+  extra: easProjectId ? { eas: { projectId: easProjectId } } : undefined,
   web: {
     favicon: './assets/favicon.png',
   },
@@ -128,6 +181,7 @@ const config: ExpoConfig = {
     ],
     'expo-secure-store',
     'expo-localization',
+    'expo-updates',
     [
       'expo-notifications',
       {

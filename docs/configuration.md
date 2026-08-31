@@ -310,6 +310,7 @@ Format is DRF's: `<number>/<period>`, where period is `second`, `minute`,
 | `THROTTLE_USER` | `1000/day` | Signed-in callers. |
 | `THROTTLE_LOGIN` | `10/min` | Login and second-factor verification. |
 | `THROTTLE_PASSWORD_RESET` | `5/hour` | Reset requests. |
+| `THROTTLE_APP_UPGRADE` | `600/hour` | The mobile version gate, called by every installation on launch. Keyed by IP, so it needs room for an office behind one address; the view answers from a one-minute cache. |
 | `THROTTLE_DATA_EXPORT` | `3/day` | Building an export walks every table the user touches and sends mail — expensive, and enumerable. |
 | `PASSWORD_RESET_TIMEOUT` | `259200` (3 days) | How long reset and verification links stay valid, in seconds. |
 | `GDPR_EXPORT_LINK_TIMEOUT` | `86400` (1 day) | How long an export download link stays usable, in seconds. |
@@ -493,6 +494,7 @@ Django runs on, so even the values that look shared are not.
 | `EXPO_PUBLIC_UPLOADS_ENABLED` | `false` | Must match `UPLOADS_ENABLED`. |
 | `EXPO_PUBLIC_MCP_CLIENT_ENABLED` | `false` | Must match `MCP_CLIENT_ENABLED`. |
 | `EXPO_PUBLIC_PUSH_ENABLED` | `false` | Must match `PUSH_ENABLED`. Asks for notification permission and registers the device. |
+| `EXPO_PUBLIC_EAS_PROJECT_ID` | *(none)* | The EAS project that serves over-the-air updates, from `eas init`. Unset, updates are compiled out -- correct for a checkout nobody has configured. See [The mobile app](mobile.md#over-the-air-updates). |
 | `EXPO_PUBLIC_SENTRY_DSN` | *(none)* | Crash reporting. Unset, nothing initialises and nothing is sent. A DSN is designed to ship in a client, so it is not a secret. |
 | `EXPO_PUBLIC_SENTRY_SEND_PII` | `false` | Ships usernames, email addresses and IP addresses to a third party. Off by default, like the backend's `SENTRY_SEND_PII`. |
 | `EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | `0` | Performance tracing. Costs battery and bandwidth per session. |

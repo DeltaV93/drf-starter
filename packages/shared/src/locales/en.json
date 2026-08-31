@@ -272,5 +272,11 @@
   "waitMinutes": "{{count}} minute",
   "waitMinutes_other": "{{count}} minutes",
   "showingOf": "Showing {{shown}} of {{total}}",
-  "loadMore": "Load more"
+  "loadMore": "Load more",
+  "upgradeRequiredTitle": "Update required",
+  "upgradeRequiredBody": "This version of the app can no longer be used. Update to the latest version to carry on.",
+  "upgradeAction": "Update",
+  "upgradeNoStoreLink": "Update the app from the App Store or Google Play.",
+  "upgradeAvailableTitle": "A newer version is available",
+  "upgradeLater": "Not now"
 }
