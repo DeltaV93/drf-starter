@@ -45,7 +45,7 @@ def _invalid(serializer, message):
 
 
 class TokenObtainView(APIView):
-    """Exchange a username and password for a token pair."""
+    """Exchange an email address (or username) and password for a token pair."""
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -65,7 +65,7 @@ class TokenObtainView(APIView):
             audit(
                 AuditAction.LOGIN_FAILED,
                 request=request,
-                target=str(request.data.get('username', ''))[:254],
+                target=UserLoginSerializer.read_identifier(request.data)[:254],
                 reason='invalid_credentials',
             )
             return _invalid(serializer, 'Login failed.')

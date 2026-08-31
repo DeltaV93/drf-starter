@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import override_settings
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from apps.users.factories import UserFactory
 
@@ -90,12 +91,74 @@ def test_register_rejects_a_duplicate_username(api_client):
     assert 'username' in response.data['errors']
 
 
+# --------------------------------------------------------------------------
+# The username is optional
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize('username', ['', None])
+def test_register_accepts_an_empty_username(api_client, username):
+    response = api_client.post(
+        reverse('v1:register'), _payload(username=username), format='json'
+    )
+
+    assert response.status_code == 201, response.data
+    user = User.objects.get(email='newuser@example.com')
+    # NULL, not '': the column is unique, so a second account registering
+    # without a handle would collide with the first.
+    assert user.username is None
+
+
+def test_register_omitting_the_username_entirely(api_client):
+    payload = _payload()
+    del payload['username']
+
+    response = api_client.post(reverse('v1:register'), payload)
+
+    assert response.status_code == 201, response.data
+    assert User.objects.get(email='newuser@example.com').username is None
+
+
+def test_two_accounts_can_both_register_without_a_username(api_client):
+    """The case a unique NOT NULL column would have made impossible."""
+    first = _payload()
+    del first['username']
+    second = {**first, 'email': 'second@example.com'}
+
+    assert api_client.post(reverse('v1:register'), first).status_code == 201
+    # A second client: registration signs the first one in, and its session
+    # then carries a CSRF token the next POST would have to echo.
+    assert APIClient().post(reverse('v1:register'), second).status_code == 201
+
+    assert User.objects.filter(username__isnull=True).count() == 2
+
+
+def test_register_rejects_a_duplicate_username_regardless_of_case(api_client):
+    UserFactory(username='NewUser')
+
+    response = api_client.post(reverse('v1:register'), _payload())
+
+    assert response.status_code == 400
+    assert 'username' in response.data['errors']
+
+
+def test_register_rejects_a_username_shaped_like_an_email(api_client):
+    """Sign-in resolves addresses first, so such a handle is unusable --
+    and could be somebody else's address."""
+    response = api_client.post(
+        reverse('v1:register'), _payload(username='someone@example.com')
+    )
+
+    assert response.status_code == 400
+    assert 'username' in response.data['errors']
+
+
 @override_settings(
     # Two real Django backends rather than a social one, so the failure under
     # test is precisely "Django will not guess between backends" and not a
     # social_core configuration error that happens to raise nearby.
     AUTHENTICATION_BACKENDS=[
-        'django.contrib.auth.backends.ModelBackend',
+        'apps.authentication.backends.EmailOrUsernameBackend',
         'django.contrib.auth.backends.AllowAllUsersModelBackend',
     ]
 )

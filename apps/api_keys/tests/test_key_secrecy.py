@@ -9,6 +9,7 @@ import pytest
 from django.urls import reverse
 
 from apps.api_keys.models import APIKey, hash_secret, split_key
+from apps.authentication.backends import PASSWORD_BACKEND
 from apps.users.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -18,7 +19,7 @@ pytestmark = pytest.mark.django_db
 def signed_in(client):
     def _sign_in(user=None):
         user = user or UserFactory()
-        client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+        client.force_login(user, backend=PASSWORD_BACKEND)
         return client, user
 
     return _sign_in

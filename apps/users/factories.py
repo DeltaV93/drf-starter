@@ -16,8 +16,11 @@ class UserFactory(factory.django.DjangoModelFactory):
         model = User
         skip_postgeneration_save = True
 
-    username = factory.Sequence(lambda n: f'user{n}')
-    email = factory.LazyAttribute(lambda obj: f'{obj.username}@example.com')
+    # No username by default: it is optional, so the account most tests
+    # should be built on is the one without one. Pass `username='ada'` where
+    # a handle is what is under test.
+    username = None
+    email = factory.Sequence(lambda n: f'user{n}@example.com')
     first_name = 'Test'
     last_name = 'User'
     email_verified = True

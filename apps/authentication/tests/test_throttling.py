@@ -32,7 +32,7 @@ def tight_reset_limit(monkeypatch):
 
 
 def test_repeated_failed_logins_are_throttled(api_client, user, tight_login_limit):
-    credentials = {'username': user.username, 'password': 'not-the-password'}
+    credentials = {'identifier': user.email, 'password': 'not-the-password'}
 
     first = api_client.post(reverse('v1:login'), credentials)
     second = api_client.post(reverse('v1:login'), credentials)

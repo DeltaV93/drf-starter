@@ -31,7 +31,10 @@ def anonymize_user_data(user):
 
     unique_id = uuid.uuid4().hex[:12]
 
-    user.username = f'deleted_user_{unique_id}'
+    # Only if there was one: an account that never had a handle should not
+    # acquire one on the way out, and NULL is not identifying.
+    if user.username:
+        user.username = f'deleted_user_{unique_id}'
     user.email = f'{unique_id}@deleted.invalid'
     user.first_name = 'Deleted'
     user.last_name = 'User'

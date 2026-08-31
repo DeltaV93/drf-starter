@@ -9,6 +9,7 @@ import pytest
 from django.urls import reverse
 
 from apps.api_keys.models import APIKey
+from apps.authentication.backends import PASSWORD_BACKEND
 from apps.users.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -67,7 +68,7 @@ def test_the_management_views_accept_sessions_only():
 def test_a_session_can_still_manage_keys(client):
     """The restriction is on the credential, not on the endpoint."""
     user = UserFactory()
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     response = client.post(
         reverse('v1:api_key_list'), {'name': 'CI'}, content_type='application/json'

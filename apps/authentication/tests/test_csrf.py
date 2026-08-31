@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def logged_in_client(user):
     client = APIClient(enforce_csrf_checks=True)
-    client.post(reverse('v1:login'), {'username': user.username, 'password': DEFAULT_PASSWORD})
+    client.post(reverse('v1:login'), {'identifier': user.email, 'password': DEFAULT_PASSWORD})
     return client
 
 

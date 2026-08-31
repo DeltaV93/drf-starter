@@ -10,6 +10,7 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 
+from apps.authentication.backends import PASSWORD_BACKEND
 from apps.users.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -153,7 +154,7 @@ def test_unlinking_the_only_credential_is_refused(client):
     user.set_unusable_password()
     user.save(update_fields=['password'])
     UserSocialAuth.objects.create(user=user, provider='google-oauth2', uid='123')
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     response = client.post(reverse('v1:social_disconnect', args=['google-oauth2']))
 
@@ -166,7 +167,7 @@ def test_unlinking_is_allowed_when_a_password_remains(client):
 
     user = UserFactory()  # has a usable password
     UserSocialAuth.objects.create(user=user, provider='google-oauth2', uid='123')
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     response = client.post(reverse('v1:social_disconnect', args=['google-oauth2']))
 
@@ -182,7 +183,7 @@ def test_unlinking_is_allowed_when_another_provider_remains(client):
     user.save(update_fields=['password'])
     UserSocialAuth.objects.create(user=user, provider='google-oauth2', uid='1')
     UserSocialAuth.objects.create(user=user, provider='linkedin-oauth2', uid='2')
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     response = client.post(reverse('v1:social_disconnect', args=['google-oauth2']))
 
@@ -192,7 +193,7 @@ def test_unlinking_is_allowed_when_another_provider_remains(client):
 
 def test_unlinking_a_provider_that_is_not_connected_is_refused(client):
     user = UserFactory()
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     response = client.post(reverse('v1:social_disconnect', args=['google-oauth2']))
 
@@ -207,7 +208,7 @@ def test_connections_are_listed_for_the_signed_in_user_only(client):
 
     user = UserFactory()
     UserSocialAuth.objects.create(user=user, provider='linkedin-oauth2', uid='mine')
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     response = client.get(reverse('v1:social_connections'))
 
@@ -217,3 +218,51 @@ def test_connections_are_listed_for_the_signed_in_user_only(client):
 
 def test_anonymous_callers_see_nothing(client):
     assert client.get(reverse('v1:social_connections')).status_code in (401, 403)
+
+
+# --------------------------------------------------------------------------
+# A social signup has no username to offer, and does not need one
+# --------------------------------------------------------------------------
+
+
+def test_the_pipeline_does_not_invent_a_username():
+    """`get_username` fills USERNAME_FIELD, which is the email now.
+
+    Left in, it would hand every account created through a provider a handle
+    derived from the profile, which its owner never chose and cannot predict.
+    """
+    assert not any(
+        step.endswith('user.get_username') for step in settings.SOCIAL_AUTH_PIPELINE
+    )
+    assert 'username' not in settings.SOCIAL_AUTH_USER_FIELDS
+
+
+def test_a_social_signup_creates_an_account_without_one():
+    """Runs social_core's real create_user step against our user manager,
+    whose signature no longer leads with the username."""
+    from social_core.pipeline.user import create_user
+    from social_django.models import DjangoStorage
+    from social_django.strategy import DjangoStrategy
+
+    class _Backend:
+        """Enough of a backend for the step: it only reads one setting."""
+
+        def setting(self, name, default=None):
+            return getattr(settings, f'SOCIAL_AUTH_{name}', default)
+
+    result = create_user(
+        strategy=DjangoStrategy(DjangoStorage),
+        details={
+            'email': 'new-from-google@example.com',
+            'first_name': 'Ada',
+            'last_name': 'Lovelace',
+        },
+        backend=_Backend(),
+    )
+
+    user = result['user']
+    assert result['is_new'] is True
+    assert user.email == 'new-from-google@example.com'
+    assert user.username is None
+    # No password was set, so nothing can be guessed into it.
+    assert user.has_usable_password() is False

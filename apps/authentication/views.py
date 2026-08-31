@@ -31,6 +31,7 @@ from utils.gdpr_utils import anonymize_user_data
 from utils.logging_utils import get_logger
 
 from . import two_factor_services
+from .backends import PASSWORD_BACKEND
 from .serializers import (
     AccountDeletionSerializer,
     AuthenticatedSerializer,
@@ -45,11 +46,6 @@ from .tokens import email_verification_token_generator
 
 User = get_user_model()
 logger = get_logger(__name__)
-
-# Named explicitly wherever a user is signed in without having been through
-# authenticate(). base.py always keeps this last in AUTHENTICATION_BACKENDS;
-# SOCIAL_AUTH_ENABLED only prepends to that list.
-PASSWORD_BACKEND = 'django.contrib.auth.backends.ModelBackend'
 
 # Answering identically whether or not the address exists is what stops these
 # endpoints from being used to enumerate accounts.
@@ -137,12 +133,12 @@ class LoginView(APIView):
         if not serializer.is_valid():
             # The identifier tried is the target rather than metadata: it
             # is what makes a run of failures against one account visible.
-            # `username` is what UserLoginSerializer takes -- reading `email`
-            # here would silently record nothing.
+            # Read through the serializer, which knows the legacy field names
+            # a client may have sent it under.
             audit(
                 AuditAction.LOGIN_FAILED,
                 request=request,
-                target=str(request.data.get('username', ''))[:254],
+                target=UserLoginSerializer.read_identifier(request.data)[:254],
                 reason='invalid_credentials',
             )
             return api_response(

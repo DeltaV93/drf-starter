@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
@@ -16,6 +17,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         write_only=True, required=True, style={'input_type': 'password'}
     )
 
+    # Declared rather than inferred from the model, to drop the unique
+    # validator ModelSerializer would attach: `validate_username` below owns
+    # uniqueness, and it compares case-insensitively. The account is
+    # identified by its email -- a username is a display handle people may
+    # want and may equally skip, so missing, empty and null all mean "none".
+    username = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=150,
+        validators=[UnicodeUsernameValidator()],
+        help_text='Optional. Sign-in uses the email address.',
+    )
+
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'password', 'password2')
@@ -30,6 +45,27 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError('A user with that email already exists.')
         return value.lower()
+
+    def validate_username(self, value):
+        if not value:
+            # Normalized to None rather than '', because the column is unique
+            # and only one row may hold any given non-null value.
+            return None
+
+        if '@' in value:
+            # Sign-in resolves an identifier against emails before usernames,
+            # so a username shaped like an address is one nobody could ever
+            # sign in with -- and might belong to somebody else.
+            raise serializers.ValidationError(
+                'A username cannot contain "@". Sign in with your email address instead.'
+            )
+
+        # Uniqueness is enforced case-insensitively for the same reason the
+        # sign-in lookup is: `Ada` and `ada` must not be two accounts.
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError('A user with that username already exists.')
+
+        return value
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -79,15 +115,54 @@ class AuthenticatedSerializer(serializers.Serializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=255)
+    """Credentials for both the session and the token sign-in.
+
+    One identifier field, not two: usernames are optional, so what a client
+    holds may be either an email address or a handle, and asking it to know
+    which only moves the branch into the client.
+    """
+
+    identifier = serializers.CharField(
+        max_length=255,
+        help_text='Email address, or username for an account that has one.',
+    )
     password = serializers.CharField(
         max_length=128, write_only=True, style={'input_type': 'password'}
     )
 
+    # What clients built against the pre-`identifier` API post. Accepted so a
+    # mobile build already in the app stores keeps signing people in; new
+    # clients should send `identifier`.
+    LEGACY_IDENTIFIER_FIELDS = ('username', 'email')
+
+    @classmethod
+    def read_identifier(cls, data):
+        """The identifier a request offers, under whichever name.
+
+        Views use this for the audit trail, which has to record the account
+        that was tried even when validation rejected the request.
+        """
+        for field in ('identifier', *cls.LEGACY_IDENTIFIER_FIELDS):
+            value = data.get(field)
+            if value:
+                return value
+        return ''
+
+    def to_internal_value(self, data):
+        if not data.get('identifier'):
+            legacy = self.read_identifier(data)
+            if legacy:
+                # .copy() rather than {**data}: a QueryDict is a dict subclass
+                # whose values are internally lists, so unpacking one hands
+                # every field to the serializer wrapped in a list.
+                data = data.copy()
+                data['identifier'] = legacy
+        return super().to_internal_value(data)
+
     def validate(self, attrs):
         user = authenticate(
             request=self.context.get('request'),
-            username=attrs['username'],
+            username=attrs['identifier'],
             password=attrs['password'],
         )
         if not user:

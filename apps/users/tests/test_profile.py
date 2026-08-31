@@ -65,3 +65,57 @@ def test_patch_returns_the_full_user_representation(auth_client):
     response = auth_client.patch(reverse('v1:user_me'), {'first_name': 'Ada'})
 
     assert response.data['data']['display_name'].startswith('Ada')
+
+
+# --------------------------------------------------------------------------
+# Picking up (or dropping) a username after the fact
+# --------------------------------------------------------------------------
+
+
+def test_patch_can_set_a_username_on_an_account_without_one(auth_client, user):
+    """Sign-up may skip the field, so this is where someone claims a handle."""
+    assert user.username is None
+
+    response = auth_client.patch(reverse('v1:user_me'), {'username': 'ada'})
+
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert user.username == 'ada'
+
+
+def test_patch_can_clear_the_username_again(auth_client, user):
+    user.username = 'ada'
+    user.save()
+
+    response = auth_client.patch(reverse('v1:user_me'), {'username': ''})
+
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert user.username is None
+
+
+def test_patch_rejects_a_username_someone_else_holds(auth_client, user):
+    from apps.users.factories import UserFactory
+
+    UserFactory(username='ada')
+
+    response = auth_client.patch(reverse('v1:user_me'), {'username': 'ADA'})
+
+    assert response.status_code == 400
+    assert 'username' in response.data['errors']
+
+
+def test_patch_keeping_your_own_username_is_not_a_clash(auth_client, user):
+    user.username = 'ada'
+    user.save()
+
+    response = auth_client.patch(reverse('v1:user_me'), {'username': 'ada'})
+
+    assert response.status_code == 200
+
+
+def test_patch_rejects_a_username_shaped_like_an_email(auth_client):
+    response = auth_client.patch(reverse('v1:user_me'), {'username': 'ada@example.com'})
+
+    assert response.status_code == 400
+    assert 'username' in response.data['errors']

@@ -3,6 +3,8 @@
 import pytest
 from django.conf import settings
 
+from apps.authentication.backends import PASSWORD_BACKEND
+
 collect_ignore_glob = [] if settings.AUDIT_LOG_ENABLED else ['test_*.py']
 
 
@@ -12,7 +14,7 @@ def signed_in(client):
 
     def _sign_in(user=None):
         user = user or UserFactory()
-        client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+        client.force_login(user, backend=PASSWORD_BACKEND)
         return client, user
 
     return _sign_in

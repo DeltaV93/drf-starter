@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
-from apps.users.factories import DEFAULT_PASSWORD
+from apps.users.factories import DEFAULT_PASSWORD, UserFactory
 
 User = get_user_model()
 
@@ -21,10 +21,22 @@ def test_deletion_anonymizes_rather_than_removing_the_row(auth_client, user):
     assert User.objects.filter(pk=user.pk).exists()
     assert user.is_active is False
     assert user.date_deleted is not None
-    assert user.username.startswith('deleted_user_')
+    # The account had no username to overwrite; nothing invents one.
+    assert user.username is None
     assert user.email.endswith('@deleted.invalid')
     assert user.first_name == 'Deleted'
     assert user.last_name == 'User'
+
+
+def test_deletion_replaces_a_username_it_finds(api_client):
+    user = UserFactory(username='ada')
+    api_client.force_authenticate(user=user)
+
+    api_client.post(reverse('v1:account_deletion'), {'password': DEFAULT_PASSWORD})
+
+    user.refresh_from_db()
+    assert user.username != 'ada'
+    assert user.username.startswith('deleted_user_')
 
 
 def test_deletion_makes_the_password_unusable(auth_client, user):

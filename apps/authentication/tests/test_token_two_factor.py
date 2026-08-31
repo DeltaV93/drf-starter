@@ -49,7 +49,7 @@ def enrolled():
 
 def _obtain(api_client, user):
     return api_client.post(
-        reverse('v1:token_obtain'), {'username': user.username, 'password': DEFAULT_PASSWORD}
+        reverse('v1:token_obtain'), {'identifier': user.email, 'password': DEFAULT_PASSWORD}
     )
 
 
@@ -116,4 +116,4 @@ def test_a_challenge_from_another_account_does_not_transfer(api_client, enrolled
     )
 
     assert response.status_code == 400
-    assert other.username not in str(response.data)
+    assert other.email not in str(response.data)

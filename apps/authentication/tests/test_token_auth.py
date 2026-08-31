@@ -24,7 +24,7 @@ pytestmark = pytest.mark.django_db
 
 def obtain(client, user, password=DEFAULT_PASSWORD):
     return client.post(
-        reverse('v1:token_obtain'), {'username': user.username, 'password': password}
+        reverse('v1:token_obtain'), {'identifier': user.email, 'password': password}
     )
 
 
@@ -64,7 +64,7 @@ def test_a_wrong_password_issues_nothing(api_client, user):
 
 def test_the_token_endpoint_does_not_reveal_whether_the_account_exists(api_client, user):
     missing = api_client.post(
-        reverse('v1:token_obtain'), {'username': 'nobody', 'password': 'wrong'}
+        reverse('v1:token_obtain'), {'identifier': 'nobody', 'password': 'wrong'}
     )
     wrong_password = obtain(api_client, user, password='wrong')
 
@@ -229,7 +229,7 @@ def test_session_auth_is_untouched(api_client, user):
     substituted for them.
     """
     response = api_client.post(
-        reverse('v1:login'), {'username': user.username, 'password': DEFAULT_PASSWORD}
+        reverse('v1:login'), {'identifier': user.email, 'password': DEFAULT_PASSWORD}
     )
 
     assert response.status_code == 200

@@ -8,6 +8,7 @@ import pytest
 from django.urls import reverse
 
 from apps.audit.models import AuditEvent
+from apps.authentication.backends import PASSWORD_BACKEND
 from apps.core.audit import AuditAction
 from apps.users.factories import DEFAULT_PASSWORD, UserFactory
 
@@ -26,7 +27,7 @@ def test_a_successful_login_is_recorded(client):
 
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'identifier': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -39,12 +40,12 @@ def test_a_failed_login_is_recorded_against_the_address_tried(client):
 
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': 'wrong-password'},
+        {'identifier': user.email, 'password': 'wrong-password'},
         content_type='application/json',
     )
 
     event = AuditEvent.objects.get(action=AuditAction.LOGIN_FAILED)
-    assert event.target == user.username
+    assert event.target == user.email
     assert event.actor is None  # Nobody authenticated.
     assert 'wrong-password' not in str(event.metadata)
 
@@ -69,7 +70,7 @@ def test_registration_is_recorded(client):
 
 def test_logout_is_recorded(client):
     user = UserFactory()
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     client.post(reverse('v1:logout'))
 
@@ -104,7 +105,7 @@ def test_the_password_is_never_in_the_log(client):
 
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'identifier': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -121,7 +122,7 @@ def test_the_password_is_never_in_the_log(client):
 def test_you_can_read_your_own_activity(signed_in):
     client, user = signed_in()
     client.post(reverse('v1:logout'))
-    client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+    client.force_login(user, backend=PASSWORD_BACKEND)
 
     response = client.get(reverse('v1:audit_my_activity'))
 

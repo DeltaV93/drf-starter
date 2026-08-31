@@ -9,6 +9,7 @@ import json
 import pytest
 from django.urls import reverse
 
+from apps.authentication.backends import PASSWORD_BACKEND
 from apps.users.factories import UserFactory
 from utils import gdpr_export
 from utils.gdpr_tasks import export_json_for, make_download_token, read_download_token
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.django_db
 def signed_in(client):
     def _sign_in(user=None):
         user = user or UserFactory()
-        client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+        client.force_login(user, backend=PASSWORD_BACKEND)
         return client, user
 
     return _sign_in

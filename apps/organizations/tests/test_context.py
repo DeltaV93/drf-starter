@@ -33,7 +33,7 @@ def token_client(user):
     client = APIClient()
     response = client.post(
         reverse('v1:token_obtain'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'identifier': user.email, 'password': DEFAULT_PASSWORD},
     )
     access = response.data['data']['access']
     return APIClient(HTTP_AUTHORIZATION=f'Bearer {access}')

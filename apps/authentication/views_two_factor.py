@@ -17,6 +17,7 @@ from apps.users.serializers import UserSerializer
 from utils.api_utils import api_response
 
 from . import two_factor_services as services
+from .backends import PASSWORD_BACKEND
 from .serializers import AuthenticatedSerializer
 from .serializers_two_factor import (
     RecoveryCodesSerializer,
@@ -25,8 +26,6 @@ from .serializers_two_factor import (
     TwoFactorPasswordSerializer,
     TwoFactorStatusSerializer,
 )
-
-PASSWORD_BACKEND = 'django.contrib.auth.backends.ModelBackend'
 
 
 def _invalid(serializer, message):

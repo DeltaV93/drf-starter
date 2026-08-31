@@ -861,7 +861,9 @@ PASSWORD_RESET_TIMEOUT = env_int('PASSWORD_RESET_TIMEOUT', 60 * 60 * 24 * 3)
 # Authentication backends
 # --------------------------------------------------------------------------
 
-AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
+# Not ModelBackend: usernames are optional, so an identifier may be either
+# an email address or a handle, and addresses are matched case-insensitively.
+AUTHENTICATION_BACKENDS = ['apps.authentication.backends.EmailOrUsernameBackend']
 
 if SOCIAL_AUTH_ENABLED:
     AUTHENTICATION_BACKENDS = [
@@ -900,7 +902,10 @@ if SOCIAL_AUTH_ENABLED:
         'social_core.pipeline.social_auth.social_uid',
         'social_core.pipeline.social_auth.auth_allowed',
         'social_core.pipeline.social_auth.social_user',
-        'social_core.pipeline.user.get_username',
+        # social_core.pipeline.user.get_username is deliberately absent: it
+        # invents a handle from the provider's profile to fill a field that no
+        # longer has to be filled, and every account it touched would carry a
+        # username its owner never chose.
         # Before create_user: afterwards the account would already exist.
         'apps.authentication.social_pipeline.refuse_silent_takeover',
         'social_core.pipeline.user.create_user',
@@ -921,7 +926,9 @@ if SOCIAL_AUTH_ENABLED:
     # Only the fields the pipeline needs. Providers return far more, and
     # storing it is a data-protection liability nobody asked for.
     SOCIAL_AUTH_PROTECTED_USER_FIELDS = ['email', 'username']
-    SOCIAL_AUTH_USER_FIELDS = ['username', 'email', 'first_name', 'last_name']
+    # No 'username': a social signup is exactly the case that has no handle to
+    # offer, and the account does not need one.
+    SOCIAL_AUTH_USER_FIELDS = ['email', 'first_name', 'last_name']
 
     # The state parameter is what stops an attacker completing the flow in
     # someone else's browser; social_core defaults it on, pinned here so a

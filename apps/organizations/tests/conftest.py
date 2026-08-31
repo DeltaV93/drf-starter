@@ -10,6 +10,8 @@ must not even be collected.
 import pytest
 from django.conf import settings
 
+from apps.authentication.backends import PASSWORD_BACKEND
+
 collect_ignore_glob = [] if settings.ORGANIZATIONS_ENABLED else ['test_*.py']
 
 
@@ -28,7 +30,7 @@ def sign_in(client):
     """Establish a session without going through the login endpoint."""
 
     def _sign_in(user):
-        client.force_login(user, backend='django.contrib.auth.backends.ModelBackend')
+        client.force_login(user, backend=PASSWORD_BACKEND)
         return client
 
     return _sign_in
