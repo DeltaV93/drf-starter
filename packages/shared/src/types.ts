@@ -8,7 +8,8 @@ export interface ApiEnvelope<T = unknown> {
 
 export interface User {
   id: number;
-  username: string;
+  /** Optional: an account is identified by its email, not by a handle. */
+  username: string | null;
   email: string;
   first_name: string;
   last_name: string;

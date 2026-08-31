@@ -10,7 +10,7 @@ import { useAuth } from '../../store/auth';
 import { useToast } from '../../store/toast';
 
 interface LoginForm {
-  username: string;
+  identifier: string;
   password: string;
 }
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
     handleSubmit,
     setError,
     formState: { isSubmitting, errors },
-  } = useForm<LoginForm>({ defaultValues: { username: '', password: '' } });
+  } = useForm<LoginForm>({ defaultValues: { identifier: '', password: '' } });
 
   const codeForm = useForm<CodeForm>({ defaultValues: { code: '' } });
 
@@ -172,14 +172,16 @@ export default function LoginPage() {
           )}
 
           <Controller
-            name="username"
+            name="identifier"
             control={control}
-            rules={{ required: t('usernameRequired') }}
+            rules={{ required: t('identifierRequired') }}
             render={({ field, fieldState: { error } }) => (
               <TextField
                 {...field}
-                id="username"
-                label={t('username')}
+                id="identifier"
+                label={t('emailOrUsername')}
+                /* Still `username`: it is what a password manager fills the
+                   sign-in identifier from, whatever the field holds. */
                 autoComplete="username"
                 autoFocus
                 fullWidth

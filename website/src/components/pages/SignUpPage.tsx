@@ -10,8 +10,11 @@ import { useToast } from '../../store/toast';
 const FIELDS = [
   { name: 'first_name', label: 'firstName', autoComplete: 'given-name' },
   { name: 'last_name', label: 'lastName', autoComplete: 'family-name' },
-  { name: 'username', label: 'username', autoComplete: 'username' },
   { name: 'email', label: 'email', autoComplete: 'email', type: 'email' },
+  // The account is identified by its email address. A username is a display
+  // handle, and leaving it blank is a supported answer -- the backend stores
+  // NULL rather than '' for it.
+  { name: 'username', label: 'usernameOptional', autoComplete: 'username', optional: true },
 ] as const;
 
 export default function SignUpPage() {
@@ -70,29 +73,32 @@ export default function SignUpPage() {
         {/* One form. The previous version nested a second <form> inside this
             one, which is invalid HTML and split the fields across two forms. */}
         <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ width: '100%' }}>
-          {FIELDS.map((spec, index) => (
-            <Controller
-              key={spec.name}
-              name={spec.name}
-              control={control}
-              rules={{ required: t(`${spec.label}Required`) }}
-              render={({ field, fieldState: { error } }) => (
-                <TextField
-                  {...field}
-                  id={spec.name}
-                  type={'type' in spec ? spec.type : 'text'}
-                  label={t(spec.label)}
-                  autoComplete={spec.autoComplete}
-                  autoFocus={index === 0}
-                  required
-                  fullWidth
-                  margin="normal"
-                  error={!!error}
-                  helperText={error?.message}
-                />
-              )}
-            />
-          ))}
+          {FIELDS.map((spec, index) => {
+            const optional = 'optional' in spec;
+            return (
+              <Controller
+                key={spec.name}
+                name={spec.name}
+                control={control}
+                rules={optional ? {} : { required: t(`${spec.label}Required`) }}
+                render={({ field, fieldState: { error } }) => (
+                  <TextField
+                    {...field}
+                    id={spec.name}
+                    type={'type' in spec ? spec.type : 'text'}
+                    label={t(spec.label)}
+                    autoComplete={spec.autoComplete}
+                    autoFocus={index === 0}
+                    required={!optional}
+                    fullWidth
+                    margin="normal"
+                    error={!!error}
+                    helperText={error?.message ?? (optional ? t('usernameHelp') : undefined)}
+                  />
+                )}
+              />
+            );
+          })}
 
           <Controller
             name="password"

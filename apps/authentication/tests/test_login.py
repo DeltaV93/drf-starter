@@ -174,3 +174,18 @@ def test_login_requires_an_identifier(api_client):
 
     assert response.status_code == 400
     assert 'identifier' in response.data['errors']
+
+
+def test_a_body_that_is_not_an_object_is_refused_rather_than_crashing(api_client):
+    """The identifier aliasing reads fields off the body before DRF does."""
+    response = api_client.post(reverse('v1:login'), ['not', 'an', 'object'], format='json')
+
+    assert response.status_code == 400
+
+
+def test_an_identifier_that_is_not_a_string_is_refused(api_client):
+    response = api_client.post(
+        reverse('v1:login'), {'username': {'nested': 'object'}, 'password': 'x'}, format='json'
+    )
+
+    assert response.status_code == 400

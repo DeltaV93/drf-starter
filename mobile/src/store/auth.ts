@@ -41,11 +41,13 @@ export type LoginResult =
   | { status: 'two-factor-required'; challenge: string };
 
 export interface LoginCredentials {
-  username: string;
+  /** An email address, or a username for an account that has one. */
+  identifier: string;
   password: string;
 }
 
 export interface RegistrationDetails {
+  /** Optional -- send '' and the account simply has no handle. */
   username: string;
   email: string;
   first_name: string;
@@ -142,8 +144,9 @@ export function useAuth() {
         errorMessage: 'Could not create your account.',
       });
 
+      // By email, not by the username: sign-up may not have collected one.
       const result = await login({
-        username: details.username,
+        identifier: details.email,
         password: details.password,
       });
 

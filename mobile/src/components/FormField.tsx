@@ -21,6 +21,8 @@ interface FormFieldProps<T extends FieldValues> {
   label: string;
   /** An error the server reported for this field, if any. */
   serverError?: string;
+  /** Shown under the field while it has no error. */
+  helperText?: string;
   secureTextEntry?: boolean;
   autoCapitalize?: 'none' | 'sentences' | 'words';
   keyboardType?: 'default' | 'email-address' | 'number-pad';
@@ -41,6 +43,7 @@ export function FormField<T extends FieldValues>({
   name,
   label,
   serverError,
+  helperText,
   secureTextEntry,
   autoCapitalize = 'none',
   keyboardType = 'default',
@@ -79,8 +82,8 @@ export function FormField<T extends FieldValues>({
             {/* `visible` rather than a conditional render: HelperText keeps
                 its height reserved, so the form does not jump when an error
                 appears under a field the user is still typing in. */}
-            <HelperText type="error" visible={Boolean(message)}>
-              {message ?? ' '}
+            <HelperText type={message ? 'error' : 'info'} visible={Boolean(message || helperText)}>
+              {message ?? helperText ?? ' '}
             </HelperText>
           </View>
         );

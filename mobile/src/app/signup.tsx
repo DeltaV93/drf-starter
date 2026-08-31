@@ -95,14 +95,6 @@ export default function SignUpScreen() {
 
       <FormField
         control={control}
-        name="username"
-        label={t('username')}
-        serverError={fieldErrors.username}
-        textContentType="username"
-        autoComplete="username"
-      />
-      <FormField
-        control={control}
         name="email"
         label={t('email')}
         serverError={fieldErrors.email}
@@ -134,6 +126,17 @@ export default function SignUpScreen() {
         secureTextEntry
         textContentType="newPassword"
         autoComplete="new-password"
+      />
+      {/* Last, and optional: the account is identified by its address, and
+          leaving this empty is a supported answer. */}
+      <FormField
+        control={control}
+        name="username"
+        label={t('usernameOptional')}
+        serverError={fieldErrors.username}
+        helperText={t('usernameHelp')}
+        textContentType="username"
+        autoComplete="username"
       />
 
       {/* Shown only once there is something to check, so the rules are not a

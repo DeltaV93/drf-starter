@@ -370,9 +370,9 @@ test run, so a DSN in a CI environment cannot fill a real project with noise.
 | `ENABLE_DEBUG_TOOLBAR` | `true` in development | django-debug-toolbar. |
 | `DEBUGPY` | *(unset)* | Set `1` to have `runserver` wait for a debugger. It is opt-in because it used to be unconditional, and hung every `runserver`. |
 | `DEBUGPY_PORT` | `5678` | |
-| `DJANGO_SUPERUSER_USERNAME` | *(none)* | The entrypoint creates a superuser on container start. A **no-op unless all three** are set. |
-| `DJANGO_SUPERUSER_EMAIL` | *(none)* | |
+| `DJANGO_SUPERUSER_EMAIL` | *(none)* | The entrypoint creates a superuser on container start. A **no-op unless this and the password** are both set. |
 | `DJANGO_SUPERUSER_PASSWORD` | *(none)* | |
+| `DJANGO_SUPERUSER_USERNAME` | *(none)* | Optional, like the field. The account is identified by its address. |
 
 ---
 

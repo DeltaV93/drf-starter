@@ -23,7 +23,7 @@ describe('LoginPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
 
-    expect(await screen.findByText('Username is required')).toBeInTheDocument();
+    expect(await screen.findByText('Enter your email address')).toBeInTheDocument();
     expect(screen.getByText('Password is required')).toBeInTheDocument();
     expect(request).not.toHaveBeenCalled();
   });
@@ -34,7 +34,7 @@ describe('LoginPage', () => {
     });
     renderWithProviders(<LoginPage />);
 
-    await userEvent.type(screen.getByLabelText(/username/i), 'ada');
+    await userEvent.type(screen.getByLabelText(/email or username/i), 'ada@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'hunter2hunter2');
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
 
@@ -43,7 +43,7 @@ describe('LoginPage', () => {
       expect.objectContaining({
         method: 'POST',
         url: '/api/v1/auth/login/',
-        data: { username: 'ada', password: 'hunter2hunter2' },
+        data: { identifier: 'ada@example.com', password: 'hunter2hunter2' },
       }),
     );
   });
@@ -57,7 +57,7 @@ describe('LoginPage', () => {
     );
     renderWithProviders(<LoginPage />);
 
-    await userEvent.type(screen.getByLabelText(/username/i), 'ada');
+    await userEvent.type(screen.getByLabelText(/email or username/i), 'ada@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'wrong-password');
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
 
@@ -73,7 +73,7 @@ describe('LoginPage with two-factor', () => {
   });
 
   async function submitCredentials() {
-    await userEvent.type(screen.getByLabelText(/username/i), 'ada');
+    await userEvent.type(screen.getByLabelText(/email or username/i), 'ada@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'hunter2hunter2');
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
   }

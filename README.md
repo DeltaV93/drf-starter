@@ -184,6 +184,34 @@ and no CORS preflight. When you deploy them to different origins, set
 `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, and the `SameSite=None` +
 `Secure=true` cookie pair.
 
+### Who an account is
+
+**The email address is the identifier.** `USERNAME_FIELD` is `email`, and
+`username` is an optional display handle: NULL when unset, so any number of
+accounts can go without one, and still unique when set.
+
+Sign-in takes a single `identifier` — an address, or a handle for an account
+that has one:
+
+```json
+POST /api/v1/auth/login/   { "identifier": "ada@example.com", "password": "..." }
+POST /api/v1/auth/token/   { "identifier": "ada", "password": "..." }
+```
+
+`apps/authentication/backends.py` resolves it against emails first and
+usernames second, both case-insensitively — addresses because registration
+lowercases what it stores while the admin and imported rows do not, and the
+user would otherwise be told their password was wrong.
+
+`username` and `email` are still accepted as the field's name, so a mobile
+build already in the app stores keeps working. New clients should send
+`identifier`.
+
+Registration takes `username` or leaves it out; a user can claim or clear one
+later through `PATCH /api/v1/users/me/`. It may not contain `@`: sign-in
+resolves addresses first, so an address-shaped handle is one nobody could
+ever sign in with, and might be somebody else's address.
+
 ### Endpoints
 
 | Method | Path | Purpose |
@@ -591,8 +619,11 @@ pre-verified accounts.
 password, the last provider is the only credential, and password reset cannot
 help because there is nothing to reset to.
 
-Only `username`, `email`, `first_name` and `last_name` are stored. Providers
-return far more, and keeping it is a data-protection liability nobody asked for.
+Only `email`, `first_name` and `last_name` are stored. Providers return far
+more, and keeping it is a data-protection liability nobody asked for. No
+username is invented either: `get_username` is out of the pipeline, because
+the field it would fill is optional and the handle it derives is one the
+account holder never chose.
 
 ---
 
@@ -993,7 +1024,7 @@ health-checks `/api/v1/health/`.
    | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
    | `REDIS_URL` | `${{Redis.REDIS_URL}}` |
    | `EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` to start |
-   | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | optional, creates an admin on first boot |
+   | `DJANGO_SUPERUSER_EMAIL` / `_PASSWORD` | optional, creates an admin on first boot |
 
 4. **Settings → Networking → Generate Domain.**
 
@@ -1073,9 +1104,9 @@ into a worker log, and nothing but strings crosses the queue.
 It is off by default because the default compose stack runs no worker, and a
 queued message nobody drains is worse than a slow one.
 
-Set `DJANGO_SUPERUSER_USERNAME`, `_EMAIL` and `_PASSWORD` to have the
-entrypoint create an admin on first boot. It is a no-op unless all three
-are set.
+Set `DJANGO_SUPERUSER_EMAIL` and `_PASSWORD` to have the entrypoint create an
+admin on first boot. It is a no-op unless both are set;
+`DJANGO_SUPERUSER_USERNAME` is optional, like the field.
 
 ---
 

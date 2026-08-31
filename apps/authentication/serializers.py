@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.validators import UnicodeUsernameValidator
@@ -140,15 +142,25 @@ class UserLoginSerializer(serializers.Serializer):
         """The identifier a request offers, under whichever name.
 
         Views use this for the audit trail, which has to record the account
-        that was tried even when validation rejected the request.
+        that was tried even when validation rejected the request -- including
+        when what arrived was not an object at all.
         """
+        if not isinstance(data, Mapping):
+            return ''
+
         for field in ('identifier', *cls.LEGACY_IDENTIFIER_FIELDS):
             value = data.get(field)
-            if value:
+            if value and isinstance(value, str):
                 return value
         return ''
 
     def to_internal_value(self, data):
+        # A body that is not an object at all is DRF's to reject, with the 400
+        # it has always answered -- reading `identifier` off a list first would
+        # make it a 500.
+        if not isinstance(data, Mapping):
+            return super().to_internal_value(data)
+
         if not data.get('identifier'):
             legacy = self.read_identifier(data)
             if legacy:

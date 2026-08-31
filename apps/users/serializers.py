@@ -63,7 +63,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 'A username cannot contain "@". Sign in with your email address instead.'
             )
 
-        taken = User.objects.filter(username__iexact=value).exclude(pk=self.instance.pk)
+        taken = User.objects.filter(username__iexact=value)
+        if self.instance is not None:
+            # Keeping your own handle is not a clash with yourself.
+            taken = taken.exclude(pk=self.instance.pk)
         if taken.exists():
             raise serializers.ValidationError('A user with that username already exists.')
 

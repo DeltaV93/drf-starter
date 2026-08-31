@@ -27,7 +27,7 @@ import { useToast } from '../store/toast';
 import type { AppTheme } from '../theme/paper';
 
 interface LoginForm {
-  username: string;
+  identifier: string;
   password: string;
 }
 
@@ -46,7 +46,7 @@ export default function LoginScreen() {
   const destination = safeRedirect(redirect);
 
   const { control, handleSubmit } = useForm<LoginForm>({
-    defaultValues: { username: '', password: '' },
+    defaultValues: { identifier: '', password: '' },
   });
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
@@ -78,7 +78,7 @@ export default function LoginScreen() {
     } catch (error) {
       if (error instanceof ApiError) {
         setFieldErrors({
-          username: error.fieldError('username'),
+          identifier: error.fieldError('identifier'),
           password: error.fieldError('password'),
         });
       }
@@ -94,9 +94,12 @@ export default function LoginScreen() {
 
       <FormField
         control={control}
-        name="username"
-        label={t('username')}
-        serverError={fieldErrors.username}
+        name="identifier"
+        label={t('emailOrUsername')}
+        serverError={fieldErrors.identifier}
+        keyboardType="email-address"
+        /* Still the username content type: it is what the OS keychain fills
+           the sign-in identifier from, whatever the field holds. */
         textContentType="username"
         autoComplete="username"
       />

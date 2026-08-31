@@ -119,6 +119,38 @@ carry meaning.
 `pydevd_pycharm.settrace()` unconditionally, which hung every `runserver`.
 Remote debugging is opt-in via `DEBUGPY=1`.
 
+**The email address is the identifier; `username` is optional.**
+`USERNAME_FIELD = 'email'`, and an account without a handle stores NULL
+rather than `''` -- a unique column admits any number of NULLs and exactly
+one empty string, so `''` would let the second such account collide with the
+first. `CustomUser.save()` is what enforces it, because a blank form field
+and a blank serializer field both yield `''`.
+
+Two pieces of Django assume a required username and had to be replaced;
+both failed only at runtime, in the paths nobody exercises while developing:
+`UserManager.create_user` takes it first and requires it (so `createsuperuser`,
+the admin and the social pipeline all went through it), and
+`UsernameField.to_python` measures `len(value)` on a value that is None for a
+nullable field. `apps/users/managers.py` and `apps/users/forms.py` are the
+replacements, pinned by `apps/users/tests/test_admin.py` and
+`test_create_superuser_command.py`.
+
+**Sign-in takes one `identifier`, resolved email-first.**
+`apps/authentication/backends.py` matches it against emails, then usernames,
+both case-insensitively. The order is the part that matters: it is what makes
+the outcome deterministic when one account's handle is another's address.
+Registration refuses to create that collision, but the admin and imported rows
+can. `username` and `email` stay accepted as the field's name because a mobile
+build already in the app stores cannot be updated in place;
+`apps/authentication/tests/test_login.py` pins both spellings and both
+encodings -- a form-encoded body arrives as a QueryDict, whose values are
+internally lists, so aliasing it with `{**data}` hands every field to the
+serializer wrapped in a list.
+
+`social_core.pipeline.user.get_username` stays out of `SOCIAL_AUTH_PIPELINE`.
+It fills `USERNAME_FIELD`, which is the address now, and every account created
+through a provider would carry an invented handle its owner never chose.
+
 **Bearer tokens are added to the authentication classes, never substituted
 for them.** The mobile app authenticates with a header; the browser keeps its
 session cookie, and `apps/authentication/tests/test_csrf.py` still pins that.

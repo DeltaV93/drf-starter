@@ -21,6 +21,7 @@ interface ProfileForm {
   first_name: string;
   last_name: string;
   phone_number: string;
+  username: string;
 }
 
 export default function ProfilePage() {
@@ -30,12 +31,16 @@ export default function ProfilePage() {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { isSubmitting, isDirty },
   } = useForm<ProfileForm>({
     values: {
       first_name: user?.first_name ?? '',
       last_name: user?.last_name ?? '',
       phone_number: user?.phone_number ?? '',
+      // Null when the account has no handle; the form needs a string, and
+      // submitting '' is how the backend is told there is still none.
+      username: user?.username ?? '',
     },
   });
 
@@ -50,6 +55,14 @@ export default function ProfilePage() {
       await refresh();
       toast.success(t('profileUpdated'));
     } catch (error) {
+      if (error instanceof ApiError) {
+        // The one field here that can be refused on its own: taken, or
+        // shaped like an email address.
+        const message = error.fieldError('username');
+        if (message) {
+          setError('username', { message });
+        }
+      }
       toast.error(error instanceof ApiError ? error.message : t('genericError'));
     }
   };
@@ -92,9 +105,6 @@ export default function ProfilePage() {
 
         <Stack spacing={1} sx={{ mb: 3 }}>
           <Typography variant="body2" color="text.secondary">
-            {t('username')}: {user.username}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
             {t('email')}: {user.email}
           </Typography>
         </Stack>
@@ -129,6 +139,22 @@ export default function ProfilePage() {
                 margin="normal"
                 error={!!error}
                 helperText={error?.message}
+              />
+            )}
+          />
+          <Controller
+            name="username"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <TextField
+                {...field}
+                id="username"
+                label={t('usernameOptional')}
+                autoComplete="username"
+                fullWidth
+                margin="normal"
+                error={!!error}
+                helperText={error?.message ?? t('usernameHelp')}
               />
             )}
           />

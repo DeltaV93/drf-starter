@@ -99,7 +99,7 @@ export default function ProfileScreen() {
     // Pulling here re-reads the profile, which is how someone who has just
     // confirmed their email in another app makes the banner go away.
     <Screen onRefresh={reload} refreshing={refreshing}>
-      <ScreenHeader title={user.display_name || user.username} subtitle={user.email} />
+      <ScreenHeader title={user.display_name || user.email} subtitle={user.email} />
 
       {!user.email_verified ? (
         <Card
@@ -151,7 +151,7 @@ export default function ProfileScreen() {
       <View style={{ marginTop: theme.spacing(4) }}>
         <Text variant="titleMedium">{t('account')}</Text>
         <Divider style={{ marginVertical: theme.spacing(1) }} />
-        <List.Item title={t('username')} description={user.username} />
+        <List.Item title={t('username')} description={user.username ?? t('usernameNotSet')} />
         <List.Item title={t('accountType')} description={user.account_type} />
         <List.Item
           title={t('memberSince')}

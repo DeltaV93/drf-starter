@@ -34,11 +34,13 @@ export type LoginResult =
   | { status: 'two-factor-required' };
 
 export interface LoginCredentials {
-  username: string;
+  /** An email address, or a username for an account that has one. */
+  identifier: string;
   password: string;
 }
 
 export interface RegistrationDetails {
+  /** Optional -- send '' and the account simply has no handle. */
   username: string;
   email: string;
   first_name: string;

@@ -42,11 +42,18 @@ class EmailOrUsernameBackend(ModelBackend):
         if not identifier or password is None:
             return None
 
+        # Ordered, not merely first-found: uniqueness is enforced by the
+        # serializers rather than by the column, which compares case
+        # sensitively, so `Ada` and `ada` can both exist on a row the admin or
+        # an import created. Whichever this picks, it has to pick the same one
+        # every time -- an identifier that signs you into a different account
+        # depending on the query plan is worse than one that never works.
+        users = UserModel._default_manager.order_by('pk')
         user = (
-            UserModel._default_manager.filter(email__iexact=identifier).first()
+            users.filter(email__iexact=identifier).first()
             # A NULL username matches nothing, so accounts without one are
             # simply never found here.
-            or UserModel._default_manager.filter(username__iexact=identifier).first()
+            or users.filter(username__iexact=identifier).first()
         )
 
         if user is None:
