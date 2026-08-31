@@ -21,4 +21,4 @@ django-debug-toolbar>=5.0
 debugpy>=1.8
 
 # Dependency management
-pip-tools>=7.4
+pip-tools>=7.6.1
