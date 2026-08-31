@@ -2,6 +2,8 @@
  * How long the splash screen is allowed to wait for the version check.
  */
 
+import type { UpgradeCheck } from '@app/shared/types';
+
 import { act, renderHook, waitFor } from '../../test/utils';
 import { checkForUpgrade } from '../upgrade';
 import { useUpgradeGate } from '../useUpgradeGate';
@@ -10,8 +12,8 @@ jest.mock('../upgrade', () => ({ checkForUpgrade: jest.fn() }));
 
 const mockCheck = checkForUpgrade as jest.MockedFunction<typeof checkForUpgrade>;
 
-const none = {
-  requirement: 'none' as const,
+const none: UpgradeCheck = {
+  requirement: 'none',
   minimum_version: '',
   recommended_version: '',
   store_url: '',
@@ -59,7 +61,7 @@ it('still reports a block that arrives after the deadline', async () => {
   // The app is already on screen by then. The wall drops on top of it, which
   // is the trade the deadline buys.
   jest.useFakeTimers();
-  let answer: (value: typeof none) => void = () => {};
+  let answer: (value: UpgradeCheck) => void = () => {};
   mockCheck.mockReturnValue(new Promise((resolve) => (answer = resolve)));
 
   const { result } = await renderHook(() => useUpgradeGate());
