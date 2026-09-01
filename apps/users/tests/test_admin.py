@@ -60,6 +60,22 @@ def test_the_add_form_can_still_set_a_username(admin_client_):
     assert User.objects.get(email='handle@example.com').username == 'ada'
 
 
+def test_the_add_form_normalizes_the_address(admin_client_):
+    """The admin does not go through the registration serializer."""
+    admin_client_.post(
+        reverse('admin:users_customuser_add'),
+        {
+            'email': 'Ada@Example.COM',
+            'password1': 'a-sufficiently-long-passphrase',
+            'password2': 'a-sufficiently-long-passphrase',
+            'account_type': 'FREE',
+            'role': 'USER',
+        },
+    )
+
+    assert User.objects.filter(email='ada@example.com').exists()
+
+
 def test_the_change_form_loads(admin_client_):
     user = UserFactory()
 

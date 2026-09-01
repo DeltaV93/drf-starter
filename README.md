@@ -190,6 +190,13 @@ and no CORS preflight. When you deploy them to different origins, set
 `username` is an optional display handle: NULL when unset, so any number of
 accounts can go without one, and still unique when set.
 
+**Addresses are stored lowercased**, by `CustomUser.save()` — so the admin, a
+data import and the social pipeline normalize too, not only the paths that go
+through a serializer. Django's own `normalize_email` lowercases the domain and
+leaves the local part alone; the manager overrides it to do the whole address,
+because here it is the identifier and `Ada@` and `ada@` must not be two
+accounts for one person.
+
 Sign-in takes a single `identifier` — an address, or a handle for an account
 that has one:
 
@@ -199,9 +206,9 @@ POST /api/v1/auth/token/   { "identifier": "ada", "password": "..." }
 ```
 
 `apps/authentication/backends.py` resolves it against emails first and
-usernames second, both case-insensitively — addresses because registration
-lowercases what it stores while the admin and imported rows do not, and the
-user would otherwise be told their password was wrong.
+usernames second, both case-insensitively — the input can be typed in any
+case, and rows predating the normalization above can be stored in any case
+too. Without it the user is told their password is wrong.
 
 `username` and `email` are still accepted as the field's name, so a mobile
 build already in the app stores keeps working. New clients should send

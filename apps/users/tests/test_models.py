@@ -70,6 +70,56 @@ def test_users_are_identified_by_email():
     assert str(user) == 'ada@example.com'
 
 
+# --------------------------------------------------------------------------
+# Addresses are stored in one form
+# --------------------------------------------------------------------------
+
+
+def test_the_email_is_lowercased_on_save():
+    user = UserFactory(email='Ada@Example.COM')
+
+    user.refresh_from_db()
+    assert user.email == 'ada@example.com'
+
+
+def test_surrounding_whitespace_is_stripped():
+    user = UserFactory(email='  ada@example.com  ')
+
+    user.refresh_from_db()
+    assert user.email == 'ada@example.com'
+
+
+def test_the_local_part_is_lowercased_too():
+    """Django's own normalize_email only lowercases the domain."""
+    assert (
+        User.objects.normalize_email('Ada.Lovelace@Example.com') == 'ada.lovelace@example.com'
+    )
+
+
+def test_a_later_write_normalizes_as_well():
+    """Not just creation: the admin edits an existing row."""
+    user = UserFactory()
+
+    user.email = 'CHANGED@Example.com'
+    user.save()
+
+    user.refresh_from_db()
+    assert user.email == 'changed@example.com'
+
+
+def test_create_user_normalizes():
+    user = User.objects.create_user(email='Ada@Example.com', password='x')
+
+    assert user.email == 'ada@example.com'
+
+
+def test_an_address_differing_only_in_case_is_the_same_account():
+    UserFactory(email='ada@example.com')
+
+    with pytest.raises(IntegrityError):
+        UserFactory(email='ADA@Example.com')
+
+
 def test_new_users_are_not_flagged_as_anonymized():
     assert UserFactory().is_anonymized is False
 

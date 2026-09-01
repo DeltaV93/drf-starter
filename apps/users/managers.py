@@ -12,6 +12,23 @@ from django.contrib.auth.models import UserManager
 class CustomUserManager(UserManager):
     """Creates users by email address. `username` is optional."""
 
+    @classmethod
+    def normalize_email(cls, email):
+        """Lowercase the whole address, not just its domain.
+
+        Django's version lowercases the domain and leaves the local part
+        alone, because the RFC allows a server to treat `Ada@` and `ada@` as
+        two mailboxes. In practice no provider does, and here the address is
+        the identifier: two rows differing only in case would be two accounts
+        for one person, each able to register over the other's absence, and
+        every lookup would have to remember to be case-insensitive. Storing
+        one form removes the question.
+
+        `CustomUser.save()` applies this to every write, and `AbstractUser`
+        already calls it from `clean()`, so the admin normalizes too.
+        """
+        return super().normalize_email(email).strip().lower()
+
     def _create_user(self, email, password, **extra_fields):
         if not email:
             raise ValueError('Users must have an email address.')

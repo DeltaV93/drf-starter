@@ -266,3 +266,22 @@ def test_a_social_signup_creates_an_account_without_one():
     assert user.username is None
     # No password was set, so nothing can be guessed into it.
     assert user.has_usable_password() is False
+
+
+def test_a_provider_that_reports_a_mixed_case_address_still_stores_one_form():
+    """Providers echo whatever the user typed when they signed up there."""
+    from social_core.pipeline.user import create_user
+    from social_django.models import DjangoStorage
+    from social_django.strategy import DjangoStrategy
+
+    class _Backend:
+        def setting(self, name, default=None):
+            return getattr(settings, f'SOCIAL_AUTH_{name}', default)
+
+    result = create_user(
+        strategy=DjangoStrategy(DjangoStorage),
+        details={'email': 'Ada@Example.COM', 'first_name': 'Ada', 'last_name': 'Lovelace'},
+        backend=_Backend(),
+    )
+
+    assert result['user'].email == 'ada@example.com'

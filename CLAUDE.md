@@ -135,6 +135,17 @@ nullable field. `apps/users/managers.py` and `apps/users/forms.py` are the
 replacements, pinned by `apps/users/tests/test_admin.py` and
 `test_create_superuser_command.py`.
 
+**Addresses are stored lowercased, and the model is what guarantees it.**
+`CustomUser.save()` normalizes, so the admin, an import and the social
+pipeline are covered and not just the serializers. `CustomUserManager`
+overrides `normalize_email` because Django's lowercases only the domain --
+the local part is the half that would let `Ada@` and `ada@` become two
+accounts for one person. `apps/users/migrations/0003_lowercase_emails.py`
+backfills, and deliberately skips a row whose lowercase form another row
+already holds: that is two accounts for one person, choosing between them is
+not a migration's call, and doing it blindly would fail the deploy on the
+unique constraint. The reads stay `__iexact` for exactly those rows.
+
 **Sign-in takes one `identifier`, resolved email-first.**
 `apps/authentication/backends.py` matches it against emails, then usernames,
 both case-insensitively. The order is the part that matters: it is what makes

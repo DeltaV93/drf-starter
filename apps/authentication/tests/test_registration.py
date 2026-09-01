@@ -73,6 +73,26 @@ def test_register_rejects_a_password_similar_to_the_username(api_client):
     assert 'password' in response.data['errors']
 
 
+def test_register_stores_the_address_lowercased(api_client):
+    response = api_client.post(reverse('v1:register'), _payload(email='Ada@Example.COM'))
+
+    assert response.status_code == 201
+    assert User.objects.get(email='ada@example.com')
+    # And the response echoes what was stored, not what was sent.
+    assert response.data['data']['user']['email'] == 'ada@example.com'
+
+
+def test_an_account_registered_in_one_case_signs_in_in_another(api_client):
+    api_client.post(reverse('v1:register'), _payload(email='Ada@Example.COM'))
+
+    response = APIClient().post(
+        reverse('v1:login'),
+        {'identifier': 'ADA@example.com', 'password': 'sufficiently-long-passphrase-9'},
+    )
+
+    assert response.status_code == 200
+
+
 def test_register_rejects_a_duplicate_email_regardless_of_case(api_client):
     UserFactory(email='taken@example.com')
 

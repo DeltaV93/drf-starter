@@ -43,10 +43,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         }
 
     def validate_email(self, value):
-        # Model-level uniqueness is case-sensitive; signups should not be.
+        # Addresses are stored lowercased, but rows predating that are not,
+        # so the uniqueness check cannot assume it.
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError('A user with that email already exists.')
-        return value.lower()
+        # Normalized here as well as in CustomUser.save(), so what the
+        # response echoes back is what was stored.
+        return User.objects.normalize_email(value)
 
     def validate_username(self, value):
         if not value:

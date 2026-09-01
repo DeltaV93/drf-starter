@@ -87,6 +87,13 @@ class CustomUser(AbstractUser):
         # '' is not a second way of saying "no username"; see the field above.
         if not self.username:
             self.username = None
+
+        # Every write, not just the ones that go through a serializer: the
+        # admin, a data import and the social pipeline all reach this and
+        # none of them lowercases on the way. See the manager for why.
+        if self.email:
+            self.email = self.__class__.objects.normalize_email(self.email)
+
         return super().save(*args, **kwargs)
 
     @property
