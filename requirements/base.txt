@@ -9,7 +9,7 @@ djangorestframework>=3.18.0,<4.0
 django-filter>=25.1
 
 # Database
-psycopg[binary]>=3.2
+psycopg[binary]>=3.3.5
 # Managed hosts hand you a single DATABASE_URL rather than separate parts.
 dj-database-url>=2.3
 
