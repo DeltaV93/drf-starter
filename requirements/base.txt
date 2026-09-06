@@ -36,7 +36,7 @@ django-redis>=7.0.0
 
 # Email (AWS SES)
 boto3>=1.43.76
-django-ses>=4.4
+django-ses>=4.7.2
 
 # Third-party login
 social-auth-app-django>=5.4
