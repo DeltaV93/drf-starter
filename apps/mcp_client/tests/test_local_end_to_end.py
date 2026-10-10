@@ -125,7 +125,7 @@ async def test_a_tool_call_reaches_django_and_comes_back_with_real_data(
     server makes an in-process Django request, the row comes back, the result
     is fed to the model."""
     user = await sync_to_async(django_user_model.objects.create_user)(
-        username='ada', email='ada@example.com', password='hunter2hunter2'
+        email='ada@example.com', password='hunter2hunter2'
     )
     credential = await _key_for(user)
 

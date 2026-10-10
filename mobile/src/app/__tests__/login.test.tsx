@@ -40,10 +40,10 @@ beforeEach(() => {
   delete mockParams.redirect;
 });
 
-it('asks for a username and a password', async () => {
+it('asks for an email address and a password', async () => {
   const view = await renderScreen();
 
-  expect(view.getByLabelText('Username')).toBeTruthy();
+  expect(view.getByLabelText('Email')).toBeTruthy();
   expect(view.getByLabelText('Password')).toBeTruthy();
 });
 
@@ -52,12 +52,12 @@ it('signs in and goes to the app', async () => {
   const user = userEvent.setup();
   const view = await renderScreen();
 
-  await user.type(view.getByLabelText('Username'), 'ada');
+  await user.type(view.getByLabelText('Email'), 'ada@example.com');
   await user.type(view.getByLabelText('Password'), 'correct horse');
   await user.press(view.getByText('Log in'));
 
   await waitFor(() => {
-    expect(mockLogin).toHaveBeenCalledWith({ username: 'ada', password: 'correct horse' });
+    expect(mockLogin).toHaveBeenCalledWith({ email: 'ada@example.com', password: 'correct horse' });
     expect(mockReplace).toHaveBeenCalledWith('/profile');
   });
 });
@@ -67,7 +67,7 @@ it('carries the challenge to the verification screen instead of signing in', asy
   const user = userEvent.setup();
   const view = await renderScreen();
 
-  await user.type(view.getByLabelText('Username'), 'ada');
+  await user.type(view.getByLabelText('Email'), 'ada@example.com');
   await user.type(view.getByLabelText('Password'), 'correct horse');
   await user.press(view.getByText('Log in'));
 
@@ -94,7 +94,7 @@ it('reports a refusal rather than navigating', async () => {
   const user = userEvent.setup();
   const view = await renderScreen();
 
-  await user.type(view.getByLabelText('Username'), 'ada');
+  await user.type(view.getByLabelText('Email'), 'ada@example.com');
   await user.type(view.getByLabelText('Password'), 'nope');
   await user.press(view.getByText('Log in'));
 
@@ -116,7 +116,7 @@ describe('resuming an interrupted flow', () => {
     const user = userEvent.setup();
     const view = await renderScreen();
 
-    await user.type(view.getByLabelText('Username'), 'ada');
+    await user.type(view.getByLabelText('Email'), 'ada@example.com');
     await user.type(view.getByLabelText('Password'), 'correct horse');
     await user.press(view.getByText('Log in'));
 
@@ -131,7 +131,7 @@ describe('resuming an interrupted flow', () => {
     const user = userEvent.setup();
     const view = await renderScreen();
 
-    await user.type(view.getByLabelText('Username'), 'ada');
+    await user.type(view.getByLabelText('Email'), 'ada@example.com');
     await user.type(view.getByLabelText('Password'), 'correct horse');
     await user.press(view.getByText('Log in'));
 
@@ -149,7 +149,7 @@ describe('resuming an interrupted flow', () => {
     const user = userEvent.setup();
     const view = await renderScreen();
 
-    await user.type(view.getByLabelText('Username'), 'ada');
+    await user.type(view.getByLabelText('Email'), 'ada@example.com');
     await user.type(view.getByLabelText('Password'), 'correct horse');
     await user.press(view.getByText('Log in'));
 

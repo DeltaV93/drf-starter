@@ -72,7 +72,7 @@ def test_a_tool_describes_the_tokens_owner_and_not_another_account(user, django_
     """One credential, two accounts. There is no argument a caller could pass
     to change which one a tool describes."""
     other = django_user_model.objects.create_user(
-        username='mallory', email='mallory@example.com', password='hunter2hunter2'
+        email='mallory@example.com', password='hunter2hunter2'
     )
     from apps.mcp_server.tools import identity
 

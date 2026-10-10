@@ -27,7 +27,6 @@ import { useToast } from '../store/toast';
 import type { AppTheme } from '../theme/paper';
 
 interface SignUpForm {
-  username: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -36,7 +35,6 @@ interface SignUpForm {
 }
 
 const EMPTY: SignUpForm = {
-  username: '',
   email: '',
   first_name: '',
   last_name: '',
@@ -77,7 +75,6 @@ export default function SignUpScreen() {
     } catch (error) {
       if (error instanceof ApiError) {
         setFieldErrors({
-          username: error.fieldError('username'),
           email: error.fieldError('email'),
           password: error.fieldError('password'),
           password2: error.fieldError('password2'),
@@ -93,14 +90,6 @@ export default function SignUpScreen() {
     <Screen>
       <ScreenHeader title={t('createAccount')} />
 
-      <FormField
-        control={control}
-        name="username"
-        label={t('username')}
-        serverError={fieldErrors.username}
-        textContentType="username"
-        autoComplete="username"
-      />
       <FormField
         control={control}
         name="email"

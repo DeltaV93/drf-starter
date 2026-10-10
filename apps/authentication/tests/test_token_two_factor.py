@@ -49,7 +49,7 @@ def enrolled():
 
 def _obtain(api_client, user):
     return api_client.post(
-        reverse('v1:token_obtain'), {'username': user.username, 'password': DEFAULT_PASSWORD}
+        reverse('v1:token_obtain'), {'email': user.email, 'password': DEFAULT_PASSWORD}
     )
 
 
@@ -86,7 +86,7 @@ def test_a_correct_code_completes_the_login(api_client, enrolled):
 
     assert response.status_code == 200
     assert response.data['data']['access']
-    assert response.data['data']['user']['username'] == enrolled.username
+    assert response.data['data']['user']['email'] == enrolled.email
 
 
 def test_a_wrong_code_issues_nothing(api_client, enrolled):
@@ -116,4 +116,4 @@ def test_a_challenge_from_another_account_does_not_transfer(api_client, enrolled
     )
 
     assert response.status_code == 400
-    assert other.username not in str(response.data)
+    assert other.email not in str(response.data)

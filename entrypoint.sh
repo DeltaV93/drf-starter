@@ -17,7 +17,7 @@ if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
     python manage.py migrate --noinput
 fi
 
-# No-op unless all three DJANGO_SUPERUSER_* variables are set.
+# No-op unless both DJANGO_SUPERUSER_* variables are set.
 python manage.py create_superuser_if_not_exists
 
 exec "$@"

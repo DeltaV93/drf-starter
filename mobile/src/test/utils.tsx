@@ -17,7 +17,7 @@ import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { PaperIcon } from '../components/PaperIcon';
 // Initialises the real i18next instance. Without it `useTranslation` warns
-// and `t('username')` returns the key, so every query by visible text fails
+// and `t('email')` returns the key, so every query by visible text fails
 // on a screen that is working perfectly.
 import '../i18n';
 import { lightTheme } from '../theme/paper';

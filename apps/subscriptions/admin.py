@@ -14,7 +14,7 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ('user', 'plan', 'status', 'current_period_end')
     list_filter = ('status', 'plan')
-    search_fields = ('user__username', 'user__email', 'stripe_subscription_id')
+    search_fields = ('user__email', 'stripe_subscription_id')
     raw_id_fields = ('user',)
 
 

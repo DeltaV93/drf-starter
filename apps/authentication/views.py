@@ -137,12 +137,12 @@ class LoginView(APIView):
         if not serializer.is_valid():
             # The identifier tried is the target rather than metadata: it
             # is what makes a run of failures against one account visible.
-            # `username` is what UserLoginSerializer takes -- reading `email`
-            # here would silently record nothing.
+            # `email` is what UserLoginSerializer takes -- reading any other
+            # key here would silently record nothing.
             audit(
                 AuditAction.LOGIN_FAILED,
                 request=request,
-                target=str(request.data.get('username', ''))[:254],
+                target=str(request.data.get('email', ''))[:254],
                 reason='invalid_credentials',
             )
             return api_response(

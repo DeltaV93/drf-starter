@@ -26,7 +26,7 @@ def test_a_successful_login_is_recorded(client):
 
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -39,12 +39,12 @@ def test_a_failed_login_is_recorded_against_the_address_tried(client):
 
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': 'wrong-password'},
+        {'email': user.email, 'password': 'wrong-password'},
         content_type='application/json',
     )
 
     event = AuditEvent.objects.get(action=AuditAction.LOGIN_FAILED)
-    assert event.target == user.username
+    assert event.target == user.email
     assert event.actor is None  # Nobody authenticated.
     assert 'wrong-password' not in str(event.metadata)
 
@@ -53,7 +53,6 @@ def test_registration_is_recorded(client):
     response = client.post(
         reverse('v1:register'),
         {
-            'username': 'audited',
             'email': 'audited@example.com',
             'first_name': 'A',
             'last_name': 'B',
@@ -104,7 +103,7 @@ def test_the_password_is_never_in_the_log(client):
 
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 

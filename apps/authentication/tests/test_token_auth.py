@@ -23,9 +23,7 @@ pytestmark = pytest.mark.django_db
 
 
 def obtain(client, user, password=DEFAULT_PASSWORD):
-    return client.post(
-        reverse('v1:token_obtain'), {'username': user.username, 'password': password}
-    )
+    return client.post(reverse('v1:token_obtain'), {'email': user.email, 'password': password})
 
 
 def bearer(access):
@@ -45,7 +43,7 @@ def test_valid_credentials_return_a_pair_and_the_user(api_client, user):
     assert data['access']
     assert data['refresh']
     assert data['access_expires_in'] > 0
-    assert data['user']['username'] == user.username
+    assert data['user']['email'] == user.email
 
 
 def test_the_token_endpoint_needs_no_csrf_token(api_client, user):
@@ -64,7 +62,7 @@ def test_a_wrong_password_issues_nothing(api_client, user):
 
 def test_the_token_endpoint_does_not_reveal_whether_the_account_exists(api_client, user):
     missing = api_client.post(
-        reverse('v1:token_obtain'), {'username': 'nobody', 'password': 'wrong'}
+        reverse('v1:token_obtain'), {'email': 'nobody@example.com', 'password': 'wrong'}
     )
     wrong_password = obtain(api_client, user, password='wrong')
 
@@ -89,7 +87,7 @@ def test_the_access_token_authenticates_an_ordinary_request(api_client, user):
     response = bearer(access).get(reverse('v1:user_me'))
 
     assert response.status_code == 200
-    assert response.data['data']['username'] == user.username
+    assert response.data['data']['email'] == user.email
 
 
 def test_a_garbled_token_is_refused_rather_than_ignored(api_client, user):
@@ -229,7 +227,7 @@ def test_session_auth_is_untouched(api_client, user):
     substituted for them.
     """
     response = api_client.post(
-        reverse('v1:login'), {'username': user.username, 'password': DEFAULT_PASSWORD}
+        reverse('v1:login'), {'email': user.email, 'password': DEFAULT_PASSWORD}
     )
 
     assert response.status_code == 200

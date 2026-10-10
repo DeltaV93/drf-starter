@@ -94,7 +94,7 @@ def test_a_public_server_needs_no_credential(user):
 def test_one_users_connection_is_not_anothers(user, django_user_model, monkeypatch):
     monkeypatch.delenv('TEST_MCP_TOKEN', raising=False)
     other = django_user_model.objects.create_user(
-        username='mallory', email='mallory@example.com', password='hunter2hunter2'
+        email='mallory@example.com', password='hunter2hunter2'
     )
     _connect(user, 'shared', credential='alice-token')
 

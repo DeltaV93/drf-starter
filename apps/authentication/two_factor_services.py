@@ -57,7 +57,7 @@ def begin_enrolment(user):
 
     return two_factor.provisioning_uri(
         raw_secret,
-        account_name=user.email or user.get_username(),
+        account_name=user.email,
         issuer=settings.SPECTACULAR_SETTINGS.get('TITLE', 'App'),
     )
 

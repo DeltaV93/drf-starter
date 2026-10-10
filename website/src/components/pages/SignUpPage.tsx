@@ -10,7 +10,6 @@ import { useToast } from '../../store/toast';
 const FIELDS = [
   { name: 'first_name', label: 'firstName', autoComplete: 'given-name' },
   { name: 'last_name', label: 'lastName', autoComplete: 'family-name' },
-  { name: 'username', label: 'username', autoComplete: 'username' },
   { name: 'email', label: 'email', autoComplete: 'email', type: 'email' },
 ] as const;
 
@@ -28,7 +27,6 @@ export default function SignUpPage() {
     defaultValues: {
       first_name: '',
       last_name: '',
-      username: '',
       email: '',
       password: '',
       password2: '',
@@ -43,7 +41,7 @@ export default function SignUpPage() {
     } catch (error) {
       if (error instanceof ApiError) {
         // Map the backend's per-field errors onto the form so the user sees
-        // "that username is taken" next to the username box.
+        // "that email is already registered" next to the email box.
         let matched = false;
         for (const field of Object.keys(values) as (keyof RegistrationDetails)[]) {
           const message = error.fieldError(field);

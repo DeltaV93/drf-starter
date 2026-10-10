@@ -130,7 +130,7 @@ def test_a_password_alone_does_not_establish_a_session(client, enrolled):
 
     response = client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -144,7 +144,7 @@ def test_a_pending_login_cannot_reach_anything(client, enrolled):
     user, _codes = enrolled
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -155,7 +155,7 @@ def test_verifying_completes_the_login(client, enrolled):
     user, _codes = enrolled
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -190,7 +190,7 @@ def test_a_wrong_code_leaves_the_login_unfinished(client, enrolled):
     user, _codes = enrolled
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -207,7 +207,7 @@ def test_a_pending_login_expires(client, enrolled, settings):
     user, _codes = enrolled
     client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 
@@ -228,7 +228,7 @@ def test_a_user_without_two_factor_logs_in_in_one_step(client):
 
     response = client.post(
         reverse('v1:login'),
-        {'username': user.username, 'password': DEFAULT_PASSWORD},
+        {'email': user.email, 'password': DEFAULT_PASSWORD},
         content_type='application/json',
     )
 

@@ -12,7 +12,7 @@ from apps.users.serializers import UserSerializer
 class TokenObtainSerializer(serializers.Serializer):
     """Same credentials the session login takes."""
 
-    username = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
     password = serializers.CharField(
         max_length=128, write_only=True, style={'input_type': 'password'}
     )

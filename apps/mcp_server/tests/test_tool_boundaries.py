@@ -55,7 +55,6 @@ def test_a_tool_returns_the_callers_own_profile(user):
     with _As(_key_for(user)):
         data = async_to_sync(identity.whoami)()
 
-    assert data['username'] == user.username
     assert data['email'] == user.email
 
 
@@ -67,13 +66,13 @@ def test_a_tool_cannot_see_another_users_data(user, django_user_model):
     change that, because the endpoint scopes by the authenticated user.
     """
     other = django_user_model.objects.create_user(
-        username='mallory', email='mallory@example.com', password='hunter2hunter2'
+        email='mallory@example.com', password='hunter2hunter2'
     )
 
     with _As(_key_for(other)):
         data = async_to_sync(identity.whoami)()
 
-    assert data['username'] == other.username
+    assert data['email'] == other.email
     assert data['email'] != user.email
 
 

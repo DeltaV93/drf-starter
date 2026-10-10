@@ -21,7 +21,6 @@ def test_deletion_anonymizes_rather_than_removing_the_row(auth_client, user):
     assert User.objects.filter(pk=user.pk).exists()
     assert user.is_active is False
     assert user.date_deleted is not None
-    assert user.username.startswith('deleted_user_')
     assert user.email.endswith('@deleted.invalid')
     assert user.first_name == 'Deleted'
     assert user.last_name == 'User'
@@ -66,11 +65,11 @@ def test_anonymizing_twice_is_a_no_op(auth_client, user):
 
     auth_client.post(reverse('v1:account_deletion'), {'password': DEFAULT_PASSWORD})
     user.refresh_from_db()
-    first_username = user.username
+    first_email = user.email
     first_deleted_at = user.date_deleted
 
     anonymize_user_data(user)
 
     user.refresh_from_db()
-    assert user.username == first_username
+    assert user.email == first_email
     assert user.date_deleted == first_deleted_at

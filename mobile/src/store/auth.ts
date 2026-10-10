@@ -41,12 +41,11 @@ export type LoginResult =
   | { status: 'two-factor-required'; challenge: string };
 
 export interface LoginCredentials {
-  username: string;
+  email: string;
   password: string;
 }
 
 export interface RegistrationDetails {
-  username: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -143,7 +142,7 @@ export function useAuth() {
       });
 
       const result = await login({
-        username: details.username,
+        email: details.email,
         password: details.password,
       });
 

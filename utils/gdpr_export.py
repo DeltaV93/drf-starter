@@ -110,7 +110,6 @@ def _now_iso():
 
 def _profile(user):
     return {
-        'username': user.get_username(),
         'email': user.email,
         'first_name': user.first_name,
         'last_name': user.last_name,

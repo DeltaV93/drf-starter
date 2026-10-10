@@ -27,7 +27,7 @@ import { useToast } from '../store/toast';
 import type { AppTheme } from '../theme/paper';
 
 interface LoginForm {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -46,7 +46,7 @@ export default function LoginScreen() {
   const destination = safeRedirect(redirect);
 
   const { control, handleSubmit } = useForm<LoginForm>({
-    defaultValues: { username: '', password: '' },
+    defaultValues: { email: '', password: '' },
   });
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
@@ -78,7 +78,7 @@ export default function LoginScreen() {
     } catch (error) {
       if (error instanceof ApiError) {
         setFieldErrors({
-          username: error.fieldError('username'),
+          email: error.fieldError('email'),
           password: error.fieldError('password'),
         });
       }
@@ -94,9 +94,12 @@ export default function LoginScreen() {
 
       <FormField
         control={control}
-        name="username"
-        label={t('username')}
-        serverError={fieldErrors.username}
+        name="email"
+        label={t('email')}
+        serverError={fieldErrors.email}
+        keyboardType="email-address"
+        // "username", not the email types: it marks the field the password
+        // manager pairs with the password as the account identifier.
         textContentType="username"
         autoComplete="username"
       />

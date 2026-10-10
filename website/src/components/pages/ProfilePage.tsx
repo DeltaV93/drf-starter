@@ -92,9 +92,6 @@ export default function ProfilePage() {
 
         <Stack spacing={1} sx={{ mb: 3 }}>
           <Typography variant="body2" color="text.secondary">
-            {t('username')}: {user.username}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
             {t('email')}: {user.email}
           </Typography>
         </Stack>

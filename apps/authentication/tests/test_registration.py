@@ -13,7 +13,6 @@ pytestmark = pytest.mark.django_db
 
 def _payload(**overrides):
     payload = {
-        'username': 'newuser',
         'email': 'newuser@example.com',
         'first_name': 'New',
         'last_name': 'User',
@@ -28,7 +27,7 @@ def test_register_creates_user_and_sends_verification_email(api_client):
     response = api_client.post(reverse('v1:register'), _payload())
 
     assert response.status_code == 201
-    user = User.objects.get(username='newuser')
+    user = User.objects.get(email='newuser@example.com')
     assert user.check_password('sufficiently-long-passphrase-9')
     assert user.email_verified is False
     assert len(mail.outbox) == 1
@@ -48,7 +47,7 @@ def test_register_rejects_mismatched_passwords(api_client):
 
     assert response.status_code == 400
     assert 'password2' in response.data['errors']
-    assert not User.objects.filter(username='newuser').exists()
+    assert not User.objects.filter(email='newuser@example.com').exists()
 
 
 def test_register_rejects_a_weak_password(api_client):
@@ -60,12 +59,16 @@ def test_register_rejects_a_weak_password(api_client):
     assert 'password' in response.data['errors']
 
 
-def test_register_rejects_a_password_similar_to_the_username(api_client):
+def test_register_rejects_a_password_similar_to_the_email(api_client):
     # Django's UserAttributeSimilarityValidator only fires when the serializer
     # passes the unsaved user through to validate_password.
     response = api_client.post(
         reverse('v1:register'),
-        _payload(username='alexanderson', password='alexanderson', password2='alexanderson'),
+        _payload(
+            email='alexanderson@example.com',
+            password='alexanderson',
+            password2='alexanderson',
+        ),
     )
 
     assert response.status_code == 400
@@ -81,13 +84,11 @@ def test_register_rejects_a_duplicate_email_regardless_of_case(api_client):
     assert 'email' in response.data['errors']
 
 
-def test_register_rejects_a_duplicate_username(api_client):
-    UserFactory(username='newuser')
+def test_register_stores_the_email_in_lower_case(api_client):
+    response = api_client.post(reverse('v1:register'), _payload(email='New.User@Example.COM'))
 
-    response = api_client.post(reverse('v1:register'), _payload())
-
-    assert response.status_code == 400
-    assert 'username' in response.data['errors']
+    assert response.status_code == 201
+    assert User.objects.get().email == 'new.user@example.com'
 
 
 @override_settings(

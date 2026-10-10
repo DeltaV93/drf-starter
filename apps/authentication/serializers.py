@@ -18,7 +18,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'password', 'password2')
+        fields = ('email', 'first_name', 'last_name', 'password', 'password2')
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True},
@@ -26,19 +26,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         }
 
     def validate_email(self, value):
-        # Model-level uniqueness is case-sensitive; signups should not be.
-        if User.objects.filter(email__iexact=value).exists():
+        email = User.objects.normalize_email(value)
+        # Checked here rather than left to the database constraint so the
+        # answer arrives as a field error instead of an IntegrityError.
+        if User.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError('A user with that email already exists.')
-        return value.lower()
+        return email
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({'password2': "Password fields didn't match."})
 
         # Run Django's validators here rather than as a field-level validator so
-        # they can compare the password against the username and email.
+        # they can compare the password against the email address and name.
         user = User(
-            username=attrs.get('username'),
             email=attrs.get('email'),
             first_name=attrs.get('first_name', ''),
             last_name=attrs.get('last_name', ''),
@@ -53,10 +54,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         password = validated_data.pop('password')
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
+        return User.objects.create_user(password=password, **validated_data)
 
 
 class AuthenticatedSerializer(serializers.Serializer):
@@ -79,7 +77,7 @@ class AuthenticatedSerializer(serializers.Serializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
     password = serializers.CharField(
         max_length=128, write_only=True, style={'input_type': 'password'}
     )
@@ -87,7 +85,7 @@ class UserLoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         user = authenticate(
             request=self.context.get('request'),
-            username=attrs['username'],
+            email=attrs['email'],
             password=attrs['password'],
         )
         if not user:

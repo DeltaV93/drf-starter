@@ -591,7 +591,7 @@ pre-verified accounts.
 password, the last provider is the only credential, and password reset cannot
 help because there is nothing to reset to.
 
-Only `username`, `email`, `first_name` and `last_name` are stored. Providers
+Only `email`, `first_name` and `last_name` are stored. Providers
 return far more, and keeping it is a data-protection liability nobody asked for.
 
 ---
@@ -993,7 +993,7 @@ health-checks `/api/v1/health/`.
    | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
    | `REDIS_URL` | `${{Redis.REDIS_URL}}` |
    | `EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` to start |
-   | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | optional, creates an admin on first boot |
+   | `DJANGO_SUPERUSER_EMAIL` / `_PASSWORD` | optional, creates an admin on first boot |
 
 4. **Settings → Networking → Generate Domain.**
 
@@ -1073,9 +1073,8 @@ into a worker log, and nothing but strings crosses the queue.
 It is off by default because the default compose stack runs no worker, and a
 queued message nobody drains is worse than a slow one.
 
-Set `DJANGO_SUPERUSER_USERNAME`, `_EMAIL` and `_PASSWORD` to have the
-entrypoint create an admin on first boot. It is a no-op unless all three
-are set.
+Set `DJANGO_SUPERUSER_EMAIL` and `_PASSWORD` to have the entrypoint create
+an admin on first boot. It is a no-op unless both are set.
 
 ---
 

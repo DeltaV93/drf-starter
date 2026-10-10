@@ -7,7 +7,7 @@ from .models import ConnectedServer
 class ConnectedServerAdmin(admin.ModelAdmin):
     list_display = ('user', 'slug', 'enabled', 'last_used_at', 'created_at')
     list_filter = ('enabled', 'slug')
-    search_fields = ('user__email', 'user__username', 'slug')
+    search_fields = ('user__email', 'slug')
     # The credential is never shown, not even encrypted. An admin reading a
     # ciphertext out of a form is a copy of it somewhere it need not be.
     exclude = ('encrypted_credential',)

@@ -127,7 +127,7 @@ def test_one_users_connection_is_not_visible_to_another(auth_client, user, djang
     auth_client.put(EXAMPLE, {'credential': 'sk-secret'}, format='json')
 
     other = django_user_model.objects.create_user(
-        username='mallory', email='mallory@example.com', password='hunter2hunter2'
+        email='mallory@example.com', password='hunter2hunter2'
     )
     theirs = APIClient()
     theirs.force_authenticate(user=other)

@@ -31,7 +31,6 @@ def anonymize_user_data(user):
 
     unique_id = uuid.uuid4().hex[:12]
 
-    user.username = f'deleted_user_{unique_id}'
     user.email = f'{unique_id}@deleted.invalid'
     user.first_name = 'Deleted'
     user.last_name = 'User'

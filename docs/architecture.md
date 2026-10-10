@@ -263,7 +263,7 @@ Management commands:
 |---|---|
 | `prune_audit_log` | Deletes events past `AUDIT_LOG_RETENTION_DAYS`. Nothing expires on its own |
 | `generate_monthly_report` | Billing summary |
-| `create_superuser_if_not_exists` | Run by the entrypoint. A no-op unless all three `DJANGO_SUPERUSER_*` are set |
+| `create_superuser_if_not_exists` | Run by the entrypoint. A no-op unless both `DJANGO_SUPERUSER_*` are set |
 
 ## The frontend
 

@@ -12,7 +12,6 @@ import theme from '../styles/theme';
 export function makeUser(overrides: Partial<User> = {}): User {
   return {
     id: 1,
-    username: 'ada',
     email: 'ada@example.com',
     first_name: 'Ada',
     last_name: 'Lovelace',

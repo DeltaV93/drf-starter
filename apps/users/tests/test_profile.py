@@ -9,7 +9,8 @@ def test_me_returns_the_current_user(auth_client, user):
 
     assert response.status_code == 200
     data = response.data['data']
-    assert data['username'] == user.username
+    assert data['email'] == user.email
+    assert 'username' not in data
     assert data['email'] == user.email
 
 

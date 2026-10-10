@@ -1,9 +1,9 @@
 """Idempotently create a superuser from the environment.
 
 Intended for automated environments (CI, a fresh container) where running
-`createsuperuser` interactively is not possible. It is a no-op unless all
-three DJANGO_SUPERUSER_* variables are set, so nothing is ever created with
-a default password.
+`createsuperuser` interactively is not possible. It is a no-op unless both
+DJANGO_SUPERUSER_* variables are set, so nothing is ever created with a
+default password.
 """
 
 import os
@@ -18,33 +18,29 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         User = get_user_model()
 
-        username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
         email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
         password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
 
-        if not all([username, email, password]):
+        if not all([email, password]):
             self.stdout.write(
                 self.style.WARNING(
-                    'Skipping: set DJANGO_SUPERUSER_USERNAME, DJANGO_SUPERUSER_EMAIL '
-                    'and DJANGO_SUPERUSER_PASSWORD to create a superuser automatically.'
+                    'Skipping: set DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD '
+                    'to create a superuser automatically.'
                 )
             )
             return
 
-        if User.objects.filter(username=username).exists():
-            self.stdout.write(self.style.WARNING(f'Superuser "{username}" already exists.'))
-            return
+        email = User.objects.normalize_email(email)
 
-        if User.objects.filter(email=email).exists():
+        if User.objects.filter(email__iexact=email).exists():
             self.stdout.write(
                 self.style.WARNING(f'A user with email "{email}" already exists.')
             )
             return
 
         User.objects.create_superuser(
-            username=username,
             email=email,
             password=password,
             email_verified=True,
         )
-        self.stdout.write(self.style.SUCCESS(f'Created superuser "{username}".'))
+        self.stdout.write(self.style.SUCCESS(f'Created superuser "{email}".'))
